@@ -176,11 +176,49 @@ p {
 }
 
 .trip-list__item {
-  padding: 10px 14px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 6px 6px 14px;
   border-radius: 12px;
   background: rgb(255 255 255 / 92%);
   color: var(--text);
   font-weight: 600;
+}
+
+.trip-list__title {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.trip-list__actions {
+  display: flex;
+  flex-shrink: 0;
+  margin-left: auto;
+}
+
+.icon-button {
+  display: grid;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  padding: 0;
+  color: var(--text-muted);
+
+  &:hover {
+    background: var(--surface);
+    color: var(--text);
+  }
+
+  &:focus-visible {
+    outline: 2px solid var(--accent-dark);
+    outline-offset: 2px;
+  }
 }
 
 .overlay {
