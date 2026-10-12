@@ -164,6 +164,25 @@ p {
   left: 28px;
 }
 
+.trip-list {
+  position: absolute;
+  z-index: 3;
+  top: 84px;
+  left: 28px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  width: min(280px, calc(100% - 56px));
+}
+
+.trip-list__item {
+  padding: 10px 14px;
+  border-radius: 12px;
+  background: rgb(255 255 255 / 92%);
+  color: var(--text);
+  font-weight: 600;
+}
+
 .overlay {
   position: fixed;
   z-index: 10;

@@ -1,5 +1,6 @@
 import type { Trip } from './types';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
+import TripList from './components/TripList';
 
 function App() {
   const trip: Trip = {
@@ -19,7 +20,16 @@ function App() {
     ],
   };
 
-  const [trips, setTrips] = useState<Trip[]>([]);
+  const [trips, setTrips] = useState<Trip[]>(() => {
+    const saved = localStorage.getItem('trips');
+    if (!saved) return [];
+    return JSON.parse(saved) as Trip[];
+  });
+
+  useEffect(() => {
+    localStorage.setItem('trips', JSON.stringify(trips));
+  });
+
   const [isFormOpen, setIsFormopen] = useState(false);
   const [title, setTitle] = useState('');
   const [dateStart, setDateStart] = useState('');
@@ -75,6 +85,7 @@ function App() {
           >
             Добавить поездку
           </button>
+          <TripList trips={trips} />
         </div>
       </section>
       <button
