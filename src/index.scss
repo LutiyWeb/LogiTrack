@@ -193,10 +193,24 @@ p {
   white-space: nowrap;
 }
 
+.trip-list__dates {
+  flex-shrink: 0;
+  color: var(--text-muted);
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.trip-list__price {
+  flex-shrink: 0;
+  margin-left: auto;
+  color: var(--accent-dark);
+  font-size: 14px;
+  font-weight: 700;
+}
+
 .trip-list__actions {
   display: flex;
   flex-shrink: 0;
-  margin-left: auto;
 }
 
 .icon-button {
@@ -330,6 +344,50 @@ p {
   border-radius: 12px;
   background: var(--surface);
   font-size: 14px;
+}
+
+.quote {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.quote__title {
+  color: var(--text);
+  font-size: 16px;
+  font-weight: 700;
+}
+
+.quote__result {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 12px;
+  border-radius: 12px;
+  background: var(--surface);
+}
+
+.quote__row {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  font-size: 14px;
+
+  dt {
+    color: var(--text-muted);
+    font-weight: 600;
+  }
+
+  dd {
+    font-weight: 700;
+  }
+}
+
+.quote__total {
+  margin-top: 4px;
+  padding-top: 8px;
+  border-top: 1px solid var(--border);
+  font-size: 16px;
 }
 
 .field {

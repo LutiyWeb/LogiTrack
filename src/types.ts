@@ -13,6 +13,11 @@ export type Trip = {
   city: string;
   hotel: string;
   rooms: Room[];
+  ticketPerPerson: number;
+  stayPerPerson: number;
+  groupBudget: number;
+  personalCosts: number;
+  earnings: number;
 };
 
 export type Room = {

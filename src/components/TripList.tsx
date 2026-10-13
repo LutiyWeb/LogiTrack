@@ -1,4 +1,5 @@
 import type { Trip } from '../types';
+import { formatEuro, quoteFromTrip } from '../quote';
 
 type TripListProps = {
   trips: Trip[];
@@ -9,30 +10,39 @@ type TripListProps = {
 export default function TripList({ trips, onEdit, oneDelete }: TripListProps) {
   return (
     <ul className="trip-list">
-      {trips.map((trip) => (
-        <li className="trip-list__item" key={trip.id}>
-          <span className="trip-list__title">{trip.title}</span>
-          <span>{`${trip.dateStart} - ${trip.dateEnd}`}</span>
-          <span className="trip-list__actions">
-            <button
-              className="icon-button"
-              type="button"
-              aria-label="Редактировать"
-              onClick={() => onEdit(trip)}
-            >
-              <EditIcon />
-            </button>
-            <button
-              className="icon-button"
-              type="button"
-              aria-label="Удалить"
-              onClick={() => oneDelete(trip.id)}
-            >
-              <DeleteIcon />
-            </button>
-          </span>
-        </li>
-      ))}
+      {trips.map((trip) => {
+        const quote = quoteFromTrip(trip);
+
+        return (
+          <li className="trip-list__item" key={trip.id}>
+            <span className="trip-list__title">{trip.title}</span>
+            <span className="trip-list__dates">{`${trip.dateStart} - ${trip.dateEnd}`}</span>
+            {quote && (
+              <span className="trip-list__price">
+                {formatEuro(quote.perPerson)}
+              </span>
+            )}
+            <span className="trip-list__actions">
+              <button
+                className="icon-button"
+                type="button"
+                aria-label="Редактировать"
+                onClick={() => onEdit(trip)}
+              >
+                <EditIcon />
+              </button>
+              <button
+                className="icon-button"
+                type="button"
+                aria-label="Удалить"
+                onClick={() => oneDelete(trip.id)}
+              >
+                <DeleteIcon />
+              </button>
+            </span>
+          </li>
+        );
+      })}
     </ul>
   );
 }
