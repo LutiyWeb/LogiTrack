@@ -172,7 +172,7 @@ p {
   display: flex;
   flex-direction: column;
   gap: 8px;
-  width: min(280px, calc(100% - 56px));
+  width: min(400px, calc(100% - 56px));
 }
 
 .trip-list__item {
@@ -259,15 +259,25 @@ p {
 }
 
 .sidebar__close {
-  align-self: flex-start;
+  align-self: flex-end;
+  display: grid;
+  place-items: center;
+  width: 32px;
+  height: 32px;
   border: 0;
+  border-radius: 8px;
   background: transparent;
   padding: 0;
   color: var(--text-muted);
-  font-weight: 600;
 
   &:hover {
+    background: var(--surface);
     color: var(--text);
+  }
+
+  &:focus-visible {
+    outline: 2px solid var(--accent-dark);
+    outline-offset: 2px;
   }
 }
 
@@ -282,6 +292,44 @@ p {
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 12px;
+}
+
+.rooms {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.rooms__title {
+  font-size: 16px;
+  font-weight: 700;
+}
+
+.rooms__row {
+  grid-template-columns: 1fr 1fr auto;
+  align-items: end;
+}
+
+.rooms__add {
+  width: 42px;
+  height: 42px;
+  border: 1px solid var(--border-strong);
+  border-radius: 12px;
+  font-size: 22px;
+  line-height: 1;
+}
+
+.rooms__list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.rooms__item {
+  padding: 8px 12px;
+  border-radius: 12px;
+  background: var(--surface);
+  font-size: 14px;
 }
 
 .field {
