@@ -12,11 +12,27 @@ export default function TripList({ trips, onEdit, oneDelete }: TripListProps) {
     <ul className="trip-list">
       {trips.map((trip) => {
         const quote = quoteFromTrip(trip);
+        const people = trip.participants ?? [];
+        const peopleCount = people.length;
+        const planned = trip.targetParticipants ?? 0;
+        const remindCount = people.filter((person) => person.remind).length;
 
         return (
           <li className="trip-list__item" key={trip.id}>
             <span className="trip-list__title">{trip.title}</span>
-            <span className="trip-list__dates">{`${trip.dateStart} - ${trip.dateEnd}`}</span>
+            <span className="trip-list__meta">
+              <span className="trip-list__dates">{`${trip.dateStart} - ${trip.dateEnd}`}</span>
+              <span
+                className={
+                  remindCount > 0
+                    ? 'trip-list__count is-remind'
+                    : 'trip-list__count'
+                }
+              >
+                {planned > 0 ? `${peopleCount} из ${planned}` : peopleCount}
+                {remindCount > 0 ? ` · написать ${remindCount}` : ''}
+              </span>
+            </span>
             {quote && (
               <span className="trip-list__price">
                 {formatEuro(quote.perPerson)}

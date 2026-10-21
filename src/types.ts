@@ -12,12 +12,17 @@ export type Trip = {
   participants: Participant[];
   city: string;
   hotel: string;
+  hotelUrl: string;
   rooms: Room[];
   ticketPerPerson: number;
   stayPerPerson: number;
+  rate: number;
   groupBudget: number;
   personalCosts: number;
+  advertising: number;
+  reservePerPerson: number;
   earnings: number;
+  referrals: number;
 };
 
 export type Room = {
@@ -28,6 +33,10 @@ export type Room = {
 };
 
 export type Participant = {
-  name: string;
+  id: string;
+  firstName: string;
+  lastName: string;
+  comment: string;
   prepaid: boolean;
+  remind: boolean;
 };
