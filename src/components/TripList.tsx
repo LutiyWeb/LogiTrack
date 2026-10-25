@@ -7,9 +7,30 @@ type TripListProps = {
   oneDelete: (id: string) => void;
 };
 
+export const statusLabel: Record<Trip['status'], string> = {
+  planned: 'Планируется',
+  draft: 'Черновик',
+  selling: 'Продаётся',
+  confirmed: 'Набрана',
+  done: 'Прошла',
+  cancelled: 'Отменена',
+};
+
 export default function TripList({ trips, onEdit, oneDelete }: TripListProps) {
+  if (trips.length === 0) {
+    return <p className="trip-table__empty">Пока нет поездок</p>;
+  }
+
   return (
-    <ul className="trip-list">
+    <div className="trip-table">
+      <div className="trip-table__head">
+        <span>Поездка</span>
+        <span>Даты</span>
+        <span>Люди</span>
+        <span>Цена</span>
+        <span>Статус</span>
+        <span />
+      </div>
       {trips.map((trip) => {
         const quote = quoteFromTrip(trip);
         const people = trip.participants ?? [];
@@ -18,68 +39,63 @@ export default function TripList({ trips, onEdit, oneDelete }: TripListProps) {
         const remindCount = people.filter((person) => person.remind).length;
 
         return (
-          <li className="trip-list__item" key={trip.id}>
-            <span className="trip-list__title">{trip.title}</span>
-            <span className="trip-list__meta">
-              <span className="trip-list__dates">{`${trip.dateStart} - ${trip.dateEnd}`}</span>
-              <span
-                className={
-                  remindCount > 0
-                    ? 'trip-list__count is-remind'
-                    : 'trip-list__count'
-                }
-              >
-                {planned > 0 ? `${peopleCount} из ${planned}` : peopleCount}
-                {remindCount > 0 ? ` · написать ${remindCount}` : ''}
-              </span>
+          <div
+            className="trip-table__row"
+            key={trip.id}
+            tabIndex={0}
+            onClick={() => onEdit(trip)}
+            onKeyDown={(event) => {
+              if (event.target !== event.currentTarget) return;
+              if (event.key === 'Enter') onEdit(trip);
+            }}
+          >
+            <span className="trip-table__trip">
+              <span className="trip-table__title">{trip.title}</span>
+              <span className="trip-table__city">{trip.city}</span>
             </span>
-            {quote && (
-              <span className="trip-list__price">
-                {formatEuro(quote.perPerson)}
-              </span>
-            )}
-            <span className="trip-list__actions">
-              <button
-                className="icon-button"
-                type="button"
-                aria-label="Редактировать"
-                onClick={() => onEdit(trip)}
-              >
-                <EditIcon />
-              </button>
+            <span className="trip-table__dates">
+              {formatDate(trip.dateStart)} – {formatDate(trip.dateEnd)}
+            </span>
+            <span
+              className={
+                remindCount > 0
+                  ? 'trip-table__people is-remind'
+                  : 'trip-table__people'
+              }
+            >
+              {planned > 0 ? `${peopleCount} из ${planned}` : peopleCount}
+              {remindCount > 0 ? ` · написать ${remindCount}` : ''}
+            </span>
+            <span className="trip-table__price">
+              {quote ? formatEuro(quote.perPerson) : '—'}
+            </span>
+            <span className={`trip-table__status is-${trip.status}`}>
+              {statusLabel[trip.status]}
+            </span>
+            <span className="trip-table__actions">
               <button
                 className="icon-button"
                 type="button"
                 aria-label="Удалить"
-                onClick={() => oneDelete(trip.id)}
+                onClick={(event) => {
+                  event.stopPropagation();
+                  oneDelete(trip.id);
+                }}
               >
                 <DeleteIcon />
               </button>
             </span>
-          </li>
+          </div>
         );
       })}
-    </ul>
+    </div>
   );
 }
 
-function EditIcon() {
-  return (
-    <svg
-      width="16"
-      height="16"
-      viewBox="0 0 16 16"
-      fill="none"
-      aria-hidden="true"
-    >
-      <path
-        d="M11.1 1.9a1.5 1.5 0 0 1 2.1 2.1L5.4 11.8 2 12.7l.9-3.4 8.2-7.4z"
-        stroke="currentColor"
-        strokeWidth="1.4"
-        strokeLinejoin="round"
-      />
-    </svg>
-  );
+function formatDate(value: string) {
+  const [year, month, day] = value.split('-');
+  if (!year || !month || !day) return value;
+  return `${day}.${month}.${year}`;
 }
 
 function DeleteIcon() {

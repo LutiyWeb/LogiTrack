@@ -1,7 +1,7 @@
 export type Trip = {
   id: string;
   title: string;
-  status: 'draft' | 'selling' | 'confirmed' | 'done' | 'cancelled';
+  status: 'planned' | 'draft' | 'selling' | 'confirmed' | 'done' | 'cancelled';
   targetParticipants: number;
   organizerCosts: number;
   dateStart: string;
@@ -30,6 +30,7 @@ export type Room = {
   guests: number;
   beds: number;
   bedSize: 'single' | 'double';
+  occupantIds?: string[];
 };
 
 export type Participant = {
