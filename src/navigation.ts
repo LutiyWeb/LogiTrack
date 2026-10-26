@@ -5,6 +5,6 @@ export type MenuItem = {
 
 export const menuItems: MenuItem[] = [
   { id: 'overview', label: 'Overview' },
-  { id: 'board', label: 'Board' },
+  { id: 'board', label: 'Runs' },
   { id: 'account', label: 'Account' },
 ];

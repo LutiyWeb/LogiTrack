@@ -1,11 +1,11 @@
 import { useState } from 'react';
 import Sidebar from '../Sidebar/Sidebar';
 import Workspace from '../Workspace/Workspace';
-import { menuItems } from '../../navigation';
+import { menuItems, type MenuItem } from '../../navigation';
 import './AppShell.scss';
 
 function AppShell() {
-  const [activeId, setActiveId] = useState(menuItems[0].id);
+  const [activeId, setActiveId] = useState<MenuItem['id']>('board');
   const [isOpen, setIsOpen] = useState(true);
   const active = menuItems.find((item) => item.id === activeId) ?? menuItems[0];
 
@@ -19,7 +19,7 @@ function AppShell() {
         onSelect={setActiveId}
         onToggle={() => setIsOpen((open) => !open)}
       />
-      <Workspace title={active.label} />
+      <Workspace sectionId={active.id} title={active.label} />
     </div>
   );
 }
