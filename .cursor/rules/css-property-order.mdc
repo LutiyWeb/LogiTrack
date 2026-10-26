@@ -1,0 +1,20 @@
+---
+description: Порядок CSS-свойств внутри правила
+globs: "**/*.{css,scss}"
+alwaysApply: true
+---
+
+# Порядок CSS-свойств
+
+Внутри одного правила свойства идут группами, сверху вниз. Внутри группы порядок тоже этот.
+
+1. Позиционирование: `content`, `position`, `inset`, `top`, `right`, `bottom`, `left`, `z-index`
+2. Раскладка и блок: `display`, `flex-*`, `grid-*`, `place-*`, `align-*`, `justify-*`, `gap`, `order`, `box-sizing`, `width`, `min-width`, `max-width`, `height`, `min-height`, `max-height`, `margin`, `padding`, `border`, `overflow`
+3. Типографика: `font`, `font-*`, `line-height`, `letter-spacing`, `text-*`, `white-space`, `color`
+4. Оформление: `background`, `border-radius`, `box-shadow`, `object-fit`, `opacity`, `filter`
+5. Анимация: `transform`, `transition`, `animation`
+6. Разное: `appearance`, `cursor`, `pointer-events`, `resize`, `user-select`, `list-style`
+
+Префиксное свойство стоит сразу перед обычным. Значения не менять ради порядка.
+
+Имя блока пишется один раз. Элемент идёт через `&__`, модификатор через `&.`. Потомок внутри модификатора пишется так: `&.is-collapsed &__item`. Запись `&__item` прямо внутри `&.is-collapsed` склеивает селектор в `.block.is-collapsed__item`.
