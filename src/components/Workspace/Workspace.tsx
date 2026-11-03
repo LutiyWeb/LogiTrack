@@ -1,5 +1,6 @@
 import type { MenuItem } from '../../navigation';
 import Account from './Account';
+import Brokers from './Brokers';
 import Overview from './Overview';
 import Runs from './Runs';
 
@@ -13,6 +14,7 @@ function Workspace({ sectionId, title }: WorkspaceProps) {
     <section className="workspace" aria-label={title}>
       {sectionId === 'board' && <Runs />}
       {sectionId === 'overview' && <Overview />}
+      {sectionId === 'brokers' && <Brokers />}
       {sectionId === 'account' && <Account />}
     </section>
   );

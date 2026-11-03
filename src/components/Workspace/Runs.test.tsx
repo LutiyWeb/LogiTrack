@@ -44,6 +44,32 @@ describe('LogiTrack CRM Demo UI flows', () => {
     ).toBeInTheDocument();
   });
 
+  it('filters runs by BOL search, adds $150 Detention fee, and navigates to Brokers CRM', async () => {
+    const user = userEvent.setup();
+    const testStore = createAppStore();
+    testStore.dispatch(loginAsDemoUser('dispatcher'));
+    render(<App customStore={testStore} />);
+
+    const searchInput = screen.getByLabelText('Search runs');
+    await user.type(searchInput, '44821');
+    expect(screen.getByText('Truck 214')).toBeInTheDocument();
+    expect(screen.queryByText('Truck 118')).not.toBeInTheDocument();
+
+    await user.click(screen.getByRole('button', { name: /Truck 214/i }));
+    await user.click(screen.getByRole('button', { name: '+ $150 Detention' }));
+    expect(screen.getByText('+$150 detention')).toBeInTheDocument();
+    expect(
+      screen.getByText(/Added \$150 detention fee to Hart Freight/),
+    ).toBeInTheDocument();
+
+    await user.click(screen.getByRole('button', { name: 'Brokers' }));
+    expect(
+      screen.getByRole('heading', { name: 'Brokers & billing CRM' }),
+    ).toBeInTheDocument();
+    expect(screen.getByText('Hart Freight')).toBeInTheDocument();
+    expect(screen.getByText('Bluegrass Retail')).toBeInTheDocument();
+  });
+
   it('navigates between Overview, Runs, and Account and supports Demo Reset', async () => {
     const user = userEvent.setup();
     const testStore = createAppStore();
@@ -112,6 +138,9 @@ describe('LogiTrack CRM Demo UI flows', () => {
     );
     expect(
       screen.queryByRole('button', { name: 'Overview' }),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole('button', { name: 'Brokers' }),
     ).not.toBeInTheDocument();
     expect(screen.getByText('Truck 214')).toBeInTheDocument();
     expect(screen.queryByText('Truck 118')).not.toBeInTheDocument();

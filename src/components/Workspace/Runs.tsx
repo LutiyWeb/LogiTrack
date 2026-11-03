@@ -1,7 +1,13 @@
-import { formatMiles, formatMoney } from '../../runs/demo';
+import { useState } from 'react';
+import { formatMiles, formatMoney, readNumber } from '../../runs/demo';
 import { useAppDispatch, useAppSelector } from '../../store/hooks';
-import { selectFilteredRuns, selectOpenRun } from '../../store/selectors/runsSelectors';
-import { openRun } from '../../store/slices/runsSlice';
+import {
+  selectFilteredRuns,
+  selectOpenRun,
+  type EnrichedRun,
+} from '../../store/selectors/runsSelectors';
+import { selectPermissions } from '../../store/slices/authSlice';
+import { createRun, openRun } from '../../store/slices/runsSlice';
 import { setStatusFilter, type StatusFilter } from '../../store/slices/uiSlice';
 import { resetAllDemoData } from '../../store/store';
 import RunDetail from './RunDetail';
@@ -9,13 +15,44 @@ import './Workspace.scss';
 
 const filterOptions: StatusFilter[] = ['All', 'In transit', 'Planned', 'Completed'];
 
+function matchesSearch(item: EnrichedRun, query: string) {
+  if (!query) return true;
+  const { run, lane, yard } = item;
+  const haystacks = [
+    run.truck,
+    run.driver,
+    lane,
+    yard,
+    ...run.loads.flatMap((l) => [
+      l.customer,
+      l.bol,
+      l.commodity,
+      l.pickup.city,
+      l.delivery.city,
+    ]),
+  ];
+  return haystacks.some((text) => text.toLowerCase().includes(query));
+}
+
 function Runs() {
   const dispatch = useAppDispatch();
   const filteredRuns = useAppSelector(selectFilteredRuns);
   const currentOpenRun = useAppSelector(selectOpenRun);
   const statusFilter = useAppSelector((state) => state.ui.statusFilter);
+  const permissions = useAppSelector(selectPermissions);
+
+  const [search, setSearch] = useState('');
+  const [showNewRun, setShowNewRun] = useState(false);
+  const [truck, setTruck] = useState('');
+  const [driver, setDriver] = useState('');
+  const [yardCity, setYardCity] = useState('Indianapolis');
+  const [yardState, setYardState] = useState('IN');
+  const [hours, setHours] = useState('11');
 
   if (currentOpenRun) return <RunDetail />;
+
+  const query = search.trim().toLowerCase();
+  const visibleRuns = filteredRuns.filter((item) => matchesSearch(item, query));
 
   return (
     <div className="runs">
@@ -34,6 +71,15 @@ function Runs() {
               </button>
             ))}
           </div>
+          {permissions.canManageLoads && (
+            <button
+              type="button"
+              className="runs__button runs__button--small"
+              onClick={() => setShowNewRun((open) => !open)}
+            >
+              + New run
+            </button>
+          )}
           <button
             type="button"
             className="runs__button runs__button--ghost"
@@ -43,8 +89,69 @@ function Runs() {
           </button>
         </div>
       </div>
+
+      <input
+        className="runs__input"
+        placeholder="Search truck, driver, city, customer or BOL..."
+        aria-label="Search runs"
+        value={search}
+        onChange={(e) => setSearch(e.target.value)}
+      />
+
+      {showNewRun && permissions.canManageLoads && (
+        <form
+          className="runs__form"
+          aria-label="New run"
+          onSubmit={(e) => {
+            e.preventDefault();
+            if (!truck.trim() || !driver.trim()) return;
+            dispatch(
+              createRun({
+                truck,
+                driver,
+                yardCity,
+                yardState,
+                drivingHoursLeft: readNumber(hours),
+              }),
+            );
+            setShowNewRun(false);
+            setTruck('');
+            setDriver('');
+          }}
+        >
+          <div className="runs__form-head">
+            <h2 className="runs__subtitle">Dispatch a new truck run</h2>
+          </div>
+          <label className="runs__field">
+            <span className="runs__label">Truck</span>
+            <input className="runs__input" placeholder="Truck 412" value={truck} onChange={(e) => setTruck(e.target.value)} />
+          </label>
+          <label className="runs__field">
+            <span className="runs__label">Driver</span>
+            <input className="runs__input" placeholder="Sam Carter" value={driver} onChange={(e) => setDriver(e.target.value)} />
+          </label>
+          <label className="runs__field">
+            <span className="runs__label">Yard city</span>
+            <input className="runs__input" value={yardCity} onChange={(e) => setYardCity(e.target.value)} />
+          </label>
+          <label className="runs__field">
+            <span className="runs__label">Yard state</span>
+            <input className="runs__input" maxLength={2} value={yardState} onChange={(e) => setYardState(e.target.value.toUpperCase())} />
+          </label>
+          <label className="runs__field">
+            <span className="runs__label">Shift hours left</span>
+            <input className="runs__input" type="number" min="0" step="0.5" value={hours} onChange={(e) => setHours(e.target.value)} />
+          </label>
+          <div className="runs__form-submit">
+            <button type="submit" className="runs__button" disabled={!truck.trim() || !driver.trim()}>
+              Create run
+            </button>
+          </div>
+        </form>
+      )}
+
       <ul className="runs__list">
-        {filteredRuns.map((item) => {
+        {visibleRuns.map((item) => {
           const { run, emptyMiles: empty, dollarsPerMile: perMile, revenue: earned, deadheadPercent, needsBackhaul, yard } = item;
 
           return (

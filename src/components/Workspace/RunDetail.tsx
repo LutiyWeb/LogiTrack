@@ -16,8 +16,12 @@ import {
 } from '../../runs/demo';
 import { useAppDispatch, useAppSelector } from '../../store/hooks';
 import { selectOpenRun } from '../../store/selectors/runsSelectors';
-import { selectPermissions } from '../../store/slices/authSlice';
 import {
+  selectCurrentUser,
+  selectPermissions,
+} from '../../store/slices/authSlice';
+import {
+  addLoadDetention,
   advanceLoadBilling,
   openRun,
   removeLoad,
@@ -32,6 +36,7 @@ import DispatchLog from './DispatchLog';
 function RunDetail() {
   const dispatch = useAppDispatch();
   const enriched = useAppSelector(selectOpenRun);
+  const currentUser = useAppSelector(selectCurrentUser);
   const permissions = useAppSelector(selectPermissions);
   const manualMiles = useAppSelector((state) => state.runs.manualMiles);
   const targetRate = useAppSelector((state) => state.ui.targetRatePerMile);
@@ -117,6 +122,31 @@ function RunDetail() {
                   <p className="runs__truck">{load.customer || 'No customer yet'}</p>
                   <div className="runs__load-actions">
                     <p className="runs__status">{load.status}</p>
+                    {load.detentionFee ? (
+                      <span className="runs__badge runs__badge--ok">
+                        +${load.detentionFee} detention
+                      </span>
+                    ) : (
+                      permissions.canManageLoads && (
+                        <button
+                          type="button"
+                          className="runs__button runs__button--ghost runs__button--small"
+                          onClick={() =>
+                            dispatch(
+                              addLoadDetention({
+                                runId: run.id,
+                                loadId: load.id,
+                                amount: 150,
+                                author: currentUser?.name ?? 'Dispatcher',
+                                roleTitle: currentUser?.roleTitle ?? 'Dispatch',
+                              }),
+                            )
+                          }
+                        >
+                          + $150 Detention
+                        </button>
+                      )
+                    )}
                     {load.status === 'Delivered' && (
                       <>
                         <span className={`runs__badge ${billingTone ? `runs__badge${billingTone}` : ''}`}>

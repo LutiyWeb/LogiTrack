@@ -15,6 +15,7 @@ type SidebarProps = {
 const icons = {
   overview: OverviewIcon,
   board: BoardIcon,
+  brokers: BrokersIcon,
   account: AccountIcon,
 };
 
@@ -97,6 +98,15 @@ function BoardIcon() {
     <svg width="20" height="20" viewBox="0 0 20 20" fill="none" aria-hidden="true">
       <rect x="3" y="3.5" width="14" height="13" rx="2" stroke="currentColor" strokeWidth="1.5" />
       <path d="M3 8h14" stroke="currentColor" strokeWidth="1.5" />
+    </svg>
+  );
+}
+
+function BrokersIcon() {
+  return (
+    <svg width="20" height="20" viewBox="0 0 20 20" fill="none" aria-hidden="true">
+      <path d="M3.5 7.5h13v8a1.5 1.5 0 0 1-1.5 1.5H5a1.5 1.5 0 0 1-1.5-1.5v-8Z" stroke="currentColor" strokeWidth="1.5" />
+      <path d="M7 7.5V5.5A1.5 1.5 0 0 1 8.5 4h3A1.5 1.5 0 0 1 13 5.5v2" stroke="currentColor" strokeWidth="1.5" />
     </svg>
   );
 }

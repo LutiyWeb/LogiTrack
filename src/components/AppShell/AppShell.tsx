@@ -24,7 +24,9 @@ function AppShell() {
 
   const visibleItems = permissions.canViewOverview
     ? menuItems
-    : menuItems.filter((item) => item.id !== 'overview');
+    : menuItems.filter(
+        (item) => item.id !== 'overview' && item.id !== 'brokers',
+      );
   const active =
     visibleItems.find((item) => item.id === activeId) ?? visibleItems[0];
 

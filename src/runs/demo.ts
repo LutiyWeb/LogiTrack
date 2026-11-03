@@ -31,6 +31,7 @@ export type Load = {
   commodity: string;
   status: LoadStatus;
   billingStatus?: BillingStatus;
+  detentionFee?: number;
 };
 
 export type Run = {
@@ -87,6 +88,55 @@ export type BackhaulOffer = {
   summary: string;
   draft: LoadDraft;
 };
+
+export type BrokerInfo = {
+  mc: string;
+  creditScore: string;
+  terms: string;
+};
+
+export const brokerDirectory: Record<string, BrokerInfo> = {
+  'Hart Freight': {
+    mc: 'MC-410294',
+    creditScore: '98 · A+',
+    terms: 'QuickPay 2d',
+  },
+  'Blue Ridge Logistics': {
+    mc: 'MC-582910',
+    creditScore: '95 · A',
+    terms: 'Factoring Approved',
+  },
+  'Midwest Steel Co.': {
+    mc: 'MC-309182',
+    creditScore: '92 · A',
+    terms: 'Net 15',
+  },
+  'Bluegrass Retail': {
+    mc: 'MC-774120',
+    creditScore: '96 · A+',
+    terms: 'QuickPay 1d',
+  },
+  'Apex Industrial': {
+    mc: 'MC-619044',
+    creditScore: '89 · B+',
+    terms: 'Net 30',
+  },
+  'Heartland Foods': {
+    mc: 'MC-512800',
+    creditScore: '94 · A',
+    terms: 'Factoring Approved',
+  },
+};
+
+export function getBrokerInfo(customer: string): BrokerInfo {
+  return (
+    brokerDirectory[customer] ?? {
+      mc: 'MC-Verified',
+      creditScore: '90 · A-',
+      terms: 'Net 30',
+    }
+  );
+}
 
 export const runStatuses: RunStatus[] = ['Planned', 'In transit', 'Completed'];
 

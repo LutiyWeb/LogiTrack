@@ -34,6 +34,31 @@ const runsSlice = createSlice({
       state.openRunId = action.payload;
       state.draft = { ...emptyDraft };
     },
+    createRun(
+      state,
+      action: PayloadAction<{
+        truck: string;
+        driver: string;
+        yardCity: string;
+        yardState: string;
+        drivingHoursLeft: number;
+      }>,
+    ) {
+      const newRun: Run = {
+        id: crypto.randomUUID(),
+        truck: action.payload.truck.trim(),
+        driver: action.payload.driver.trim(),
+        yardCity: action.payload.yardCity.trim(),
+        yardState: action.payload.yardState.trim().toUpperCase(),
+        status: 'Planned',
+        drivingHoursLeft: action.payload.drivingHoursLeft,
+        loads: [],
+        notes: [],
+      };
+      state.runs.unshift(newRun);
+      state.openRunId = newRun.id;
+      state.draft = { ...emptyDraft };
+    },
     patchDraft(state, action: PayloadAction<Partial<LoadDraft>>) {
       state.draft = { ...state.draft, ...action.payload };
     },
@@ -92,6 +117,32 @@ const runsSlice = createSlice({
       } else if (load.billingStatus === 'POD received') {
         load.billingStatus = 'Invoiced';
       }
+    },
+    addLoadDetention(
+      state,
+      action: PayloadAction<{
+        runId: string;
+        loadId: string;
+        amount: number;
+        author: string;
+        roleTitle: string;
+      }>,
+    ) {
+      const run = state.runs.find((item) => item.id === action.payload.runId);
+      const load = run?.loads.find((item) => item.id === action.payload.loadId);
+      if (!run || !load || load.detentionFee) return;
+      load.rate += action.payload.amount;
+      load.detentionFee = action.payload.amount;
+      run.notes = [
+        ...(run.notes ?? []),
+        {
+          id: crypto.randomUUID(),
+          author: action.payload.author,
+          roleTitle: action.payload.roleTitle,
+          at: 'Just now',
+          text: `Added $${action.payload.amount} detention fee to ${load.customer || 'load'} (rate updated to $${load.rate}).`,
+        },
+      ];
     },
     addRunNote(
       state,
@@ -152,11 +203,13 @@ const runsSlice = createSlice({
 
 export const {
   openRun,
+  createRun,
   patchDraft,
   applyPresetToDraft,
   addLoad,
   updateLoadStatus,
   advanceLoadBilling,
+  addLoadDetention,
   addRunNote,
   removeLoad,
   updateRunStatus,

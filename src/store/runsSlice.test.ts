@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { backhaulPreset } from '../runs/demo';
 import {
+  selectBrokerSummaries,
   selectEnrichedRuns,
   selectFilteredRuns,
   selectFleetKpis,
@@ -15,9 +16,11 @@ import {
 } from './slices/authSlice';
 import {
   addLoad,
+  addLoadDetention,
   addRunNote,
   advanceLoadBilling,
   applyPresetToDraft,
+  createRun,
   openRun,
   removeLoad,
   setManualMiles,
@@ -35,7 +38,9 @@ describe('Redux store (runsSlice, uiSlice, authSlice, and selectors)', () => {
     expect(state.runs.runs).toHaveLength(4);
     const kpis = selectFleetKpis(state);
     expect(kpis.totalRevenue).toBe(3200 + 1450 + 950 + 3050);
-    expect(kpis.totalNetProfit).toBe(kpis.totalRevenue - kpis.totalOperatingCost);
+    expect(kpis.totalNetProfit).toBe(
+      kpis.totalRevenue - kpis.totalOperatingCost,
+    );
     expect(kpis.activeRunsCount).toBe(3);
     expect(kpis.completedRunsCount).toBe(1);
     expect(kpis.runsNeedingBackhaul.map((item) => item.run.id)).toContain(
@@ -129,6 +134,54 @@ describe('Redux store (runsSlice, uiSlice, authSlice, and selectors)', () => {
     expect(
       store.getState().runs.runs.find((r) => r.id === '214')?.loads,
     ).toHaveLength(1);
+  });
+
+  it('creates a new run, adds $150 detention fee with log note, and aggregates broker summaries', () => {
+    const store = createAppStore();
+
+    const initialHart = selectBrokerSummaries(store.getState()).find(
+      (b) => b.customer === 'Hart Freight',
+    )!;
+    expect(initialHart.totalRevenue).toBe(3200);
+    expect(initialHart.invoicedRevenue).toBe(0);
+    expect(initialHart.pendingRevenue).toBe(3200);
+
+    store.dispatch(
+      addLoadDetention({
+        runId: '214',
+        loadId: 'hart',
+        amount: 150,
+        author: 'Alex Mercer',
+        roleTitle: 'Senior Fleet Dispatcher',
+      }),
+    );
+
+    const run214 = store.getState().runs.runs.find((r) => r.id === '214')!;
+    expect(run214.loads[0].rate).toBe(3350);
+    expect(run214.loads[0].detentionFee).toBe(150);
+    expect(run214.notes?.at(-1)?.text).toContain('Added $150 detention fee');
+
+    store.dispatch(advanceLoadBilling({ runId: '214', loadId: 'hart' }));
+    store.dispatch(advanceLoadBilling({ runId: '214', loadId: 'hart' }));
+
+    const billedHart = selectBrokerSummaries(store.getState()).find(
+      (b) => b.customer === 'Hart Freight',
+    )!;
+    expect(billedHart.totalRevenue).toBe(3350);
+    expect(billedHart.invoicedRevenue).toBe(3350);
+    expect(billedHart.pendingRevenue).toBe(0);
+
+    store.dispatch(
+      createRun({
+        truck: 'Truck 412',
+        driver: 'Sam Carter',
+        yardCity: 'Indianapolis',
+        yardState: 'in',
+        drivingHoursLeft: 11,
+      }),
+    );
+    expect(store.getState().runs.runs).toHaveLength(5);
+    expect(selectOpenRun(store.getState())?.run.truck).toBe('Truck 412');
   });
 
   it('switches UI tabs, clears draft on run change, and resets all demo state cleanly', () => {

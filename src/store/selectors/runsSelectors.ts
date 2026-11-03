@@ -2,6 +2,7 @@ import { createSelector } from '@reduxjs/toolkit';
 import {
   dollarsPerMile,
   emptyMilesTotal,
+  getBrokerInfo,
   lane,
   paidMiles,
   placeName,
@@ -44,6 +45,19 @@ export type FleetKpiSummary = {
   completedRunsCount: number;
   totalLoadsCount: number;
   runsNeedingBackhaul: EnrichedRun[];
+};
+
+export type BrokerSummary = {
+  customer: string;
+  mc: string;
+  creditScore: string;
+  terms: string;
+  loadsCount: number;
+  totalRevenue: number;
+  invoicedRevenue: number;
+  pendingRevenue: number;
+  primaryRunId: string;
+  primaryTruck: string;
 };
 
 const selectRunsList = (state: RootState) => state.runs.runs;
@@ -193,5 +207,46 @@ export const selectFleetKpis = createSelector(
       totalLoadsCount,
       runsNeedingBackhaul,
     };
+  },
+);
+
+export const selectBrokerSummaries = createSelector(
+  [selectRunsList],
+  (runs): BrokerSummary[] => {
+    const map = new Map<string, BrokerSummary>();
+
+    runs.forEach((run) => {
+      run.loads.forEach((load) => {
+        const customer = load.customer.trim();
+        if (!customer) return;
+
+        const info = getBrokerInfo(customer);
+        const existing = map.get(customer) ?? {
+          customer,
+          mc: info.mc,
+          creditScore: info.creditScore,
+          terms: info.terms,
+          loadsCount: 0,
+          totalRevenue: 0,
+          invoicedRevenue: 0,
+          pendingRevenue: 0,
+          primaryRunId: run.id,
+          primaryTruck: run.truck,
+        };
+
+        const isInvoiced = load.billingStatus === 'Invoiced';
+        existing.loadsCount += 1;
+        existing.totalRevenue += load.rate;
+        if (isInvoiced) {
+          existing.invoicedRevenue += load.rate;
+        }
+        existing.pendingRevenue =
+          existing.totalRevenue - existing.invoicedRevenue;
+
+        map.set(customer, existing);
+      });
+    });
+
+    return Array.from(map.values());
   },
 );
