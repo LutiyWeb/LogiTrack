@@ -37,10 +37,10 @@ function Overview() {
       </header>
 
       <dl className="runs__stats" aria-label="Fleet KPIs">
-        <div className="runs__stat runs__stat--good">
+        <div className="runs__stat">
           <div className="runs__stat-head">
             <dt>Fleet revenue</dt>
-            <Sparkline points="2,16 16,13 30,14 46,8 62,4" color="var(--color-good)" />
+            <Sparkline points="2,16 16,13 30,14 46,8 62,4" color="#64748b" />
           </div>
           <dd>{formatMoney(kpis.totalRevenue, 0)}</dd>
           <span className="runs__meta">
@@ -50,7 +50,7 @@ function Overview() {
         </div>
 
         <div
-          className={`runs__stat runs__stat--${rateIsGood ? 'good' : 'warn'}`}
+          className="runs__stat"
           title="Revenue ÷ total miles (paid + empty)"
         >
           <div className="runs__stat-head">
@@ -61,12 +61,17 @@ function Overview() {
             />
           </div>
           <dd>{formatMoney(kpis.averageDollarsPerMile, 2)}</dd>
-          <span className="runs__meta">
-            {rateIsGood ? '↑' : '↓'} Target {formatMoney(targetRate, 2)} / mi
-          </span>
+          <div className="runs__inline-visual">
+            <span className={`runs__badge runs__badge--${rateIsGood ? 'ok' : 'warn'}`}>
+              {rateIsGood ? '↑ Above target' : '↓ Below target'}
+            </span>
+            <span className="runs__meta">
+              Target {formatMoney(targetRate, 2)} / mi
+            </span>
+          </div>
         </div>
 
-        <div className={`runs__stat runs__stat--${deadheadIsHigh ? 'danger' : 'good'}`}>
+        <div className="runs__stat">
           <div className="runs__stat-head">
             <dt>Deadhead ratio</dt>
             <Sparkline
@@ -75,16 +80,20 @@ function Overview() {
             />
           </div>
           <dd>{kpis.deadheadPercent}%</dd>
-          <span className="runs__meta">
-            {deadheadIsHigh ? `↑ Above ${maxEmptyPercent}% limit` : '✓ Within target'} · Empty{' '}
-            {formatMiles(kpis.totalEmptyMiles)}
-          </span>
+          <div className="runs__inline-visual">
+            <span className={`runs__badge runs__badge--${deadheadIsHigh ? 'danger' : 'ok'}`}>
+              {deadheadIsHigh ? `↑ Above ${maxEmptyPercent}% limit` : '✓ Within target'}
+            </span>
+            <span className="runs__meta">
+              Empty {formatMiles(kpis.totalEmptyMiles)}
+            </span>
+          </div>
         </div>
 
-        <div className="runs__stat runs__stat--good">
+        <div className="runs__stat">
           <div className="runs__stat-head">
             <dt>Active trucks</dt>
-            <Sparkline points="2,14 18,12 34,9 48,9 62,6" color="var(--color-primary)" />
+            <Sparkline points="2,14 18,12 34,9 48,9 62,6" color="#64748b" />
           </div>
           <dd>{kpis.activeRunsCount}</dd>
           <span className="runs__meta">

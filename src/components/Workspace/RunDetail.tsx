@@ -93,14 +93,19 @@ function RunDetail() {
         <Stat
           label="Paid miles"
           value={formatMiles(paidMiles)}
-          tone="good"
           subtext="Loaded freight miles"
         />
         <Stat
           label="Empty miles"
           value={empty === null ? '—' : formatMiles(empty)}
-          tone={emptyIsHigh ? 'danger' : 'good'}
-          subtext={
+          badgeTone={
+            deadheadPercent !== null
+              ? emptyIsHigh
+                ? 'danger'
+                : 'ok'
+              : undefined
+          }
+          badgeText={
             deadheadPercent !== null
               ? emptyIsHigh
                 ? `↑ ${deadheadPercent}% · Above ${maxEmptyPercent}% limit`
@@ -111,7 +116,6 @@ function RunDetail() {
         <Stat
           label="Revenue"
           value={formatMoney(earned, 0)}
-          tone="good"
           subtext={
             netProfit !== null && operatingCost !== null
               ? `Net ${formatMoney(netProfit, 0)} · Cost ${formatMoney(operatingCost, 0)}`
@@ -121,9 +125,11 @@ function RunDetail() {
         <Stat
           label="All-in $/mi"
           value={perMile === null ? '—' : formatMoney(perMile, 2)}
-          tone={perMile === null ? 'good' : rateIsGood ? 'good' : 'warn'}
           tooltip="Revenue ÷ total miles (paid + empty)"
-          subtext={
+          badgeTone={
+            perMile !== null ? (rateIsGood ? 'ok' : 'warn') : undefined
+          }
+          badgeText={
             perMile !== null
               ? `${rateIsGood ? '↑ Above' : '↓ Below'} ${formatMoney(targetRate, 2)} target`
               : undefined
@@ -373,20 +379,27 @@ function RunDetail() {
 function Stat({
   label,
   value,
-  tone,
   subtext,
+  badgeTone,
+  badgeText,
   tooltip,
 }: {
   label: string;
   value: string;
-  tone: 'good' | 'warn' | 'danger' | 'blue' | 'slate';
   subtext?: string;
+  badgeTone?: 'ok' | 'warn' | 'danger';
+  badgeText?: string;
   tooltip?: string;
 }) {
   return (
-    <div className={`runs__stat runs__stat--${tone}`} title={tooltip}>
+    <div className="runs__stat" title={tooltip}>
       <dt>{label}</dt>
       <dd>{value}</dd>
+      {badgeText && badgeTone && (
+        <span className={`runs__badge runs__badge--${badgeTone}`}>
+          {badgeText}
+        </span>
+      )}
       {subtext && <span className="runs__meta">{subtext}</span>}
     </div>
   );
