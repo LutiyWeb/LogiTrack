@@ -38,10 +38,7 @@ function Overview() {
 
       <dl className="runs__stats" aria-label="Fleet KPIs">
         <div className="runs__stat">
-          <div className="runs__stat-head">
-            <dt>Fleet revenue</dt>
-            <Sparkline points="2,16 16,13 30,14 46,8 62,4" color="#64748b" />
-          </div>
+          <dt>Fleet revenue</dt>
           <dd>{formatMoney(kpis.totalRevenue, 0)}</dd>
           <span className="runs__meta">
             Net profit {formatMoney(kpis.totalNetProfit, 0)} · Paid{' '}
@@ -53,13 +50,7 @@ function Overview() {
           className="runs__stat"
           title="Revenue ÷ total miles (paid + empty)"
         >
-          <div className="runs__stat-head">
-            <dt>All-in $/mi</dt>
-            <Sparkline
-              points={rateIsGood ? '2,15 18,12 34,10 48,7 62,4' : '2,6 18,9 34,11 48,14 62,15'}
-              color={rateIsGood ? 'var(--color-good)' : 'var(--color-warn)'}
-            />
-          </div>
+          <dt>All-in $/mi</dt>
           <dd>{formatMoney(kpis.averageDollarsPerMile, 2)}</dd>
           <div className="runs__inline-visual">
             <span className={`runs__badge runs__badge--${rateIsGood ? 'ok' : 'warn'}`}>
@@ -72,13 +63,7 @@ function Overview() {
         </div>
 
         <div className="runs__stat">
-          <div className="runs__stat-head">
-            <dt>Deadhead ratio</dt>
-            <Sparkline
-              points={deadheadIsHigh ? '2,16 18,14 34,11 48,7 62,3' : '2,5 18,8 34,12 48,14 62,16'}
-              color={deadheadIsHigh ? 'var(--color-danger)' : 'var(--color-good)'}
-            />
-          </div>
+          <dt>Deadhead ratio</dt>
           <dd>{kpis.deadheadPercent}%</dd>
           <div className="runs__inline-visual">
             <span className={`runs__badge runs__badge--${deadheadIsHigh ? 'danger' : 'ok'}`}>
@@ -91,10 +76,7 @@ function Overview() {
         </div>
 
         <div className="runs__stat">
-          <div className="runs__stat-head">
-            <dt>Active trucks</dt>
-            <Sparkline points="2,14 18,12 34,9 48,9 62,6" color="#64748b" />
-          </div>
+          <dt>Active trucks</dt>
           <dd>{kpis.activeRunsCount}</dd>
           <span className="runs__meta">
             {kpis.completedRunsCount} completed
@@ -238,21 +220,6 @@ function Overview() {
         </ul>
       </section>
     </div>
-  );
-}
-
-function Sparkline({ points, color }: { points: string; color: string }) {
-  return (
-    <svg width="64" height="20" viewBox="0 0 64 20" fill="none" aria-hidden="true">
-      <polyline
-        points={points}
-        fill="none"
-        stroke={color}
-        strokeWidth="2"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
-    </svg>
   );
 }
 
