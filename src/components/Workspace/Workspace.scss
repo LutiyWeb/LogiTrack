@@ -1,8 +1,21 @@
+@keyframes runs-fade-in {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
 .runs {
   display: flex;
   flex-direction: column;
   gap: 16px;
   max-width: 960px;
+  animation: runs-fade-in var(--transition-base);
 
   &__list,
   &__loads,
@@ -37,9 +50,19 @@
     color: var(--color-text);
     background: var(--color-surface);
     border-radius: var(--radius-m);
+    transition:
+      border-color var(--transition-fast),
+      color var(--transition-fast),
+      background-color var(--transition-fast),
+      transform var(--transition-fast);
 
     &:hover {
+      border-color: var(--color-text);
       background: var(--color-hover);
+    }
+
+    &:active {
+      transform: translateY(1px);
     }
 
     &.is-active {
@@ -56,14 +79,25 @@
     gap: 16px;
     width: 100%;
     padding: 16px 18px;
+    border: 1px solid transparent;
     font-size: var(--font-size-s);
     text-align: left;
     color: var(--color-text);
     background: var(--color-surface);
     border-radius: var(--radius-m);
+    transition:
+      border-color var(--transition-fast),
+      background-color var(--transition-fast),
+      box-shadow var(--transition-fast),
+      transform var(--transition-fast);
 
     &:hover {
+      border-color: var(--color-line);
       background: var(--color-hover);
+    }
+
+    &:active {
+      transform: translateY(1px);
     }
 
     &:focus-visible {
@@ -126,6 +160,7 @@
     line-height: 1.4;
     background: var(--color-tint-slate);
     border-radius: var(--radius-m);
+    transition: background-color var(--transition-fast);
 
     &--ok {
       background: var(--color-tint-green);
@@ -138,14 +173,23 @@
 
   &__back {
     width: fit-content;
-    padding: 4px 0;
+    margin-left: -8px;
+    padding: 4px 8px;
     font-size: var(--font-size-s);
     font-weight: 600;
     color: var(--color-text);
     border-radius: var(--radius-m);
+    transition:
+      color var(--transition-fast),
+      background-color var(--transition-fast),
+      transform var(--transition-fast);
 
     &:hover {
       background: var(--color-hover);
+    }
+
+    &:active {
+      transform: translateX(-2px);
     }
 
     &:focus-visible {
@@ -168,6 +212,10 @@
     padding: 16px;
     background: var(--color-surface);
     border-radius: var(--radius-m);
+    transition:
+      border-color var(--transition-fast),
+      background-color var(--transition-fast),
+      box-shadow var(--transition-fast);
   }
 
   &__stat {
@@ -299,14 +347,26 @@
     color: var(--color-text);
     background: var(--color-surface);
     border-radius: var(--radius-m);
+    transition:
+      border-color var(--transition-fast),
+      background-color var(--transition-fast),
+      box-shadow var(--transition-fast),
+      opacity var(--transition-fast);
 
-    &:hover {
+    &:hover:not(:disabled) {
       border-color: var(--color-text);
     }
 
     &:focus {
       outline: none;
       border-color: var(--color-text);
+      box-shadow: 0 0 0 3px var(--color-tint-slate);
+    }
+
+    &:disabled {
+      background: var(--color-hover);
+      opacity: 0.65;
+      cursor: not-allowed;
     }
   }
 
@@ -335,9 +395,19 @@
     color: var(--color-surface);
     background: var(--color-text);
     border-radius: var(--radius-m);
+    transition:
+      color var(--transition-fast),
+      background-color var(--transition-fast),
+      box-shadow var(--transition-fast),
+      opacity var(--transition-fast),
+      transform var(--transition-fast);
 
-    &:hover {
+    &:hover:not(:disabled) {
       opacity: 0.86;
+    }
+
+    &:active:not(:disabled) {
+      transform: translateY(1px);
     }
 
     &:focus-visible {
@@ -347,6 +417,7 @@
 
     &:disabled {
       opacity: 0.4;
+      cursor: not-allowed;
     }
   }
 
