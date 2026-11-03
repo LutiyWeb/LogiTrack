@@ -49,6 +49,7 @@ export type FleetKpiSummary = {
 
 export type BrokerSummary = {
   customer: string;
+  kind: 'Broker' | 'Shipper';
   mc: string;
   creditScore: string;
   terms: string;
@@ -56,6 +57,7 @@ export type BrokerSummary = {
   totalRevenue: number;
   invoicedRevenue: number;
   pendingRevenue: number;
+  readyToInvoiceCount: number;
   primaryRunId: string;
   primaryTruck: string;
 };
@@ -65,8 +67,6 @@ const selectManualMiles = (state: RootState) => state.runs.manualMiles;
 const selectOpenRunId = (state: RootState) => state.runs.openRunId;
 const selectStatusFilter = (state: RootState) => state.ui.statusFilter;
 const selectMaxEmptyPercent = (state: RootState) => state.ui.maxEmptyPercent;
-const selectTargetRatePerMile = (state: RootState) =>
-  state.ui.targetRatePerMile;
 const selectFuelCostPerMile = (state: RootState) => state.ui.fuelCostPerMile;
 const selectDriverPayPerMile = (state: RootState) => state.ui.driverPayPerMile;
 const selectCurrentUser = (state: RootState) => state.auth.currentUser;
@@ -76,7 +76,6 @@ export const selectEnrichedRuns = createSelector(
     selectRunsList,
     selectManualMiles,
     selectMaxEmptyPercent,
-    selectTargetRatePerMile,
     selectFuelCostPerMile,
     selectDriverPayPerMile,
   ],
@@ -84,7 +83,6 @@ export const selectEnrichedRuns = createSelector(
     runs,
     manualMiles,
     maxEmptyPercent,
-    targetRatePerMile,
     fuelCostPerMile,
     driverPayPerMile,
   ): EnrichedRun[] => {
@@ -109,9 +107,7 @@ export const selectEnrichedRuns = createSelector(
       const needsBackhaul =
         run.status !== 'Completed' &&
         deadheadPercent !== null &&
-        deadheadPercent > maxEmptyPercent &&
-        perMile !== null &&
-        perMile < targetRatePerMile;
+        deadheadPercent > maxEmptyPercent;
 
       return {
         run,
@@ -179,8 +175,7 @@ export const selectFleetKpis = createSelector(
     const deadheadPercent =
       totalMiles > 0 ? Math.round((totalEmptyMiles / totalMiles) * 100) : 0;
     const activeRunsCount = enrichedRuns.filter(
-      (item) =>
-        item.run.status === 'In transit' || item.run.status === 'Planned',
+      (item) => item.run.status !== 'Completed',
     ).length;
     const completedRunsCount = enrichedRuns.filter(
       (item) => item.run.status === 'Completed',
@@ -223,6 +218,7 @@ export const selectBrokerSummaries = createSelector(
         const info = getBrokerInfo(customer);
         const existing = map.get(customer) ?? {
           customer,
+          kind: info.kind,
           mc: info.mc,
           creditScore: info.creditScore,
           terms: info.terms,
@@ -230,6 +226,7 @@ export const selectBrokerSummaries = createSelector(
           totalRevenue: 0,
           invoicedRevenue: 0,
           pendingRevenue: 0,
+          readyToInvoiceCount: 0,
           primaryRunId: run.id,
           primaryTruck: run.truck,
         };
@@ -239,6 +236,9 @@ export const selectBrokerSummaries = createSelector(
         existing.totalRevenue += load.rate;
         if (isInvoiced) {
           existing.invoicedRevenue += load.rate;
+        }
+        if (load.billingStatus === 'POD received') {
+          existing.readyToInvoiceCount += 1;
         }
         existing.pendingRevenue =
           existing.totalRevenue - existing.invoicedRevenue;

@@ -1,7 +1,10 @@
 import { formatMoney } from '../../runs/demo';
 import { useAppDispatch, useAppSelector } from '../../store/hooks';
 import { selectBrokerSummaries } from '../../store/selectors/runsSelectors';
-import { openRun } from '../../store/slices/runsSlice';
+import {
+  invoiceCustomerLoads,
+  openRun,
+} from '../../store/slices/runsSlice';
 import { setActiveSection } from '../../store/slices/uiSlice';
 
 function Brokers() {
@@ -16,30 +19,31 @@ function Brokers() {
     <div className="runs">
       <header className="runs__heading">
         <div>
-          <h1 className="workspace__title">Brokers & billing CRM</h1>
+          <h1 className="workspace__title">Customers & billing</h1>
           <p className="runs__meta">
-            Approved freight brokers, credit ratings & accounts receivable
+            Approved freight brokers, direct shippers, credit ratings & accounts
+            receivable
           </p>
         </div>
       </header>
 
       <dl className="runs__stats" aria-label="Broker KPIs">
         <div className="runs__stat runs__stat--blue">
-          <dt>Active brokers</dt>
+          <dt>Active accounts</dt>
           <dd>{brokers.length}</dd>
-          <span className="runs__meta">Verified MC authority</span>
+          <span className="runs__meta">Verified brokers & shippers</span>
         </div>
         <div className="runs__stat runs__stat--slate">
           <dt>Total contracted</dt>
           <dd>{formatMoney(totalContracted, 0)}</dd>
           <span className="runs__meta">All active & completed loads</span>
         </div>
-        <div className="runs__stat runs__stat--blue">
+        <div className="runs__stat runs__stat--good">
           <dt>Invoiced / Billed</dt>
           <dd>{formatMoney(totalInvoiced, 0)}</dd>
           <span className="runs__meta">Sent to factoring / QuickPay</span>
         </div>
-        <div className="runs__stat runs__stat--slate">
+        <div className="runs__stat runs__stat--warn">
           <dt>Pending POD / Unbilled</dt>
           <dd>{formatMoney(totalPending, 0)}</dd>
           <span className="runs__meta">Awaiting delivery or invoice</span>
@@ -53,8 +57,11 @@ function Brokers() {
             <li key={broker.customer} className="runs__load">
               <div className="runs__load-head">
                 <div>
-                  <span className="runs__badge runs__badge--ok">
-                    Credit {broker.creditScore}
+                  <span className="runs__row-title">
+                    <span className="runs__badge">{broker.kind}</span>
+                    <span className="runs__badge runs__badge--ok">
+                      Credit {broker.creditScore}
+                    </span>
                   </span>
                   <p className="runs__truck">{broker.customer}</p>
                   <p className="runs__meta">
@@ -70,6 +77,17 @@ function Brokers() {
                     <span className="runs__badge runs__badge--ok">
                       All billed
                     </span>
+                  )}
+                  {broker.readyToInvoiceCount > 0 && (
+                    <button
+                      type="button"
+                      className="runs__button runs__button--small"
+                      onClick={() =>
+                        dispatch(invoiceCustomerLoads(broker.customer))
+                      }
+                    >
+                      Create invoice
+                    </button>
                   )}
                   <button
                     type="button"

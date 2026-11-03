@@ -1,3 +1,4 @@
+import { useEffect } from 'react';
 import {
   emptyLegKey,
   formatHours,
@@ -5,14 +6,10 @@ import {
   formatMoney,
   formatWhen,
   isKnownEmptyLeg,
-  loadStatuses,
   readNumber,
-  runStatuses,
   shiftNote,
   stopName,
   type Load,
-  type LoadStatus,
-  type RunStatus,
 } from '../../runs/demo';
 import { useAppDispatch, useAppSelector } from '../../store/hooks';
 import { selectOpenRun } from '../../store/selectors/runsSelectors';
@@ -23,17 +20,24 @@ import {
 import {
   addLoadDetention,
   advanceLoadBilling,
+  clearScrollToOffers,
+  openLoadModal,
   openRun,
   removeLoad,
   setManualMiles,
   updateLoadStatus,
-  updateRunStatus,
 } from '../../store/slices/runsSlice';
-import AddLoadForm from './AddLoadForm';
+import AddLoadModal from './AddLoadForm';
 import BackhaulOffers from './BackhaulOffers';
 import DispatchLog from './DispatchLog';
 import FleetRouteMap from './FleetRouteMap';
-import { HosRing, MilesSplitBar, RunStatusBadge } from './RunVisuals';
+import {
+  HosRing,
+  LoadStatusBadge,
+  LoadStatusSelect,
+  MilesSplitBar,
+  RunStatusBadge,
+} from './RunVisuals';
 
 function RunDetail() {
   const dispatch = useAppDispatch();
@@ -41,14 +45,21 @@ function RunDetail() {
   const currentUser = useAppSelector(selectCurrentUser);
   const permissions = useAppSelector(selectPermissions);
   const manualMiles = useAppSelector((state) => state.runs.manualMiles);
+  const scrollToOffers = useAppSelector((state) => state.runs.scrollToOffers);
   const targetRate = useAppSelector((state) => state.ui.targetRatePerMile);
   const maxEmptyPercent = useAppSelector((state) => state.ui.maxEmptyPercent);
+
+  useEffect(() => {
+    if (!scrollToOffers) return;
+    const offersEl = document.querySelector('[aria-label="Broker load board"]');
+    offersEl?.scrollIntoView?.({ behavior: 'smooth', block: 'start' });
+    dispatch(clearScrollToOffers());
+  }, [scrollToOffers, dispatch]);
 
   if (!enriched) return null;
 
   const {
     run,
-    legs,
     timeline,
     paidMiles,
     emptyMiles: empty,
@@ -65,25 +76,17 @@ function RunDetail() {
 
   return (
     <div className="runs">
-      <button className="runs__back" type="button" onClick={() => dispatch(openRun(null))}>
-        Runs
+      <button
+        className="runs__back"
+        type="button"
+        onClick={() => dispatch(openRun(null))}
+      >
+        ← Back to runs
       </button>
       <header className="runs__heading">
         <h1 className="workspace__title">{run.truck}</h1>
         <div className="runs__heading-controls">
           <RunStatusBadge status={run.status} />
-          {permissions.canUpdateRunStatus && (
-            <select
-              className="runs__input runs__input--compact"
-              aria-label="Run status"
-              value={run.status}
-              onChange={(e) => dispatch(updateRunStatus({ runId: run.id, status: e.target.value as RunStatus }))}
-            >
-              {runStatuses.map((s) => (
-                <option key={s} value={s}>{s}</option>
-              ))}
-            </select>
-          )}
         </div>
       </header>
       <dl className="runs__stats">
@@ -116,9 +119,10 @@ function RunDetail() {
           }
         />
         <Stat
-          label="$ per mile"
+          label="All-in $/mi"
           value={perMile === null ? '—' : formatMoney(perMile, 2)}
           tone={perMile === null ? 'good' : rateIsGood ? 'good' : 'warn'}
+          tooltip="Revenue ÷ total miles (paid + empty)"
           subtext={
             perMile !== null
               ? `${rateIsGood ? '↑ Above' : '↓ Below'} ${formatMoney(targetRate, 2)} target`
@@ -127,28 +131,48 @@ function RunDetail() {
         />
       </dl>
       <div className="runs__inline-visual">
-        <HosRing hoursLeft={run.drivingHoursLeft} />
+        {run.status !== 'Completed' && (
+          <HosRing hoursLeft={run.drivingHoursLeft} />
+        )}
         <p className="runs__meta">
           {run.driver} · Yard {yard}
-          {run.drivingHoursLeft === null ? '' : ` · ${formatHours(run.drivingHoursLeft)} left in this shift`}
+          {run.status === 'Completed' || run.drivingHoursLeft === null
+            ? ''
+            : ` · ${formatHours(run.drivingHoursLeft)} left in this shift`}
         </p>
         <MilesSplitBar paidMiles={paidMiles} emptyMiles={empty} />
       </div>
       <section className="runs__block" aria-label="Loads">
-        <h2 className="runs__subtitle">Loads</h2>
+        <div className="runs__form-head">
+          <h2 className="runs__subtitle">Loads</h2>
+          {permissions.canManageLoads && (
+            <button
+              type="button"
+              className="runs__button runs__button--small"
+              onClick={() => dispatch(openLoadModal(run.id))}
+            >
+              New load
+            </button>
+          )}
+        </div>
         <ul className="runs__loads">
           {run.loads.map((load) => {
             const note = shiftNote(run, load);
             const billing = load.billingStatus ?? 'POD required';
             const billingTone =
-              billing === 'Invoiced' ? '--ok' : billing === 'POD required' ? '--warn' : '';
+              billing === 'Invoiced'
+                ? '--ok'
+                : billing === 'POD required'
+                  ? '--warn'
+                  : '';
 
             return (
               <li className="runs__load" key={load.id}>
                 <div className="runs__load-head">
-                  <p className="runs__truck">{load.customer || 'No customer yet'}</p>
+                  <p className="runs__truck">
+                    {load.customer || 'No customer yet'}
+                  </p>
                   <div className="runs__load-actions">
-                    <p className="runs__status">{load.status}</p>
                     {load.detentionFee ? (
                       <span className="runs__badge runs__badge--ok">
                         +${load.detentionFee} detention
@@ -165,7 +189,8 @@ function RunDetail() {
                                 loadId: load.id,
                                 amount: 150,
                                 author: currentUser?.name ?? 'Dispatcher',
-                                roleTitle: currentUser?.roleTitle ?? 'Dispatch',
+                                roleTitle:
+                                  currentUser?.roleTitle ?? 'Dispatch',
                               }),
                             )
                           }
@@ -176,48 +201,73 @@ function RunDetail() {
                     )}
                     {load.status === 'Delivered' && (
                       <>
-                        <span className={`runs__badge ${billingTone ? `runs__badge${billingTone}` : ''}`}>
+                        <span
+                          className={`runs__badge ${billingTone ? `runs__badge${billingTone}` : ''}`}
+                        >
                           {billing}
                         </span>
-                        {billing === 'POD required' && permissions.canUpdateLoadStatus && (
-                          <button
-                            type="button"
-                            className="runs__button runs__button--small"
-                            onClick={() => dispatch(advanceLoadBilling({ runId: run.id, loadId: load.id }))}
-                          >
-                            Confirm POD
-                          </button>
-                        )}
-                        {billing === 'POD received' && permissions.canManageLoads && (
-                          <button
-                            type="button"
-                            className="runs__button runs__button--small"
-                            onClick={() => dispatch(advanceLoadBilling({ runId: run.id, loadId: load.id }))}
-                          >
-                            Send invoice
-                          </button>
-                        )}
+                        {billing === 'POD required' &&
+                          permissions.canUpdateLoadStatus && (
+                            <button
+                              type="button"
+                              className="runs__button runs__button--small"
+                              onClick={() =>
+                                dispatch(
+                                  advanceLoadBilling({
+                                    runId: run.id,
+                                    loadId: load.id,
+                                  }),
+                                )
+                              }
+                            >
+                              Confirm POD
+                            </button>
+                          )}
+                        {billing === 'POD received' &&
+                          permissions.canManageLoads && (
+                            <button
+                              type="button"
+                              className="runs__button runs__button--small"
+                              onClick={() =>
+                                dispatch(
+                                  advanceLoadBilling({
+                                    runId: run.id,
+                                    loadId: load.id,
+                                  }),
+                                )
+                              }
+                            >
+                              Send invoice
+                            </button>
+                          )}
                       </>
                     )}
-                    {permissions.canUpdateLoadStatus && (
-                      <select
-                        className="runs__input runs__input--compact"
-                        aria-label={`Status for ${load.customer || load.id}`}
-                        value={load.status}
-                        onChange={(e) =>
-                          dispatch(updateLoadStatus({ runId: run.id, loadId: load.id, status: e.target.value as LoadStatus }))
+                    {permissions.canUpdateLoadStatus ? (
+                      <LoadStatusSelect
+                        status={load.status}
+                        ariaLabel={`Status for ${load.customer || load.id}`}
+                        onChange={(nextStatus) =>
+                          dispatch(
+                            updateLoadStatus({
+                              runId: run.id,
+                              loadId: load.id,
+                              status: nextStatus,
+                            }),
+                          )
                         }
-                      >
-                        {loadStatuses.map((s) => (
-                          <option key={s} value={s}>{s}</option>
-                        ))}
-                      </select>
+                      />
+                    ) : (
+                      <LoadStatusBadge status={load.status} />
                     )}
                     {permissions.canManageLoads && run.loads.length > 1 && (
                       <button
                         type="button"
                         className="runs__button runs__button--ghost runs__button--small"
-                        onClick={() => dispatch(removeLoad({ runId: run.id, loadId: load.id }))}
+                        onClick={() =>
+                          dispatch(
+                            removeLoad({ runId: run.id, loadId: load.id }),
+                          )
+                        }
                       >
                         Remove
                       </button>
@@ -227,42 +277,21 @@ function RunDetail() {
                 <p className="runs__meta">
                   {load.rate > 0 ? formatMoney(load.rate, 0) : 'Rate not set'}
                   {load.miles > 0 ? ` · ${formatMiles(load.miles)}` : ''}
-                  {load.driveHours > 0 ? ` · Drive time ${formatHours(load.driveHours)}` : ''}
+                  {load.driveHours > 0
+                    ? ` · Drive time ${formatHours(load.driveHours)}`
+                    : ''}
                 </p>
-                <p className="runs__meta">{stopLine(load.pickup)} → {stopLine(load.delivery)}</p>
+                <p className="runs__meta">
+                  {stopLine(load.pickup)} → {stopLine(load.delivery)}
+                </p>
                 {(load.bol || load.commodity) && (
-                  <p className="runs__meta">{[load.bol ? `BOL ${load.bol}` : '', load.commodity].filter(Boolean).join(' · ')}</p>
+                  <p className="runs__meta">
+                    {[load.bol ? `BOL ${load.bol}` : '', load.commodity]
+                      .filter(Boolean)
+                      .join(' · ')}
+                  </p>
                 )}
                 {note && <p className="runs__note">{note}</p>}
-              </li>
-            );
-          })}
-        </ul>
-      </section>
-      <section className="runs__block" aria-label="Empty miles">
-        <h2 className="runs__subtitle">Empty miles</h2>
-        <ul className="runs__legs">
-          {legs.map((leg) => {
-            const key = emptyLegKey(leg.from, leg.to);
-            return (
-              <li className="runs__leg" key={key}>
-                <span>{leg.from} → {leg.to}</span>
-                {isKnownEmptyLeg(leg.from, leg.to) || !permissions.canManageLoads ? (
-                  <span>{leg.miles === null ? '—' : formatMiles(leg.miles)}</span>
-                ) : (
-                  <input
-                    className="runs__input runs__input--miles"
-                    aria-label={`Empty miles from ${leg.from} to ${leg.to}`}
-                    type="number"
-                    min="0"
-                    step="1"
-                    value={manualMiles[key] ?? ''}
-                    onChange={(e) => {
-                      const val = e.target.value;
-                      dispatch(setManualMiles({ key, miles: val === '' ? null : readNumber(val) }));
-                    }}
-                  />
-                )}
               </li>
             );
           })}
@@ -272,26 +301,71 @@ function RunDetail() {
       <section className="runs__block" aria-label="Route timeline">
         <h2 className="runs__subtitle">Route & leg breakdown</h2>
         <ol className="runs__timeline">
-          {timeline.map((step) => (
-            <li key={step.id} className={`runs__step runs__step--${step.kind}`}>
-              <div className="runs__step-main">
-                <span className="runs__badge">{step.kind === 'paid' ? 'Paid load' : 'Empty leg'}</span>
-                <span className="runs__truck">{step.from} → {step.to}</span>
-                <span className="runs__meta">{step.customer ? `${step.customer} · ` : ''}{step.label}</span>
-              </div>
-              <div className="runs__step-side">
-                <span className="runs__truck">{step.miles === null ? '—' : formatMiles(step.miles)}</span>
-                {step.rate !== undefined && <span className="runs__meta">{formatMoney(step.rate, 0)}</span>}
-              </div>
-            </li>
-          ))}
+          {timeline.map((step) => {
+            const key = emptyLegKey(step.from, step.to);
+            const isEditableEmpty =
+              step.kind === 'empty' &&
+              !isKnownEmptyLeg(step.from, step.to) &&
+              permissions.canManageLoads;
+
+            return (
+              <li
+                key={step.id}
+                className={`runs__step runs__step--${step.kind}`}
+              >
+                <div className="runs__step-main">
+                  <span className="runs__badge">
+                    {step.kind === 'paid' ? 'Paid load' : 'Empty leg'}
+                  </span>
+                  <span className="runs__truck">
+                    {step.from} → {step.to}
+                  </span>
+                  <span className="runs__meta">
+                    {step.customer ? `${step.customer} · ` : ''}
+                    {step.label}
+                  </span>
+                </div>
+                <div className="runs__step-side">
+                  {isEditableEmpty ? (
+                    <input
+                      className="runs__input runs__input--miles"
+                      aria-label={`Empty miles from ${step.from} to ${step.to}`}
+                      type="number"
+                      min="0"
+                      step="1"
+                      placeholder="mi"
+                      value={manualMiles[key] ?? ''}
+                      onChange={(e) => {
+                        const val = e.target.value;
+                        dispatch(
+                          setManualMiles({
+                            key,
+                            miles: val === '' ? null : readNumber(val),
+                          }),
+                        );
+                      }}
+                    />
+                  ) : (
+                    <span className="runs__truck">
+                      {step.miles === null ? '—' : formatMiles(step.miles)}
+                    </span>
+                  )}
+                  {step.rate !== undefined && (
+                    <span className="runs__meta">
+                      {formatMoney(step.rate, 0)}
+                    </span>
+                  )}
+                </div>
+              </li>
+            );
+          })}
         </ol>
       </section>
       <DispatchLog run={run} />
-      {permissions.canManageLoads && run.id === '214' && run.loads.length === 1 && (
-        <BackhaulOffers run={run} />
-      )}
-      {permissions.canManageLoads && <AddLoadForm runId={run.id} />}
+      {permissions.canManageLoads &&
+        run.id === '214' &&
+        run.loads.length === 1 && <BackhaulOffers run={run} />}
+      {permissions.canManageLoads && <AddLoadModal defaultRunId={run.id} />}
     </div>
   );
 }
@@ -301,14 +375,16 @@ function Stat({
   value,
   tone,
   subtext,
+  tooltip,
 }: {
   label: string;
   value: string;
   tone: 'good' | 'warn' | 'danger' | 'blue' | 'slate';
   subtext?: string;
+  tooltip?: string;
 }) {
   return (
-    <div className={`runs__stat runs__stat--${tone}`}>
+    <div className={`runs__stat runs__stat--${tone}`} title={tooltip}>
       <dt>{label}</dt>
       <dd>{value}</dd>
       {subtext && <span className="runs__meta">{subtext}</span>}

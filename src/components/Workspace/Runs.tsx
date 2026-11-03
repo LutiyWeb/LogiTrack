@@ -7,14 +7,25 @@ import {
   type EnrichedRun,
 } from '../../store/selectors/runsSelectors';
 import { selectPermissions } from '../../store/slices/authSlice';
-import { createRun, openRun } from '../../store/slices/runsSlice';
+import {
+  createRun,
+  openLoadModal,
+  openRun,
+} from '../../store/slices/runsSlice';
 import { setStatusFilter, type StatusFilter } from '../../store/slices/uiSlice';
 import { resetAllDemoData } from '../../store/store';
+import AddLoadModal from './AddLoadForm';
 import RunDetail from './RunDetail';
 import { HosRing, MilesSplitBar, RunStatusBadge } from './RunVisuals';
 import './Workspace.scss';
 
-const filterOptions: StatusFilter[] = ['All', 'In transit', 'Planned', 'Completed'];
+const filterOptions: StatusFilter[] = [
+  'All',
+  'In transit',
+  'Empty return',
+  'Planned',
+  'Completed',
+];
 
 function matchesSearch(item: EnrichedRun, query: string) {
   if (!query) return true;
@@ -73,13 +84,22 @@ function Runs() {
             ))}
           </div>
           {permissions.canManageLoads && (
-            <button
-              type="button"
-              className="runs__button runs__button--small"
-              onClick={() => setShowNewRun((open) => !open)}
-            >
-              + New run
-            </button>
+            <>
+              <button
+                type="button"
+                className="runs__button runs__button--small"
+                onClick={() => dispatch(openLoadModal('214'))}
+              >
+                New load
+              </button>
+              <button
+                type="button"
+                className="runs__button runs__button--ghost runs__button--small"
+                onClick={() => setShowNewRun((open) => !open)}
+              >
+                + New run
+              </button>
+            </>
           )}
           <button
             type="button"
@@ -153,11 +173,24 @@ function Runs() {
 
       <ul className="runs__list">
         {visibleRuns.map((item) => {
-          const { run, paidMiles, emptyMiles: empty, dollarsPerMile: perMile, revenue: earned, deadheadPercent, needsBackhaul, yard } = item;
+          const {
+            run,
+            paidMiles,
+            emptyMiles: empty,
+            dollarsPerMile: perMile,
+            revenue: earned,
+            deadheadPercent,
+            needsBackhaul,
+            yard,
+          } = item;
 
           return (
             <li key={run.id}>
-              <button className="runs__row" type="button" onClick={() => dispatch(openRun(run.id))}>
+              <button
+                className="runs__row"
+                type="button"
+                onClick={() => dispatch(openRun(run.id))}
+              >
                 <span className="runs__row-main">
                   <span className="runs__row-title">
                     <span className="runs__truck">{run.truck}</span>
@@ -166,18 +199,27 @@ function Runs() {
                         Backhaul needed · {deadheadPercent}% empty
                       </span>
                     )}
-                    {!needsBackhaul && run.loads.length > 1 && run.status !== 'Completed' && (
-                      <span className="runs__badge runs__badge--ok">Backhaul assigned</span>
-                    )}
+                    {!needsBackhaul &&
+                      run.loads.length > 1 &&
+                      run.status !== 'Completed' && (
+                        <span className="runs__badge runs__badge--ok">
+                          Backhaul assigned
+                        </span>
+                      )}
                   </span>
                   <span className="runs__inline-visual">
-                    <span className="runs__meta">{run.driver} · {yard}</span>
-                    {run.drivingHoursLeft !== null && (
-                      <span className="runs__inline-visual">
-                        <HosRing hoursLeft={run.drivingHoursLeft} />
-                        <span className="runs__meta">{formatHours(run.drivingHoursLeft)} HOS</span>
-                      </span>
-                    )}
+                    <span className="runs__meta">
+                      {run.driver} · {yard}
+                    </span>
+                    {run.status !== 'Completed' &&
+                      run.drivingHoursLeft !== null && (
+                        <span className="runs__inline-visual">
+                          <HosRing hoursLeft={run.drivingHoursLeft} />
+                          <span className="runs__meta">
+                            {formatHours(run.drivingHoursLeft)} HOS
+                          </span>
+                        </span>
+                      )}
                   </span>
                   <span className="runs__meta">{item.lane}</span>
                 </span>
@@ -185,13 +227,24 @@ function Runs() {
                   <RunStatusBadge status={run.status} />
                   <span className="runs__inline-visual">
                     <MilesSplitBar paidMiles={paidMiles} emptyMiles={empty} />
-                    <span className="runs__meta">
-                      {empty === null ? 'Empty miles needed' : `Empty ${formatMiles(empty)}`}
-                      {perMile !== null && earned > 0 ? ` · ${formatMoney(perMile, 2)} / mi` : ''}
+                    <span
+                      className="runs__meta"
+                      title="Revenue ÷ total miles (paid + empty)"
+                    >
+                      Paid {formatMiles(paidMiles)} ·{' '}
+                      {empty === null
+                        ? 'Empty miles needed'
+                        : `Empty ${formatMiles(empty)}`}
+                      {perMile !== null && earned > 0
+                        ? ` · All-in ${formatMoney(perMile, 2)} / mi`
+                        : ''}
                     </span>
                   </span>
                   <span className="runs__meta">
-                    {run.loads.length === 1 ? '1 load' : `${run.loads.length} loads`} · {formatMoney(earned, 0)}
+                    {run.loads.length === 1
+                      ? '1 load'
+                      : `${run.loads.length} loads`}{' '}
+                    · {formatMoney(earned, 0)}
                   </span>
                 </span>
               </button>
@@ -199,6 +252,8 @@ function Runs() {
           );
         })}
       </ul>
+
+      {permissions.canManageLoads && <AddLoadModal defaultRunId="214" />}
     </div>
   );
 }

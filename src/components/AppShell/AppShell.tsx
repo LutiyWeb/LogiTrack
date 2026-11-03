@@ -8,6 +8,7 @@ import {
   selectCurrentUser,
   selectPermissions,
 } from '../../store/slices/authSlice';
+import { openRun } from '../../store/slices/runsSlice';
 import { setActiveSection, toggleSidebar } from '../../store/slices/uiSlice';
 import './AppShell.scss';
 
@@ -38,7 +39,12 @@ function AppShell() {
         isOpen={isOpen}
         userName={currentUser.name}
         userRole={currentUser.roleTitle}
-        onSelect={(sectionId) => dispatch(setActiveSection(sectionId))}
+        onSelect={(sectionId) => {
+          if (sectionId === 'board') {
+            dispatch(openRun(null));
+          }
+          dispatch(setActiveSection(sectionId));
+        }}
         onToggle={() => dispatch(toggleSidebar())}
         onLogout={() => dispatch(logout())}
       />

@@ -1,6 +1,7 @@
 import { createSlice, type PayloadAction } from '@reduxjs/toolkit';
 import {
   backhaulPreset,
+  deriveRunStatus,
   draftToLoad,
   emptyDraft,
   runs as seedRuns,
@@ -15,6 +16,9 @@ export type RunsState = {
   openRunId: string | null;
   manualMiles: Record<string, number>;
   draft: LoadDraft;
+  isLoadModalOpen: boolean;
+  modalRunId: string;
+  scrollToOffers: boolean;
 };
 
 export function createInitialRunsState(): RunsState {
@@ -23,6 +27,9 @@ export function createInitialRunsState(): RunsState {
     openRunId: null,
     manualMiles: {},
     draft: { ...emptyDraft },
+    isLoadModalOpen: false,
+    modalRunId: '214',
+    scrollToOffers: false,
   };
 }
 
@@ -30,9 +37,41 @@ const runsSlice = createSlice({
   name: 'runs',
   initialState: createInitialRunsState(),
   reducers: {
-    openRun(state, action: PayloadAction<string | null>) {
-      state.openRunId = action.payload;
+    openRun(
+      state,
+      action: PayloadAction<
+        string | null | { runId: string | null; scrollToOffers?: boolean }
+      >,
+    ) {
+      if (typeof action.payload === 'object' && action.payload !== null) {
+        state.openRunId = action.payload.runId;
+        state.scrollToOffers = Boolean(action.payload.scrollToOffers);
+      } else {
+        state.openRunId = action.payload;
+        state.scrollToOffers = false;
+      }
+      if (state.openRunId) {
+        state.modalRunId = state.openRunId;
+      }
+      state.isLoadModalOpen = false;
       state.draft = { ...emptyDraft };
+    },
+    clearScrollToOffers(state) {
+      state.scrollToOffers = false;
+    },
+    openLoadModal(state, action: PayloadAction<string | undefined>) {
+      state.isLoadModalOpen = true;
+      if (action.payload) {
+        state.modalRunId = action.payload;
+      } else if (state.openRunId) {
+        state.modalRunId = state.openRunId;
+      }
+    },
+    closeLoadModal(state) {
+      state.isLoadModalOpen = false;
+    },
+    setModalRunId(state, action: PayloadAction<string>) {
+      state.modalRunId = action.payload;
     },
     createRun(
       state,
@@ -57,6 +96,7 @@ const runsSlice = createSlice({
       };
       state.runs.unshift(newRun);
       state.openRunId = newRun.id;
+      state.modalRunId = newRun.id;
       state.draft = { ...emptyDraft };
     },
     patchDraft(state, action: PayloadAction<Partial<LoadDraft>>) {
@@ -64,6 +104,7 @@ const runsSlice = createSlice({
     },
     applyPresetToDraft(state, action: PayloadAction<LoadDraft | undefined>) {
       state.draft = { ...emptyDraft, ...(action.payload ?? backhaulPreset) };
+      state.isLoadModalOpen = true;
     },
     addLoad(
       state,
@@ -78,7 +119,22 @@ const runsSlice = createSlice({
           ? state.draft
           : (action.payload.draft ?? state.draft);
 
-      const run = state.runs.find((item) => item.id === runId);
+      let run = state.runs.find((item) => item.id === runId);
+      if (!run && runId === '__new__') {
+        run = {
+          id: crypto.randomUUID(),
+          truck: 'Truck 412',
+          driver: 'Sam Carter',
+          yardCity: 'Indianapolis',
+          yardState: 'IN',
+          status: 'Planned',
+          drivingHoursLeft: 11,
+          loads: [],
+          notes: [],
+        };
+        state.runs.unshift(run);
+        state.openRunId = run.id;
+      }
       if (!run) return;
 
       const load = draftToLoad(sourceDraft, crypto.randomUUID());
@@ -86,6 +142,8 @@ const runsSlice = createSlice({
         load.billingStatus = 'POD required';
       }
       run.loads.push(load);
+      run.status = deriveRunStatus(run);
+      state.isLoadModalOpen = false;
       state.draft = { ...emptyDraft };
     },
     updateLoadStatus(
@@ -98,11 +156,12 @@ const runsSlice = createSlice({
     ) {
       const run = state.runs.find((item) => item.id === action.payload.runId);
       const load = run?.loads.find((item) => item.id === action.payload.loadId);
-      if (load) {
+      if (run && load) {
         load.status = action.payload.status;
         if (action.payload.status === 'Delivered' && !load.billingStatus) {
           load.billingStatus = 'POD required';
         }
+        run.status = deriveRunStatus(run);
       }
     },
     advanceLoadBilling(
@@ -117,6 +176,19 @@ const runsSlice = createSlice({
       } else if (load.billingStatus === 'POD received') {
         load.billingStatus = 'Invoiced';
       }
+    },
+    invoiceCustomerLoads(state, action: PayloadAction<string>) {
+      const target = action.payload.trim();
+      state.runs.forEach((run) => {
+        run.loads.forEach((load) => {
+          if (
+            load.customer.trim() === target &&
+            load.billingStatus === 'POD received'
+          ) {
+            load.billingStatus = 'Invoiced';
+          }
+        });
+      });
     },
     addLoadDetention(
       state,
@@ -174,6 +246,7 @@ const runsSlice = createSlice({
       const run = state.runs.find((item) => item.id === action.payload.runId);
       if (!run || run.loads.length <= 1) return;
       run.loads = run.loads.filter((item) => item.id !== action.payload.loadId);
+      run.status = deriveRunStatus(run);
     },
     updateRunStatus(
       state,
@@ -203,12 +276,17 @@ const runsSlice = createSlice({
 
 export const {
   openRun,
+  clearScrollToOffers,
+  openLoadModal,
+  closeLoadModal,
+  setModalRunId,
   createRun,
   patchDraft,
   applyPresetToDraft,
   addLoad,
   updateLoadStatus,
   advanceLoadBilling,
+  invoiceCustomerLoads,
   addLoadDetention,
   addRunNote,
   removeLoad,

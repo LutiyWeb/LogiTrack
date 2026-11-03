@@ -145,7 +145,8 @@
     font-weight: 600;
   }
 
-  &__badge + &__truck {
+  &__badge + &__truck,
+  &__row-title + &__truck {
     margin-top: 8px;
   }
 
@@ -173,6 +174,11 @@
       background: var(--color-tint-blue);
     }
 
+    &--empty-return {
+      color: var(--color-warn);
+      background: var(--color-tint-amber);
+    }
+
     &--planned {
       color: #475569;
       background: var(--color-tint-slate);
@@ -182,6 +188,11 @@
       color: var(--color-good);
       background: var(--color-tint-green);
     }
+  }
+
+  &__status-select {
+    font-weight: 600;
+    border-radius: 999px;
   }
 
   &__status-dot {
@@ -357,6 +368,34 @@
   &__load--alert {
     border-left: 4px solid var(--color-danger);
     background: #fffdfd;
+  }
+
+  &__demo-hint {
+    padding: 8px 12px;
+    border: 1px solid #bfdbfe;
+    font-size: 13px;
+    line-height: 1.4;
+    color: var(--color-primary);
+    background: var(--color-tint-blue);
+    border-radius: var(--radius-m);
+  }
+
+  &__modal-backdrop {
+    position: fixed;
+    inset: 0;
+    z-index: 40;
+    display: grid;
+    place-items: center;
+    padding: 24px;
+    overflow-y: auto;
+    background: rgba(15, 23, 42, 0.45);
+  }
+
+  &__modal {
+    width: 100%;
+    max-width: 720px;
+    border: 1px solid var(--color-line);
+    box-shadow: 0 20px 40px rgba(15, 23, 42, 0.18);
   }
 
   &__inline-visual {

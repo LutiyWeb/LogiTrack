@@ -1,9 +1,17 @@
-import type { RunStatus } from '../../runs/demo';
+import { loadStatuses, type LoadStatus, type RunStatus } from '../../runs/demo';
 
 const statusModifiers: Record<RunStatus, string> = {
   'In transit': 'runs__status--in-transit',
+  'Empty return': 'runs__status--empty-return',
   Planned: 'runs__status--planned',
   Completed: 'runs__status--completed',
+};
+
+const loadStatusModifiers: Record<LoadStatus, string> = {
+  Assigned: 'runs__status--planned',
+  'At pickup': 'runs__status--in-transit',
+  'In transit': 'runs__status--in-transit',
+  Delivered: 'runs__status--completed',
 };
 
 export function RunStatusBadge({ status }: { status: RunStatus }) {
@@ -12,6 +20,40 @@ export function RunStatusBadge({ status }: { status: RunStatus }) {
       <span className="runs__status-dot" aria-hidden="true" />
       {status}
     </span>
+  );
+}
+
+export function LoadStatusBadge({ status }: { status: LoadStatus }) {
+  return (
+    <span className={`runs__status ${loadStatusModifiers[status]}`}>
+      <span className="runs__status-dot" aria-hidden="true" />
+      {status}
+    </span>
+  );
+}
+
+export function LoadStatusSelect({
+  status,
+  ariaLabel,
+  onChange,
+}: {
+  status: LoadStatus;
+  ariaLabel: string;
+  onChange: (nextStatus: LoadStatus) => void;
+}) {
+  return (
+    <select
+      className={`runs__input runs__input--compact runs__status-select ${loadStatusModifiers[status]}`}
+      aria-label={ariaLabel}
+      value={status}
+      onChange={(e) => onChange(e.target.value as LoadStatus)}
+    >
+      {loadStatuses.map((s) => (
+        <option key={s} value={s}>
+          {s}
+        </option>
+      ))}
+    </select>
   );
 }
 

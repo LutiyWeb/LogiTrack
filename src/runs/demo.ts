@@ -1,4 +1,4 @@
-export type RunStatus = 'Planned' | 'In transit' | 'Completed';
+export type RunStatus = 'Planned' | 'In transit' | 'Empty return' | 'Completed';
 
 export type LoadStatus = 'Assigned' | 'At pickup' | 'In transit' | 'Delivered';
 
@@ -90,6 +90,7 @@ export type BackhaulOffer = {
 };
 
 export type BrokerInfo = {
+  kind: 'Broker' | 'Shipper';
   mc: string;
   creditScore: string;
   terms: string;
@@ -97,31 +98,37 @@ export type BrokerInfo = {
 
 export const brokerDirectory: Record<string, BrokerInfo> = {
   'Hart Freight': {
+    kind: 'Broker',
     mc: 'MC-410294',
     creditScore: '98 · A+',
     terms: 'QuickPay 2d',
   },
   'Blue Ridge Logistics': {
+    kind: 'Broker',
     mc: 'MC-582910',
     creditScore: '95 · A',
     terms: 'Factoring Approved',
   },
   'Midwest Steel Co.': {
+    kind: 'Shipper',
     mc: 'MC-309182',
     creditScore: '92 · A',
     terms: 'Net 15',
   },
   'Bluegrass Retail': {
+    kind: 'Shipper',
     mc: 'MC-774120',
     creditScore: '96 · A+',
     terms: 'QuickPay 1d',
   },
   'Apex Industrial': {
+    kind: 'Broker',
     mc: 'MC-619044',
     creditScore: '89 · B+',
     terms: 'Net 30',
   },
   'Heartland Foods': {
+    kind: 'Shipper',
     mc: 'MC-512800',
     creditScore: '94 · A',
     terms: 'Factoring Approved',
@@ -131,6 +138,7 @@ export const brokerDirectory: Record<string, BrokerInfo> = {
 export function getBrokerInfo(customer: string): BrokerInfo {
   return (
     brokerDirectory[customer] ?? {
+      kind: 'Broker',
       mc: 'MC-Verified',
       creditScore: '90 · A-',
       terms: 'Net 30',
@@ -138,7 +146,12 @@ export function getBrokerInfo(customer: string): BrokerInfo {
   );
 }
 
-export const runStatuses: RunStatus[] = ['Planned', 'In transit', 'Completed'];
+export const runStatuses: RunStatus[] = [
+  'Planned',
+  'In transit',
+  'Empty return',
+  'Completed',
+];
 
 export const loadStatuses: LoadStatus[] = [
   'Assigned',
@@ -267,7 +280,7 @@ export const runs: Run[] = [
     driver: 'Marcus Hill',
     yardCity: 'Indianapolis',
     yardState: 'IN',
-    status: 'In transit',
+    status: 'Empty return',
     drivingHoursLeft: 3.5,
     loads: [
       {
@@ -651,10 +664,35 @@ export function formatWhen(value: string) {
   }).format(new Date(value));
 }
 
+export function deriveRunStatus(run: Run): RunStatus {
+  if (run.loads.length === 0 || run.loads.every((load) => load.status === 'Assigned')) {
+    return 'Planned';
+  }
+
+  if (run.loads.every((load) => load.status === 'Delivered')) {
+    const lastLoad = run.loads[run.loads.length - 1];
+    const yard = placeName(run.yardCity, run.yardState);
+    const lastStop = placeName(lastLoad.delivery.city, lastLoad.delivery.state);
+    return lastStop === yard ? 'Completed' : 'Empty return';
+  }
+
+  return 'In transit';
+}
+
 export function lane(run: Run) {
   if (run.loads.length === 0) return placeName(run.yardCity, run.yardState);
 
-  const first = run.loads[0].pickup;
-  const last = run.loads[run.loads.length - 1].delivery;
-  return `${placeName(first.city, first.state)} → ${placeName(last.city, last.state)}`;
+  const stops: string[] = [];
+  run.loads.forEach((load) => {
+    const pickup = placeName(load.pickup.city, load.pickup.state);
+    const delivery = placeName(load.delivery.city, load.delivery.state);
+    if (stops.at(-1) !== pickup) {
+      stops.push(pickup);
+    }
+    if (stops.at(-1) !== delivery) {
+      stops.push(delivery);
+    }
+  });
+
+  return stops.join(' → ');
 }

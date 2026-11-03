@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import {
   backhaulOffers,
   backhaulPreset,
+  deriveRunStatus,
   dollarsPerMile,
   draftToLoad,
   emptyMilesTotal,
@@ -17,11 +18,16 @@ import {
 
 describe('demo domain calculations', () => {
   const truck214 = runs.find((run) => run.id === '214')!;
+  const truck305 = runs.find((run) => run.id === '305')!;
 
-  it('calculates paid miles and revenue for a single-load run', () => {
+  it('calculates paid miles, revenue, derived status, and multi-stop lanes', () => {
     expect(paidMiles(truck214)).toBe(700);
     expect(revenue(truck214)).toBe(3200);
     expect(lane(truck214)).toBe('Joliet, IL → Atlanta, GA');
+    expect(deriveRunStatus(truck214)).toBe('Empty return');
+    expect(lane(truck305)).toBe(
+      'Cincinnati, OH → Nashville, TN → Bowling Green, KY → Indianapolis, IN',
+    );
   });
 
   it('calculates empty miles and $/mile before adding backhaul on Truck 214', () => {

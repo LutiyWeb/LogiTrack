@@ -21,6 +21,7 @@ import {
   advanceLoadBilling,
   applyPresetToDraft,
   createRun,
+  invoiceCustomerLoads,
   openRun,
   removeLoad,
   setManualMiles,
@@ -43,9 +44,11 @@ describe('Redux store (runsSlice, uiSlice, authSlice, and selectors)', () => {
     );
     expect(kpis.activeRunsCount).toBe(3);
     expect(kpis.completedRunsCount).toBe(1);
-    expect(kpis.runsNeedingBackhaul.map((item) => item.run.id)).toContain(
+    expect(kpis.runsNeedingBackhaul.map((item) => item.run.id)).toEqual([
       '214',
-    );
+      '118',
+      '305',
+    ]);
   });
 
   it('calculates operatingCost ($1,791 -> $1,784) and netProfit ($1,409 -> $3,516) when backhaul is added to Truck 214', () => {
@@ -54,6 +57,7 @@ describe('Redux store (runsSlice, uiSlice, authSlice, and selectors)', () => {
     store.dispatch(openRun('214'));
     const before = selectOpenRun(store.getState())!;
     expect(before.run.truck).toBe('Truck 214');
+    expect(before.run.status).toBe('Empty return');
     expect(before.operatingCost).toBe(1791);
     expect(before.netProfit).toBe(1409);
 
@@ -63,6 +67,7 @@ describe('Redux store (runsSlice, uiSlice, authSlice, and selectors)', () => {
     store.dispatch(addLoad('214'));
     const after = selectOpenRun(store.getState())!;
     expect(after.run.loads).toHaveLength(2);
+    expect(after.run.status).toBe('In transit');
     expect(store.getState().runs.draft.customer).toBe('');
 
     const enriched214 = selectEnrichedRuns(store.getState()).find(
@@ -162,11 +167,12 @@ describe('Redux store (runsSlice, uiSlice, authSlice, and selectors)', () => {
     expect(run214.notes?.at(-1)?.text).toContain('Added $150 detention fee');
 
     store.dispatch(advanceLoadBilling({ runId: '214', loadId: 'hart' }));
-    store.dispatch(advanceLoadBilling({ runId: '214', loadId: 'hart' }));
+    store.dispatch(invoiceCustomerLoads('Hart Freight'));
 
     const billedHart = selectBrokerSummaries(store.getState()).find(
       (b) => b.customer === 'Hart Freight',
     )!;
+    expect(billedHart.kind).toBe('Broker');
     expect(billedHart.totalRevenue).toBe(3350);
     expect(billedHart.invoicedRevenue).toBe(3350);
     expect(billedHart.pendingRevenue).toBe(0);

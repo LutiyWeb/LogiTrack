@@ -19,8 +19,8 @@ function Overview() {
   const rateIsGood = kpis.averageDollarsPerMile >= targetRate;
   const deadheadIsHigh = kpis.deadheadPercent > maxEmptyPercent;
 
-  function jumpToRun(runId: string) {
-    dispatch(openRun(runId));
+  function jumpToRun(runId: string, scrollToOffers = false) {
+    dispatch(openRun({ runId, scrollToOffers }));
     dispatch(setActiveSection('board'));
   }
 
@@ -49,9 +49,12 @@ function Overview() {
           </span>
         </div>
 
-        <div className={`runs__stat runs__stat--${rateIsGood ? 'good' : 'warn'}`}>
+        <div
+          className={`runs__stat runs__stat--${rateIsGood ? 'good' : 'warn'}`}
+          title="Revenue ÷ total miles (paid + empty)"
+        >
           <div className="runs__stat-head">
-            <dt>Fleet $ per mile</dt>
+            <dt>All-in $/mi</dt>
             <Sparkline
               points={rateIsGood ? '2,15 18,12 34,10 48,7 62,4' : '2,6 18,9 34,11 48,14 62,15'}
               color={rateIsGood ? 'var(--color-good)' : 'var(--color-warn)'}
@@ -97,6 +100,12 @@ function Overview() {
             <ul className="runs__loads">
               {kpis.runsNeedingBackhaul.map((item) => (
                 <li className="runs__load runs__load--alert" key={item.run.id}>
+                  {item.run.id === '214' && (
+                    <p className="runs__demo-hint">
+                      <strong>Start here:</strong> Truck 214 is returning empty → click Find
+                      backhaul → assign a load → watch All-in $/mi jump.
+                    </p>
+                  )}
                   <div className="runs__load-head">
                     <div>
                       <span className="runs__badge runs__badge--warn">
@@ -110,7 +119,7 @@ function Overview() {
                     <button
                       type="button"
                       className="runs__button runs__button--small"
-                      onClick={() => jumpToRun(item.run.id)}
+                      onClick={() => jumpToRun(item.run.id, true)}
                     >
                       Find backhaul
                     </button>
@@ -120,10 +129,12 @@ function Overview() {
                     {item.emptyMiles === null
                       ? '—'
                       : formatMiles(item.emptyMiles)}{' '}
-                    · Current{' '}
-                    {item.dollarsPerMile === null
-                      ? '—'
-                      : `${formatMoney(item.dollarsPerMile, 2)} / mi`}
+                    · All-in $/mi:{' '}
+                    <span title="Revenue ÷ total miles (paid + empty)">
+                      {item.dollarsPerMile === null
+                        ? '—'
+                        : `${formatMoney(item.dollarsPerMile, 2)} / mi`}
+                    </span>
                   </p>
                   <div className="runs__inline-visual">
                     <MilesSplitBar paidMiles={item.paidMiles} emptyMiles={item.emptyMiles} />
@@ -138,7 +149,7 @@ function Overview() {
           ) : (
             <p className="runs__note">
               All active trucks are within the {maxEmptyPercent}% deadhead target.
-              Backhaul loads are assigned and fleet rate per mile is{' '}
+              Backhaul loads are assigned and fleet All-in $/mi is{' '}
               {formatMoney(kpis.averageDollarsPerMile, 2)}.
             </p>
           )}
@@ -170,18 +181,26 @@ function Overview() {
                 onClick={() => jumpToRun(item.run.id)}
               >
                 <span className="runs__row-main">
-                  <span className="runs__truck">
-                    {item.run.truck} · {item.run.driver}
+                  <span className="runs__row-title">
+                    <span className="runs__truck">
+                      {item.run.truck} · {item.run.driver}
+                    </span>
+                    <span className="runs__badge">
+                      {item.run.loads.length === 1
+                        ? '1 load'
+                        : `${item.run.loads.length} loads`}
+                    </span>
                   </span>
                   <span className="runs__meta">{item.lane}</span>
-                  {item.run.drivingHoursLeft !== null && (
-                    <span className="runs__inline-visual">
-                      <HosRing hoursLeft={item.run.drivingHoursLeft} />
-                      <span className="runs__meta">
-                        HOS remaining: {formatHours(item.run.drivingHoursLeft)}
+                  {item.run.status !== 'Completed' &&
+                    item.run.drivingHoursLeft !== null && (
+                      <span className="runs__inline-visual">
+                        <HosRing hoursLeft={item.run.drivingHoursLeft} />
+                        <span className="runs__meta">
+                          HOS remaining: {formatHours(item.run.drivingHoursLeft)}
+                        </span>
                       </span>
-                    </span>
-                  )}
+                    )}
                 </span>
                 <span className="runs__row-side">
                   <RunStatusBadge status={item.run.status} />
@@ -194,10 +213,13 @@ function Overview() {
                         : formatMiles(item.emptyMiles)}
                     </span>
                   </span>
-                  <span className="runs__meta">
+                  <span
+                    className="runs__meta"
+                    title="Revenue ÷ total miles (paid + empty)"
+                  >
                     {formatMoney(item.revenue, 0)}
                     {item.dollarsPerMile !== null
-                      ? ` · ${formatMoney(item.dollarsPerMile, 2)} / mi`
+                      ? ` · All-in ${formatMoney(item.dollarsPerMile, 2)} / mi`
                       : ''}
                   </span>
                 </span>

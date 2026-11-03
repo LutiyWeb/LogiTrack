@@ -6,7 +6,7 @@ import { loginAsDemoUser } from '../../store/slices/authSlice';
 import { createAppStore } from '../../store/store';
 
 describe('LogiTrack CRM Demo UI flows', () => {
-  it('completes the core Truck 214 backhaul scenario (710 empty mi / $2.27 / Net $1,409 -> 215 empty mi / $3.77 / Net $3,516)', async () => {
+  it('completes the core Truck 214 backhaul scenario via New load modal (710 empty mi / $2.27 / Net $1,409 -> 215 empty mi / $3.77 / Net $3,516)', async () => {
     const user = userEvent.setup();
     const testStore = createAppStore();
     testStore.dispatch(loginAsDemoUser('dispatcher'));
@@ -14,12 +14,18 @@ describe('LogiTrack CRM Demo UI flows', () => {
 
     expect(screen.getByRole('heading', { name: 'Runs' })).toBeInTheDocument();
     expect(screen.getByText('Truck 214')).toBeInTheDocument();
-    expect(screen.getByText(/Empty 710 mi · \$2\.27 \/ mi/)).toBeInTheDocument();
+    expect(screen.getAllByText('Empty return').length).toBeGreaterThan(0);
+    expect(
+      screen.getByText(/Paid 700 mi · Empty 710 mi · All-in \$2\.27 \/ mi/),
+    ).toBeInTheDocument();
 
     await user.click(screen.getByRole('button', { name: /Truck 214/i }));
 
     expect(
       screen.getByRole('heading', { name: 'Truck 214' }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole('button', { name: '← Back to runs' }),
     ).toBeInTheDocument();
     expect(screen.getAllByText('700 mi').length).toBeGreaterThan(0);
     expect(screen.getAllByText('710 mi').length).toBeGreaterThan(0);
@@ -27,10 +33,26 @@ describe('LogiTrack CRM Demo UI flows', () => {
     expect(screen.getByText('Net $1,409 · Cost $1,791')).toBeInTheDocument();
     expect(screen.getByText('$2.27')).toBeInTheDocument();
 
-    await user.click(
-      screen.getByRole('button', { name: 'Use Blue Ridge Logistics' }),
+    const offersBoard = screen.getByRole('region', {
+      name: 'Broker load board',
+    });
+    const assignButtons = within(offersBoard).getAllByRole('button', {
+      name: 'Assign load',
+    });
+    expect(assignButtons[1]).toBeDisabled();
+    expect(assignButtons[1]).toHaveAttribute(
+      'title',
+      'HOS conflict: pickup at 5:00 PM does not wait for required 10h off-duty reset',
     );
-    await user.click(screen.getByRole('button', { name: 'Add load' }));
+
+    await user.click(screen.getByRole('button', { name: 'New load' }));
+    const modal = screen.getByRole('dialog', { name: 'Add a load' });
+    expect(within(modal).getByLabelText('Truck / Driver')).toBeInTheDocument();
+
+    await user.click(
+      within(modal).getByRole('button', { name: 'Use Blue Ridge Logistics' }),
+    );
+    await user.click(within(modal).getByRole('button', { name: 'Add load' }));
 
     expect(screen.getByText('1,190 mi')).toBeInTheDocument();
     expect(screen.getAllByText('215 mi').length).toBeGreaterThan(0);
@@ -42,9 +64,12 @@ describe('LogiTrack CRM Demo UI flows', () => {
         /This leg is 9 h\. 3\.5 h left in this shift\. He drives the remaining hours, then needs 10 h off before hours start again\./,
       ),
     ).toBeInTheDocument();
+
+    await user.click(screen.getByRole('button', { name: 'Runs' }));
+    expect(screen.getByRole('heading', { name: 'Runs' })).toBeInTheDocument();
   });
 
-  it('filters runs by BOL search, adds $150 Detention fee, and navigates to Brokers CRM', async () => {
+  it('filters runs by BOL search, adds $150 Detention fee, and navigates to Customers & billing with Create invoice', async () => {
     const user = userEvent.setup();
     const testStore = createAppStore();
     testStore.dispatch(loginAsDemoUser('dispatcher'));
@@ -62,12 +87,21 @@ describe('LogiTrack CRM Demo UI flows', () => {
       screen.getByText(/Added \$150 detention fee to Hart Freight/),
     ).toBeInTheDocument();
 
-    await user.click(screen.getByRole('button', { name: 'Brokers' }));
+    await user.click(
+      screen.getByRole('button', { name: 'Customers & billing' }),
+    );
     expect(
-      screen.getByRole('heading', { name: 'Brokers & billing CRM' }),
+      screen.getByRole('heading', { name: 'Customers & billing' }),
     ).toBeInTheDocument();
     expect(screen.getByText('Hart Freight')).toBeInTheDocument();
     expect(screen.getByText('Bluegrass Retail')).toBeInTheDocument();
+    expect(screen.getAllByText('Broker').length).toBeGreaterThan(0);
+    expect(screen.getAllByText('Shipper').length).toBeGreaterThan(0);
+
+    await user.click(screen.getByRole('button', { name: 'Create invoice' }));
+    expect(
+      screen.queryByRole('button', { name: 'Create invoice' }),
+    ).not.toBeInTheDocument();
   });
 
   it('navigates between Overview, Runs, and Account and supports Demo Reset', async () => {
@@ -81,14 +115,21 @@ describe('LogiTrack CRM Demo UI flows', () => {
       screen.getByRole('heading', { name: 'Overview' }),
     ).toBeInTheDocument();
     expect(screen.getByText(/Net profit \$/)).toBeInTheDocument();
+    expect(screen.getByText('All-in $/mi')).toBeInTheDocument();
 
     const alertsSection = screen.getByRole('region', {
       name: 'Dispatcher alerts',
     });
-    expect(within(alertsSection).getByText(/Truck 214/)).toBeInTheDocument();
+    expect(within(alertsSection).getByText(/Start here:/)).toBeInTheDocument();
+    expect(
+      within(alertsSection).getByText('Truck 214 · Marcus Hill'),
+    ).toBeInTheDocument();
+    expect(
+      within(alertsSection).getByText('Truck 118 · Dana Brooks'),
+    ).toBeInTheDocument();
 
     await user.click(
-      within(alertsSection).getByRole('button', { name: 'Find backhaul' }),
+      within(alertsSection).getAllByRole('button', { name: 'Find backhaul' })[0],
     );
     expect(
       screen.getByRole('heading', { name: 'Truck 214' }),
@@ -140,17 +181,14 @@ describe('LogiTrack CRM Demo UI flows', () => {
       screen.queryByRole('button', { name: 'Overview' }),
     ).not.toBeInTheDocument();
     expect(
-      screen.queryByRole('button', { name: 'Brokers' }),
+      screen.queryByRole('button', { name: 'Customers & billing' }),
     ).not.toBeInTheDocument();
     expect(screen.getByText('Truck 214')).toBeInTheDocument();
     expect(screen.queryByText('Truck 118')).not.toBeInTheDocument();
 
     await user.click(screen.getByRole('button', { name: /Truck 214/i }));
     expect(
-      screen.queryByRole('heading', { name: 'Add a load' }),
-    ).not.toBeInTheDocument();
-    expect(
-      screen.queryByLabelText('Run status'),
+      screen.queryByRole('button', { name: 'New load' }),
     ).not.toBeInTheDocument();
     expect(
       screen.getByLabelText('Status for Hart Freight'),
