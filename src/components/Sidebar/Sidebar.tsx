@@ -31,11 +31,13 @@ function Sidebar({
 }: SidebarProps) {
   return (
     <aside className={isOpen ? 'sidebar' : 'sidebar is-collapsed'}>
-      <div className="sidebar__user">
-        <img className="sidebar__photo" src={userPhoto} alt="" />
-        <div className="sidebar__user-info">
-          <p className="sidebar__name">{userName}</p>
-          {userRole && <p className="sidebar__role">{userRole}</p>}
+      <div className="sidebar__brand">
+        <div className="sidebar__logo" aria-hidden="true">
+          <BrandTruckIcon />
+        </div>
+        <div className="sidebar__brand-info">
+          <p className="sidebar__brand-title">LogiTrack</p>
+          <p className="sidebar__brand-sub">TMS & Dispatch</p>
         </div>
         <button
           className="sidebar__toggle"
@@ -46,6 +48,13 @@ function Sidebar({
         >
           <ChevronIcon direction={isOpen ? 'left' : 'right'} />
         </button>
+      </div>
+      <div className="sidebar__user">
+        <img className="sidebar__photo" src={userPhoto} alt="" />
+        <div className="sidebar__user-info">
+          <p className="sidebar__name">{userName}</p>
+          {userRole && <p className="sidebar__role">{userRole}</p>}
+        </div>
       </div>
       <nav className="sidebar__nav" aria-label="Main">
         {items.map((item) => {
@@ -79,6 +88,22 @@ function Sidebar({
         </button>
       )}
     </aside>
+  );
+}
+
+function BrandTruckIcon() {
+  return (
+    <svg width="20" height="20" viewBox="0 0 20 20" fill="none" aria-hidden="true">
+      <rect x="2" y="5" width="9.5" height="8" rx="1.5" stroke="currentColor" strokeWidth="1.6" />
+      <path
+        d="M11.5 7.5h3.2l2.3 2.5v3h-5.5v-5.5Z"
+        stroke="currentColor"
+        strokeWidth="1.6"
+        strokeLinejoin="round"
+      />
+      <circle cx="5.5" cy="14" r="1.8" fill="var(--color-surface)" stroke="currentColor" strokeWidth="1.5" />
+      <circle cx="14.2" cy="14" r="1.8" fill="var(--color-surface)" stroke="currentColor" strokeWidth="1.5" />
+    </svg>
   );
 }
 

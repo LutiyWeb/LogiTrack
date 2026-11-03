@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { formatMiles, formatMoney, readNumber } from '../../runs/demo';
+import { formatHours, formatMiles, formatMoney, readNumber } from '../../runs/demo';
 import { useAppDispatch, useAppSelector } from '../../store/hooks';
 import {
   selectFilteredRuns,
@@ -11,6 +11,7 @@ import { createRun, openRun } from '../../store/slices/runsSlice';
 import { setStatusFilter, type StatusFilter } from '../../store/slices/uiSlice';
 import { resetAllDemoData } from '../../store/store';
 import RunDetail from './RunDetail';
+import { HosRing, MilesSplitBar, RunStatusBadge } from './RunVisuals';
 import './Workspace.scss';
 
 const filterOptions: StatusFilter[] = ['All', 'In transit', 'Planned', 'Completed'];
@@ -152,7 +153,7 @@ function Runs() {
 
       <ul className="runs__list">
         {visibleRuns.map((item) => {
-          const { run, emptyMiles: empty, dollarsPerMile: perMile, revenue: earned, deadheadPercent, needsBackhaul, yard } = item;
+          const { run, paidMiles, emptyMiles: empty, dollarsPerMile: perMile, revenue: earned, deadheadPercent, needsBackhaul, yard } = item;
 
           return (
             <li key={run.id}>
@@ -169,14 +170,25 @@ function Runs() {
                       <span className="runs__badge runs__badge--ok">Backhaul assigned</span>
                     )}
                   </span>
-                  <span className="runs__meta">{run.driver} · {yard}</span>
+                  <span className="runs__inline-visual">
+                    <span className="runs__meta">{run.driver} · {yard}</span>
+                    {run.drivingHoursLeft !== null && (
+                      <span className="runs__inline-visual">
+                        <HosRing hoursLeft={run.drivingHoursLeft} />
+                        <span className="runs__meta">{formatHours(run.drivingHoursLeft)} HOS</span>
+                      </span>
+                    )}
+                  </span>
                   <span className="runs__meta">{item.lane}</span>
                 </span>
                 <span className="runs__row-side">
-                  <span className="runs__status">{run.status}</span>
-                  <span className="runs__meta">
-                    {empty === null ? 'Empty miles needed' : `Empty ${formatMiles(empty)}`}
-                    {perMile !== null && earned > 0 ? ` · ${formatMoney(perMile, 2)} / mi` : ''}
+                  <RunStatusBadge status={run.status} />
+                  <span className="runs__inline-visual">
+                    <MilesSplitBar paidMiles={paidMiles} emptyMiles={empty} />
+                    <span className="runs__meta">
+                      {empty === null ? 'Empty miles needed' : `Empty ${formatMiles(empty)}`}
+                      {perMile !== null && earned > 0 ? ` · ${formatMoney(perMile, 2)} / mi` : ''}
+                    </span>
                   </span>
                   <span className="runs__meta">
                     {run.loads.length === 1 ? '1 load' : `${run.loads.length} loads`} · {formatMoney(earned, 0)}

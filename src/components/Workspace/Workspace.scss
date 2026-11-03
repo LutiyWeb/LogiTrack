@@ -14,7 +14,9 @@
   display: flex;
   flex-direction: column;
   gap: 16px;
-  max-width: 960px;
+  width: 100%;
+  max-width: 1360px;
+  margin-inline: auto;
   animation: runs-fade-in var(--transition-base);
 
   &__list,
@@ -143,16 +145,56 @@
     font-weight: 600;
   }
 
+  &__badge + &__truck {
+    margin-top: 8px;
+  }
+
   &__meta,
-  &__status,
   &__label {
     font-size: var(--font-size-s);
     line-height: 1.4;
   }
 
+  &__status {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    width: fit-content;
+    padding: 3px 10px;
+    font-size: 12px;
+    font-weight: 600;
+    line-height: 1.4;
+    color: var(--color-text);
+    background: var(--color-tint-slate);
+    border-radius: 999px;
+
+    &--in-transit {
+      color: var(--color-primary);
+      background: var(--color-tint-blue);
+    }
+
+    &--planned {
+      color: #475569;
+      background: var(--color-tint-slate);
+    }
+
+    &--completed {
+      color: var(--color-good);
+      background: var(--color-tint-green);
+    }
+  }
+
+  &__status-dot {
+    width: 6px;
+    height: 6px;
+    background: currentColor;
+    border-radius: var(--radius-full);
+  }
+
   &__badge {
     display: inline-flex;
     align-items: center;
+    gap: 6px;
     width: fit-content;
     padding: 2px 8px;
     font-size: 12px;
@@ -163,10 +205,12 @@
     transition: background-color var(--transition-fast);
 
     &--ok {
+      color: var(--color-good);
       background: var(--color-tint-green);
     }
 
     &--warn {
+      color: var(--color-warn);
       background: var(--color-tint-amber);
     }
   }
@@ -204,6 +248,13 @@
     gap: 12px;
   }
 
+  &__overview-grid {
+    display: grid;
+    grid-template-columns: 1fr 1.15fr;
+    align-items: stretch;
+    gap: 16px;
+  }
+
   &__stat,
   &__load,
   &__block,
@@ -222,6 +273,9 @@
     display: flex;
     flex-direction: column;
     gap: 6px;
+    border: 1px solid var(--color-line);
+    border-top: 3px solid var(--color-primary);
+    background: var(--color-surface);
 
     dt {
       font-size: var(--font-size-s);
@@ -234,13 +288,47 @@
       line-height: 1.2;
     }
 
+    &--good {
+      border-top-color: var(--color-good);
+
+      dd {
+        color: var(--color-good);
+      }
+    }
+
+    &--warn {
+      border-top-color: var(--color-warn);
+
+      dd {
+        color: var(--color-warn);
+      }
+    }
+
+    &--danger {
+      border-top-color: var(--color-danger);
+      background: #fffafa;
+
+      dd {
+        color: var(--color-danger);
+      }
+    }
+
     &--blue {
-      background: var(--color-tint-blue);
+      border-top-color: var(--color-primary);
+      background: var(--color-surface);
     }
 
     &--slate {
-      background: var(--color-tint-slate);
+      border-top-color: #94a3b8;
+      background: var(--color-surface);
     }
+  }
+
+  &__stat-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
   }
 
   &__stat-text {
@@ -264,6 +352,84 @@
     flex-direction: column;
     gap: 6px;
     border: 1px solid var(--color-line);
+  }
+
+  &__load--alert {
+    border-left: 4px solid var(--color-danger);
+    background: #fffdfd;
+  }
+
+  &__inline-visual {
+    display: inline-flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px;
+  }
+
+  &__miles-bar {
+    display: flex;
+    width: 140px;
+    height: 6px;
+    overflow: hidden;
+    background: var(--color-line);
+    border-radius: 999px;
+  }
+
+  &__miles-segment {
+    height: 100%;
+
+    &--paid {
+      background: var(--color-primary);
+    }
+
+    &--empty {
+      background: var(--color-warn);
+    }
+  }
+
+  &__hos-ring {
+    flex: 0 0 auto;
+  }
+
+  &__map-card {
+    border: 1px solid var(--color-line);
+  }
+
+  &__map-svg {
+    display: block;
+    width: 100%;
+    height: auto;
+    border: 1px solid var(--color-line);
+    border-radius: var(--radius-m);
+  }
+
+  &__map-legend {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+
+  &__map-key {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 12px;
+    font-weight: 500;
+
+    &::before {
+      content: '';
+      width: 16px;
+      height: 3px;
+      border-radius: 999px;
+    }
+
+    &--paid::before {
+      background: var(--color-primary);
+    }
+
+    &--empty::before {
+      background: var(--color-warn);
+    }
   }
 
   &__offer {
@@ -450,6 +616,7 @@
     }
 
     &__stats,
+    &__overview-grid,
     &__form {
       grid-template-columns: 1fr;
     }

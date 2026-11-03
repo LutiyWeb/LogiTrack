@@ -32,6 +32,8 @@ import {
 import AddLoadForm from './AddLoadForm';
 import BackhaulOffers from './BackhaulOffers';
 import DispatchLog from './DispatchLog';
+import FleetRouteMap from './FleetRouteMap';
+import { HosRing, MilesSplitBar, RunStatusBadge } from './RunVisuals';
 
 function RunDetail() {
   const dispatch = useAppDispatch();
@@ -40,6 +42,7 @@ function RunDetail() {
   const permissions = useAppSelector(selectPermissions);
   const manualMiles = useAppSelector((state) => state.runs.manualMiles);
   const targetRate = useAppSelector((state) => state.ui.targetRatePerMile);
+  const maxEmptyPercent = useAppSelector((state) => state.ui.maxEmptyPercent);
 
   if (!enriched) return null;
 
@@ -53,8 +56,12 @@ function RunDetail() {
     operatingCost,
     netProfit,
     dollarsPerMile: perMile,
+    deadheadPercent,
     yard,
   } = enriched;
+
+  const emptyIsHigh = deadheadPercent !== null && deadheadPercent > maxEmptyPercent;
+  const rateIsGood = perMile !== null && perMile >= targetRate;
 
   return (
     <div className="runs">
@@ -64,7 +71,7 @@ function RunDetail() {
       <header className="runs__heading">
         <h1 className="workspace__title">{run.truck}</h1>
         <div className="runs__heading-controls">
-          <p className="runs__status">{run.status}</p>
+          <RunStatusBadge status={run.status} />
           {permissions.canUpdateRunStatus && (
             <select
               className="runs__input runs__input--compact"
@@ -80,12 +87,28 @@ function RunDetail() {
         </div>
       </header>
       <dl className="runs__stats">
-        <Stat label="Paid miles" value={formatMiles(paidMiles)} tone="blue" />
-        <Stat label="Empty miles" value={empty === null ? '—' : formatMiles(empty)} tone="slate" />
+        <Stat
+          label="Paid miles"
+          value={formatMiles(paidMiles)}
+          tone="good"
+          subtext="Loaded freight miles"
+        />
+        <Stat
+          label="Empty miles"
+          value={empty === null ? '—' : formatMiles(empty)}
+          tone={emptyIsHigh ? 'danger' : 'good'}
+          subtext={
+            deadheadPercent !== null
+              ? emptyIsHigh
+                ? `↑ ${deadheadPercent}% · Above ${maxEmptyPercent}% limit`
+                : `✓ ${deadheadPercent}% · Within target`
+              : undefined
+          }
+        />
         <Stat
           label="Revenue"
           value={formatMoney(earned, 0)}
-          tone="blue"
+          tone="good"
           subtext={
             netProfit !== null && operatingCost !== null
               ? `Net ${formatMoney(netProfit, 0)} · Cost ${formatMoney(operatingCost, 0)}`
@@ -95,18 +118,22 @@ function RunDetail() {
         <Stat
           label="$ per mile"
           value={perMile === null ? '—' : formatMoney(perMile, 2)}
-          tone="slate"
+          tone={perMile === null ? 'good' : rateIsGood ? 'good' : 'warn'}
           subtext={
             perMile !== null
-              ? `${perMile >= targetRate ? 'Above' : 'Below'} ${formatMoney(targetRate, 2)} target`
+              ? `${rateIsGood ? '↑ Above' : '↓ Below'} ${formatMoney(targetRate, 2)} target`
               : undefined
           }
         />
       </dl>
-      <p className="runs__meta">
-        {run.driver} · Yard {yard}
-        {run.drivingHoursLeft === null ? '' : ` · ${formatHours(run.drivingHoursLeft)} left in this shift`}
-      </p>
+      <div className="runs__inline-visual">
+        <HosRing hoursLeft={run.drivingHoursLeft} />
+        <p className="runs__meta">
+          {run.driver} · Yard {yard}
+          {run.drivingHoursLeft === null ? '' : ` · ${formatHours(run.drivingHoursLeft)} left in this shift`}
+        </p>
+        <MilesSplitBar paidMiles={paidMiles} emptyMiles={empty} />
+      </div>
       <section className="runs__block" aria-label="Loads">
         <h2 className="runs__subtitle">Loads</h2>
         <ul className="runs__loads">
@@ -241,6 +268,7 @@ function RunDetail() {
           })}
         </ul>
       </section>
+      <FleetRouteMap runs={[enriched]} title={`Route map · ${run.truck}`} />
       <section className="runs__block" aria-label="Route timeline">
         <h2 className="runs__subtitle">Route & leg breakdown</h2>
         <ol className="runs__timeline">
@@ -268,7 +296,17 @@ function RunDetail() {
   );
 }
 
-function Stat({ label, value, tone, subtext }: { label: string; value: string; tone: 'blue' | 'slate'; subtext?: string }) {
+function Stat({
+  label,
+  value,
+  tone,
+  subtext,
+}: {
+  label: string;
+  value: string;
+  tone: 'good' | 'warn' | 'danger' | 'blue' | 'slate';
+  subtext?: string;
+}) {
   return (
     <div className={`runs__stat runs__stat--${tone}`}>
       <dt>{label}</dt>

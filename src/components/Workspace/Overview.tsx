@@ -6,6 +6,8 @@ import {
 } from '../../store/selectors/runsSelectors';
 import { openRun } from '../../store/slices/runsSlice';
 import { carrierProfile, setActiveSection } from '../../store/slices/uiSlice';
+import FleetRouteMap from './FleetRouteMap';
+import { HosRing, MilesSplitBar, RunStatusBadge } from './RunVisuals';
 
 function Overview() {
   const dispatch = useAppDispatch();
@@ -13,6 +15,9 @@ function Overview() {
   const enrichedRuns = useAppSelector(selectEnrichedRuns);
   const targetRate = useAppSelector((state) => state.ui.targetRatePerMile);
   const maxEmptyPercent = useAppSelector((state) => state.ui.maxEmptyPercent);
+
+  const rateIsGood = kpis.averageDollarsPerMile >= targetRate;
+  const deadheadIsHigh = kpis.deadheadPercent > maxEmptyPercent;
 
   function jumpToRun(runId: string) {
     dispatch(openRun(runId));
@@ -32,30 +37,52 @@ function Overview() {
       </header>
 
       <dl className="runs__stats" aria-label="Fleet KPIs">
-        <div className="runs__stat runs__stat--blue">
-          <dt>Fleet revenue</dt>
+        <div className="runs__stat runs__stat--good">
+          <div className="runs__stat-head">
+            <dt>Fleet revenue</dt>
+            <Sparkline points="2,16 16,13 30,14 46,8 62,4" color="var(--color-good)" />
+          </div>
           <dd>{formatMoney(kpis.totalRevenue, 0)}</dd>
           <span className="runs__meta">
             Net profit {formatMoney(kpis.totalNetProfit, 0)} · Paid{' '}
             {formatMiles(kpis.totalPaidMiles)}
           </span>
         </div>
-        <div className="runs__stat runs__stat--slate">
-          <dt>Fleet $ per mile</dt>
+
+        <div className={`runs__stat runs__stat--${rateIsGood ? 'good' : 'warn'}`}>
+          <div className="runs__stat-head">
+            <dt>Fleet $ per mile</dt>
+            <Sparkline
+              points={rateIsGood ? '2,15 18,12 34,10 48,7 62,4' : '2,6 18,9 34,11 48,14 62,15'}
+              color={rateIsGood ? 'var(--color-good)' : 'var(--color-warn)'}
+            />
+          </div>
           <dd>{formatMoney(kpis.averageDollarsPerMile, 2)}</dd>
           <span className="runs__meta">
-            Target {formatMoney(targetRate, 2)} / mi
+            {rateIsGood ? '↑' : '↓'} Target {formatMoney(targetRate, 2)} / mi
           </span>
         </div>
-        <div className="runs__stat runs__stat--slate">
-          <dt>Deadhead ratio</dt>
+
+        <div className={`runs__stat runs__stat--${deadheadIsHigh ? 'danger' : 'good'}`}>
+          <div className="runs__stat-head">
+            <dt>Deadhead ratio</dt>
+            <Sparkline
+              points={deadheadIsHigh ? '2,16 18,14 34,11 48,7 62,3' : '2,5 18,8 34,12 48,14 62,16'}
+              color={deadheadIsHigh ? 'var(--color-danger)' : 'var(--color-good)'}
+            />
+          </div>
           <dd>{kpis.deadheadPercent}%</dd>
           <span className="runs__meta">
-            Empty {formatMiles(kpis.totalEmptyMiles)} (max {maxEmptyPercent}%)
+            {deadheadIsHigh ? `↑ Above ${maxEmptyPercent}% limit` : '✓ Within target'} · Empty{' '}
+            {formatMiles(kpis.totalEmptyMiles)}
           </span>
         </div>
-        <div className="runs__stat runs__stat--blue">
-          <dt>Active trucks</dt>
+
+        <div className="runs__stat runs__stat--good">
+          <div className="runs__stat-head">
+            <dt>Active trucks</dt>
+            <Sparkline points="2,14 18,12 34,9 48,9 62,6" color="var(--color-primary)" />
+          </div>
           <dd>{kpis.activeRunsCount}</dd>
           <span className="runs__meta">
             {kpis.completedRunsCount} completed
@@ -63,50 +90,62 @@ function Overview() {
         </div>
       </dl>
 
-      <section className="runs__block" aria-label="Dispatcher alerts">
-        <h2 className="runs__subtitle">Dispatcher alerts & backhaul queue</h2>
-        {kpis.runsNeedingBackhaul.length > 0 ? (
-          <ul className="runs__loads">
-            {kpis.runsNeedingBackhaul.map((item) => (
-              <li className="runs__load" key={item.run.id}>
-                <div className="runs__load-head">
-                  <div>
-                    <span className="runs__badge runs__badge--warn">
-                      High empty return · {item.deadheadPercent}% deadhead
-                    </span>
-                    <p className="runs__truck">
-                      {item.run.truck} · {item.run.driver}
-                    </p>
+      <div className="runs__overview-grid">
+        <section className="runs__block" aria-label="Dispatcher alerts">
+          <h2 className="runs__subtitle">Dispatcher alerts & backhaul queue</h2>
+          {kpis.runsNeedingBackhaul.length > 0 ? (
+            <ul className="runs__loads">
+              {kpis.runsNeedingBackhaul.map((item) => (
+                <li className="runs__load runs__load--alert" key={item.run.id}>
+                  <div className="runs__load-head">
+                    <div>
+                      <span className="runs__badge runs__badge--warn">
+                        <AlertTriangleIcon />
+                        High empty return · {item.deadheadPercent}% deadhead
+                      </span>
+                      <p className="runs__truck">
+                        {item.run.truck} · {item.run.driver}
+                      </p>
+                    </div>
+                    <button
+                      type="button"
+                      className="runs__button runs__button--small"
+                      onClick={() => jumpToRun(item.run.id)}
+                    >
+                      Find backhaul
+                    </button>
                   </div>
-                  <button
-                    type="button"
-                    className="runs__button runs__button--small"
-                    onClick={() => jumpToRun(item.run.id)}
-                  >
-                    Find backhaul
-                  </button>
-                </div>
-                <p className="runs__meta">
-                  Lane: {item.lane} · Empty{' '}
-                  {item.emptyMiles === null
-                    ? '—'
-                    : formatMiles(item.emptyMiles)}{' '}
-                  · Current{' '}
-                  {item.dollarsPerMile === null
-                    ? '—'
-                    : `${formatMoney(item.dollarsPerMile, 2)} / mi`}
-                </p>
-              </li>
-            ))}
-          </ul>
-        ) : (
-          <p className="runs__note">
-            All active trucks are within the {maxEmptyPercent}% deadhead target.
-            Backhaul loads are assigned and fleet rate per mile is{' '}
-            {formatMoney(kpis.averageDollarsPerMile, 2)}.
-          </p>
-        )}
-      </section>
+                  <p className="runs__meta">
+                    Lane: {item.lane} · Empty{' '}
+                    {item.emptyMiles === null
+                      ? '—'
+                      : formatMiles(item.emptyMiles)}{' '}
+                    · Current{' '}
+                    {item.dollarsPerMile === null
+                      ? '—'
+                      : `${formatMoney(item.dollarsPerMile, 2)} / mi`}
+                  </p>
+                  <div className="runs__inline-visual">
+                    <MilesSplitBar paidMiles={item.paidMiles} emptyMiles={item.emptyMiles} />
+                    <span className="runs__meta">
+                      Paid {formatMiles(item.paidMiles)} vs Empty{' '}
+                      {item.emptyMiles === null ? '—' : formatMiles(item.emptyMiles)}
+                    </span>
+                  </div>
+                </li>
+              ))}
+            </ul>
+          ) : (
+            <p className="runs__note">
+              All active trucks are within the {maxEmptyPercent}% deadhead target.
+              Backhaul loads are assigned and fleet rate per mile is{' '}
+              {formatMoney(kpis.averageDollarsPerMile, 2)}.
+            </p>
+          )}
+        </section>
+
+        <FleetRouteMap runs={enrichedRuns} />
+      </div>
 
       <section className="runs__block" aria-label="Fleet status board">
         <div className="runs__form-head">
@@ -136,18 +175,24 @@ function Overview() {
                   </span>
                   <span className="runs__meta">{item.lane}</span>
                   {item.run.drivingHoursLeft !== null && (
-                    <span className="runs__meta">
-                      HOS remaining: {formatHours(item.run.drivingHoursLeft)}
+                    <span className="runs__inline-visual">
+                      <HosRing hoursLeft={item.run.drivingHoursLeft} />
+                      <span className="runs__meta">
+                        HOS remaining: {formatHours(item.run.drivingHoursLeft)}
+                      </span>
                     </span>
                   )}
                 </span>
                 <span className="runs__row-side">
-                  <span className="runs__status">{item.run.status}</span>
-                  <span className="runs__meta">
-                    Paid {formatMiles(item.paidMiles)} · Empty{' '}
-                    {item.emptyMiles === null
-                      ? '—'
-                      : formatMiles(item.emptyMiles)}
+                  <RunStatusBadge status={item.run.status} />
+                  <span className="runs__inline-visual">
+                    <MilesSplitBar paidMiles={item.paidMiles} emptyMiles={item.emptyMiles} />
+                    <span className="runs__meta">
+                      Paid {formatMiles(item.paidMiles)} · Empty{' '}
+                      {item.emptyMiles === null
+                        ? '—'
+                        : formatMiles(item.emptyMiles)}
+                    </span>
                   </span>
                   <span className="runs__meta">
                     {formatMoney(item.revenue, 0)}
@@ -162,6 +207,36 @@ function Overview() {
         </ul>
       </section>
     </div>
+  );
+}
+
+function Sparkline({ points, color }: { points: string; color: string }) {
+  return (
+    <svg width="64" height="20" viewBox="0 0 64 20" fill="none" aria-hidden="true">
+      <polyline
+        points={points}
+        fill="none"
+        stroke={color}
+        strokeWidth="2"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
+  );
+}
+
+function AlertTriangleIcon() {
+  return (
+    <svg width="14" height="14" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+      <path
+        d="M8 2.2 14.4 13.5H1.6L8 2.2Z"
+        stroke="currentColor"
+        strokeWidth="1.5"
+        strokeLinejoin="round"
+      />
+      <path d="M8 6.5v3.2" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+      <circle cx="8" cy="11.6" r="0.8" fill="currentColor" />
+    </svg>
   );
 }
 
