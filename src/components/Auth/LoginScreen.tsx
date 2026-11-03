@@ -1,13 +1,7 @@
 import { useState } from 'react';
 import { DEFAULT_DEV_USER, runDevAutoLogin } from '../../auth/devAutoAuth';
 import { useAppDispatch, useAppSelector } from '../../store/hooks';
-import {
-  demoUsers,
-  loginAsDemoUser,
-  loginWithCredentials,
-  type DemoUser,
-} from '../../store/slices/authSlice';
-import { setActiveSection, updateCarrierTargets } from '../../store/slices/uiSlice';
+import { demoUsers, loginWithCredentials } from '../../store/slices/authSlice';
 import '../Workspace/Workspace.scss';
 
 function LoginScreen() {
@@ -16,12 +10,15 @@ function LoginScreen() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
 
-  function handleQuickLogin(user: DemoUser) {
-    setEmail(user.email);
-    setPassword(user.password);
-    dispatch(loginAsDemoUser(user.id));
-    dispatch(updateCarrierTargets({ dispatcherName: user.name }));
-    if (user.role === 'driver') dispatch(setActiveSection('board'));
+  function handleQuickLogin(roleOrId: string) {
+    runDevAutoLogin({
+      roleOrId,
+      onFillInputs: (devEmail, devPass) => {
+        setEmail(devEmail);
+        setPassword(devPass);
+      },
+      dispatch,
+    });
   }
 
   return (
@@ -35,16 +32,7 @@ function LoginScreen() {
           <button
             type="button"
             className="runs__button runs__button--small"
-            onClick={() =>
-              runDevAutoLogin({
-                roleOrId: DEFAULT_DEV_USER.id,
-                onFillInputs: (devEmail, devPass) => {
-                  setEmail(devEmail);
-                  setPassword(devPass);
-                },
-                dispatch,
-              })
-            }
+            onClick={() => handleQuickLogin(DEFAULT_DEV_USER.id)}
           >
             Dev auto-login ({DEFAULT_DEV_USER.name})
           </button>
@@ -88,7 +76,7 @@ function LoginScreen() {
                     <p className="runs__truck">{user.name}</p>
                     <p className="runs__meta">{user.email}</p>
                   </div>
-                  <button type="button" className="runs__button runs__button--small" onClick={() => handleQuickLogin(user)}>
+                  <button type="button" className="runs__button runs__button--small" onClick={() => handleQuickLogin(user.id)}>
                     Sign in as {user.name}
                   </button>
                 </div>

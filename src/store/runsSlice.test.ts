@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { backhaulPreset } from '../runs/demo';
 import {
   selectEnrichedRuns,
+  selectFilteredRuns,
   selectFleetKpis,
   selectOpenRun,
 } from './selectors/runsSelectors';
@@ -14,6 +15,8 @@ import {
 } from './slices/authSlice';
 import {
   addLoad,
+  addRunNote,
+  advanceLoadBilling,
   applyPresetToDraft,
   openRun,
   removeLoad,
@@ -25,13 +28,14 @@ import { setActiveSection, setStatusFilter } from './slices/uiSlice';
 import { createAppStore, resetAllDemoData } from './store';
 
 describe('Redux store (runsSlice, uiSlice, authSlice, and selectors)', () => {
-  it('initializes with 4 seeded runs and computes initial fleet KPIs', () => {
+  it('initializes with 4 seeded runs and computes initial fleet KPIs and Net Profit', () => {
     const store = createAppStore();
     const state = store.getState();
 
     expect(state.runs.runs).toHaveLength(4);
     const kpis = selectFleetKpis(state);
     expect(kpis.totalRevenue).toBe(3200 + 1450 + 950 + 3050);
+    expect(kpis.totalNetProfit).toBe(kpis.totalRevenue - kpis.totalOperatingCost);
     expect(kpis.activeRunsCount).toBe(3);
     expect(kpis.completedRunsCount).toBe(1);
     expect(kpis.runsNeedingBackhaul.map((item) => item.run.id)).toContain(
@@ -39,18 +43,21 @@ describe('Redux store (runsSlice, uiSlice, authSlice, and selectors)', () => {
     );
   });
 
-  it('opens a run, applies preset, adds load, and updates fleet KPIs', () => {
+  it('calculates operatingCost ($1,791 -> $1,784) and netProfit ($1,409 -> $3,516) when backhaul is added to Truck 214', () => {
     const store = createAppStore();
 
     store.dispatch(openRun('214'));
-    expect(selectOpenRun(store.getState())?.run.truck).toBe('Truck 214');
+    const before = selectOpenRun(store.getState())!;
+    expect(before.run.truck).toBe('Truck 214');
+    expect(before.operatingCost).toBe(1791);
+    expect(before.netProfit).toBe(1409);
 
     store.dispatch(applyPresetToDraft(backhaulPreset));
     expect(store.getState().runs.draft.customer).toBe('Blue Ridge Logistics');
 
     store.dispatch(addLoad('214'));
-    const updatedRun = selectOpenRun(store.getState())!;
-    expect(updatedRun.run.loads).toHaveLength(2);
+    const after = selectOpenRun(store.getState())!;
+    expect(after.run.loads).toHaveLength(2);
     expect(store.getState().runs.draft.customer).toBe('');
 
     const enriched214 = selectEnrichedRuns(store.getState()).find(
@@ -58,10 +65,12 @@ describe('Redux store (runsSlice, uiSlice, authSlice, and selectors)', () => {
     )!;
     expect(enriched214.emptyMiles).toBe(215);
     expect(enriched214.dollarsPerMile).toBe(3.77);
+    expect(enriched214.operatingCost).toBe(1784);
+    expect(enriched214.netProfit).toBe(3516);
     expect(enriched214.needsBackhaul).toBe(false);
   });
 
-  it('updates run status, load status, manual miles, and removes a load', () => {
+  it('updates run status, load status, POD/invoice billing workflow, dispatch notes, and removes a load', () => {
     const store = createAppStore();
     store.dispatch(addLoad({ runId: '214', draft: backhaulPreset }));
 
@@ -72,12 +81,37 @@ describe('Redux store (runsSlice, uiSlice, authSlice, and selectors)', () => {
       updateLoadStatus({
         runId: '214',
         loadId: addedLoadId,
-        status: 'In transit',
+        status: 'Delivered',
       }),
     );
     expect(
-      store.getState().runs.runs.find((r) => r.id === '214')?.loads[1].status,
-    ).toBe('In transit');
+      store.getState().runs.runs.find((r) => r.id === '214')?.loads[1]
+        .billingStatus,
+    ).toBe('POD required');
+
+    store.dispatch(advanceLoadBilling({ runId: '214', loadId: 'hart' }));
+    expect(
+      store.getState().runs.runs.find((r) => r.id === '214')?.loads[0]
+        .billingStatus,
+    ).toBe('POD received');
+
+    store.dispatch(advanceLoadBilling({ runId: '214', loadId: 'hart' }));
+    expect(
+      store.getState().runs.runs.find((r) => r.id === '214')?.loads[0]
+        .billingStatus,
+    ).toBe('Invoiced');
+
+    store.dispatch(
+      addRunNote({
+        runId: '214',
+        author: 'Marcus Hill',
+        roleTitle: 'Driver · Truck 214',
+        text: 'POD signed at dock 14',
+      }),
+    );
+    expect(
+      store.getState().runs.runs.find((r) => r.id === '214')?.notes,
+    ).toHaveLength(3);
 
     store.dispatch(updateRunStatus({ runId: '214', status: 'Completed' }));
     expect(
@@ -113,7 +147,7 @@ describe('Redux store (runsSlice, uiSlice, authSlice, and selectors)', () => {
     expect(state.runs.openRunId).toBeNull();
   });
 
-  it('authenticates users and maps role permissions (manager, dispatcher, driver)', () => {
+  it('authenticates users, filters runs for assigned driver, and maps role permissions', () => {
     const store = createAppStore();
     expect(selectCurrentUser(store.getState())).toBeNull();
 
@@ -129,6 +163,7 @@ describe('Redux store (runsSlice, uiSlice, authSlice, and selectors)', () => {
       }),
     );
     expect(selectCurrentUser(store.getState())?.role).toBe('dispatcher');
+    expect(selectFilteredRuns(store.getState())).toHaveLength(4);
     expect(selectPermissions(store.getState())).toEqual({
       canViewOverview: true,
       canManageLoads: true,
@@ -143,6 +178,9 @@ describe('Redux store (runsSlice, uiSlice, authSlice, and selectors)', () => {
     store.dispatch(loginAsDemoUser('driver'));
     expect(selectPermissions(store.getState()).canViewOverview).toBe(false);
     expect(selectPermissions(store.getState()).canManageLoads).toBe(false);
+    expect(
+      selectFilteredRuns(store.getState()).map((item) => item.run.id),
+    ).toEqual(['214']);
 
     store.dispatch(logout());
     expect(selectCurrentUser(store.getState())).toBeNull();

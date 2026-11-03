@@ -6,7 +6,7 @@ import { loginAsDemoUser } from '../../store/slices/authSlice';
 import { createAppStore } from '../../store/store';
 
 describe('LogiTrack CRM Demo UI flows', () => {
-  it('completes the core Truck 214 backhaul scenario (710 empty mi / $2.27 -> 215 empty mi / $3.77)', async () => {
+  it('completes the core Truck 214 backhaul scenario (710 empty mi / $2.27 / Net $1,409 -> 215 empty mi / $3.77 / Net $3,516)', async () => {
     const user = userEvent.setup();
     const testStore = createAppStore();
     testStore.dispatch(loginAsDemoUser('dispatcher'));
@@ -24,6 +24,7 @@ describe('LogiTrack CRM Demo UI flows', () => {
     expect(screen.getAllByText('700 mi').length).toBeGreaterThan(0);
     expect(screen.getAllByText('710 mi').length).toBeGreaterThan(0);
     expect(screen.getAllByText('$3,200').length).toBeGreaterThan(0);
+    expect(screen.getByText('Net $1,409 · Cost $1,791')).toBeInTheDocument();
     expect(screen.getByText('$2.27')).toBeInTheDocument();
 
     await user.click(
@@ -34,6 +35,7 @@ describe('LogiTrack CRM Demo UI flows', () => {
     expect(screen.getByText('1,190 mi')).toBeInTheDocument();
     expect(screen.getAllByText('215 mi').length).toBeGreaterThan(0);
     expect(screen.getByText('$5,300')).toBeInTheDocument();
+    expect(screen.getByText('Net $3,516 · Cost $1,784')).toBeInTheDocument();
     expect(screen.getByText('$3.77')).toBeInTheDocument();
     expect(
       screen.getByText(
@@ -52,6 +54,7 @@ describe('LogiTrack CRM Demo UI flows', () => {
     expect(
       screen.getByRole('heading', { name: 'Overview' }),
     ).toBeInTheDocument();
+    expect(screen.getByText(/Net profit \$/)).toBeInTheDocument();
 
     const alertsSection = screen.getByRole('region', {
       name: 'Dispatcher alerts',
@@ -99,7 +102,7 @@ describe('LogiTrack CRM Demo UI flows', () => {
     expect(screen.getByRole('heading', { name: 'Runs' })).toBeInTheDocument();
   });
 
-  it('enforces RBAC permissions for Driver, Dispatcher, and Fleet Manager and supports Sign out', async () => {
+  it('enforces RBAC permissions, personal driver run list, POD/invoice workflow, and DispatchLog notes', async () => {
     const user = userEvent.setup();
     const testStore = createAppStore();
     render(<App customStore={testStore} />);
@@ -110,6 +113,8 @@ describe('LogiTrack CRM Demo UI flows', () => {
     expect(
       screen.queryByRole('button', { name: 'Overview' }),
     ).not.toBeInTheDocument();
+    expect(screen.getByText('Truck 214')).toBeInTheDocument();
+    expect(screen.queryByText('Truck 118')).not.toBeInTheDocument();
 
     await user.click(screen.getByRole('button', { name: /Truck 214/i }));
     expect(
@@ -120,6 +125,23 @@ describe('LogiTrack CRM Demo UI flows', () => {
     ).not.toBeInTheDocument();
     expect(
       screen.getByLabelText('Status for Hart Freight'),
+    ).toBeInTheDocument();
+
+    await user.click(screen.getByRole('button', { name: 'Confirm POD' }));
+    expect(screen.getByText('POD received')).toBeInTheDocument();
+    expect(
+      screen.queryByRole('button', { name: 'Send invoice' }),
+    ).not.toBeInTheDocument();
+
+    await user.type(
+      screen.getByPlaceholderText(
+        'Log check-call, dock # or broker note...',
+      ),
+      'Signed BOL uploaded from cab',
+    );
+    await user.click(screen.getByRole('button', { name: 'Post note' }));
+    expect(
+      screen.getByText('Signed BOL uploaded from cab'),
     ).toBeInTheDocument();
 
     await user.click(screen.getByRole('button', { name: 'Account' }));
@@ -137,6 +159,10 @@ describe('LogiTrack CRM Demo UI flows', () => {
     await user.click(
       screen.getByRole('button', { name: 'Sign in as Sarah Jenkins' }),
     );
+    await user.click(screen.getByRole('button', { name: /Truck 214/i }));
+    await user.click(screen.getByRole('button', { name: 'Send invoice' }));
+    expect(screen.getByText('Invoiced')).toBeInTheDocument();
+
     await user.click(screen.getByRole('button', { name: 'Account' }));
     expect(screen.getByLabelText('Dispatcher name')).not.toBeDisabled();
   });

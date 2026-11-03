@@ -56,7 +56,11 @@ const runsSlice = createSlice({
       const run = state.runs.find((item) => item.id === runId);
       if (!run) return;
 
-      run.loads.push(draftToLoad(sourceDraft, crypto.randomUUID()));
+      const load = draftToLoad(sourceDraft, crypto.randomUUID());
+      if (load.status === 'Delivered') {
+        load.billingStatus = 'POD required';
+      }
+      run.loads.push(load);
       state.draft = { ...emptyDraft };
     },
     updateLoadStatus(
@@ -71,7 +75,46 @@ const runsSlice = createSlice({
       const load = run?.loads.find((item) => item.id === action.payload.loadId);
       if (load) {
         load.status = action.payload.status;
+        if (action.payload.status === 'Delivered' && !load.billingStatus) {
+          load.billingStatus = 'POD required';
+        }
       }
+    },
+    advanceLoadBilling(
+      state,
+      action: PayloadAction<{ runId: string; loadId: string }>,
+    ) {
+      const run = state.runs.find((item) => item.id === action.payload.runId);
+      const load = run?.loads.find((item) => item.id === action.payload.loadId);
+      if (!load) return;
+      if (!load.billingStatus || load.billingStatus === 'POD required') {
+        load.billingStatus = 'POD received';
+      } else if (load.billingStatus === 'POD received') {
+        load.billingStatus = 'Invoiced';
+      }
+    },
+    addRunNote(
+      state,
+      action: PayloadAction<{
+        runId: string;
+        author: string;
+        roleTitle: string;
+        text: string;
+      }>,
+    ) {
+      const run = state.runs.find((item) => item.id === action.payload.runId);
+      const text = action.payload.text.trim();
+      if (!run || !text) return;
+      run.notes = [
+        ...(run.notes ?? []),
+        {
+          id: crypto.randomUUID(),
+          author: action.payload.author,
+          roleTitle: action.payload.roleTitle,
+          at: 'Just now',
+          text,
+        },
+      ];
     },
     removeLoad(
       state,
@@ -113,6 +156,8 @@ export const {
   applyPresetToDraft,
   addLoad,
   updateLoadStatus,
+  advanceLoadBilling,
+  addRunNote,
   removeLoad,
   updateRunStatus,
   setManualMiles,

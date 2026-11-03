@@ -36,7 +36,8 @@ function Overview() {
           <dt>Fleet revenue</dt>
           <dd>{formatMoney(kpis.totalRevenue, 0)}</dd>
           <span className="runs__meta">
-            Paid {formatMiles(kpis.totalPaidMiles)}
+            Net profit {formatMoney(kpis.totalNetProfit, 0)} · Paid{' '}
+            {formatMiles(kpis.totalPaidMiles)}
           </span>
         </div>
         <div className="runs__stat runs__stat--slate">

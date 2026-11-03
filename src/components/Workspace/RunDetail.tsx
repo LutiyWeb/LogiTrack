@@ -18,6 +18,7 @@ import { useAppDispatch, useAppSelector } from '../../store/hooks';
 import { selectOpenRun } from '../../store/selectors/runsSelectors';
 import { selectPermissions } from '../../store/slices/authSlice';
 import {
+  advanceLoadBilling,
   openRun,
   removeLoad,
   setManualMiles,
@@ -26,6 +27,7 @@ import {
 } from '../../store/slices/runsSlice';
 import AddLoadForm from './AddLoadForm';
 import BackhaulOffers from './BackhaulOffers';
+import DispatchLog from './DispatchLog';
 
 function RunDetail() {
   const dispatch = useAppDispatch();
@@ -36,7 +38,18 @@ function RunDetail() {
 
   if (!enriched) return null;
 
-  const { run, legs, timeline, paidMiles, emptyMiles: empty, revenue: earned, dollarsPerMile: perMile, yard } = enriched;
+  const {
+    run,
+    legs,
+    timeline,
+    paidMiles,
+    emptyMiles: empty,
+    revenue: earned,
+    operatingCost,
+    netProfit,
+    dollarsPerMile: perMile,
+    yard,
+  } = enriched;
 
   return (
     <div className="runs">
@@ -64,7 +77,16 @@ function RunDetail() {
       <dl className="runs__stats">
         <Stat label="Paid miles" value={formatMiles(paidMiles)} tone="blue" />
         <Stat label="Empty miles" value={empty === null ? '—' : formatMiles(empty)} tone="slate" />
-        <Stat label="Revenue" value={formatMoney(earned, 0)} tone="blue" />
+        <Stat
+          label="Revenue"
+          value={formatMoney(earned, 0)}
+          tone="blue"
+          subtext={
+            netProfit !== null && operatingCost !== null
+              ? `Net ${formatMoney(netProfit, 0)} · Cost ${formatMoney(operatingCost, 0)}`
+              : undefined
+          }
+        />
         <Stat
           label="$ per mile"
           value={perMile === null ? '—' : formatMoney(perMile, 2)}
@@ -85,12 +107,41 @@ function RunDetail() {
         <ul className="runs__loads">
           {run.loads.map((load) => {
             const note = shiftNote(run, load);
+            const billing = load.billingStatus ?? 'POD required';
+            const billingTone =
+              billing === 'Invoiced' ? '--ok' : billing === 'POD required' ? '--warn' : '';
+
             return (
               <li className="runs__load" key={load.id}>
                 <div className="runs__load-head">
                   <p className="runs__truck">{load.customer || 'No customer yet'}</p>
                   <div className="runs__load-actions">
                     <p className="runs__status">{load.status}</p>
+                    {load.status === 'Delivered' && (
+                      <>
+                        <span className={`runs__badge ${billingTone ? `runs__badge${billingTone}` : ''}`}>
+                          {billing}
+                        </span>
+                        {billing === 'POD required' && permissions.canUpdateLoadStatus && (
+                          <button
+                            type="button"
+                            className="runs__button runs__button--small"
+                            onClick={() => dispatch(advanceLoadBilling({ runId: run.id, loadId: load.id }))}
+                          >
+                            Confirm POD
+                          </button>
+                        )}
+                        {billing === 'POD received' && permissions.canManageLoads && (
+                          <button
+                            type="button"
+                            className="runs__button runs__button--small"
+                            onClick={() => dispatch(advanceLoadBilling({ runId: run.id, loadId: load.id }))}
+                          >
+                            Send invoice
+                          </button>
+                        )}
+                      </>
+                    )}
                     {permissions.canUpdateLoadStatus && (
                       <select
                         className="runs__input runs__input--compact"
@@ -178,6 +229,7 @@ function RunDetail() {
           ))}
         </ol>
       </section>
+      <DispatchLog run={run} />
       {permissions.canManageLoads && run.id === '214' && run.loads.length === 1 && (
         <BackhaulOffers run={run} />
       )}

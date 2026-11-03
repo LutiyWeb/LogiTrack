@@ -2,6 +2,16 @@ export type RunStatus = 'Planned' | 'In transit' | 'Completed';
 
 export type LoadStatus = 'Assigned' | 'At pickup' | 'In transit' | 'Delivered';
 
+export type BillingStatus = 'POD required' | 'POD received' | 'Invoiced';
+
+export type DispatchNote = {
+  id: string;
+  author: string;
+  roleTitle: string;
+  at: string;
+  text: string;
+};
+
 export type Stop = {
   place: string;
   city: string;
@@ -20,6 +30,7 @@ export type Load = {
   bol: string;
   commodity: string;
   status: LoadStatus;
+  billingStatus?: BillingStatus;
 };
 
 export type Run = {
@@ -31,6 +42,7 @@ export type Run = {
   status: RunStatus;
   drivingHoursLeft: number | null;
   loads: Load[];
+  notes?: DispatchNote[];
 };
 
 export type Leg = {
@@ -229,6 +241,23 @@ export const runs: Run[] = [
         bol: '44821',
         commodity: 'Palletized auto parts',
         status: 'Delivered',
+        billingStatus: 'POD required',
+      },
+    ],
+    notes: [
+      {
+        id: 'n1',
+        author: 'Marcus Hill',
+        roleTitle: 'Driver · Truck 214',
+        at: 'Oct 28, 2:15 PM',
+        text: 'Unloaded at South Park Warehouse (Atlanta, GA). 3.5 h driving shift remaining.',
+      },
+      {
+        id: 'n2',
+        author: 'Alex Mercer',
+        roleTitle: 'Senior Fleet Dispatcher',
+        at: 'Oct 28, 2:30 PM',
+        text: 'Checking Atlanta backhaul offers that allow a 10 h overnight reset.',
       },
     ],
   },
@@ -295,6 +324,7 @@ export const runs: Run[] = [
         bol: '18452',
         commodity: 'Consumer electronics',
         status: 'Delivered',
+        billingStatus: 'Invoiced',
       },
     ],
   },
@@ -328,6 +358,7 @@ export const runs: Run[] = [
         bol: '55120',
         commodity: 'HVAC equipment',
         status: 'Delivered',
+        billingStatus: 'POD received',
       },
       {
         id: '305-load-2',
