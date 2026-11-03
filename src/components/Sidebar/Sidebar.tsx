@@ -6,8 +6,10 @@ type SidebarProps = {
   activeId: string;
   isOpen: boolean;
   userName: string;
+  userRole?: string;
   onSelect: (id: MenuItem['id']) => void;
   onToggle: () => void;
+  onLogout?: () => void;
 };
 
 const icons = {
@@ -21,14 +23,19 @@ function Sidebar({
   activeId,
   isOpen,
   userName,
+  userRole,
   onSelect,
   onToggle,
+  onLogout,
 }: SidebarProps) {
   return (
     <aside className={isOpen ? 'sidebar' : 'sidebar is-collapsed'}>
       <div className="sidebar__user">
         <img className="sidebar__photo" src={userPhoto} alt="" />
-        <p className="sidebar__name">{userName}</p>
+        <div className="sidebar__user-info">
+          <p className="sidebar__name">{userName}</p>
+          {userRole && <p className="sidebar__role">{userRole}</p>}
+        </div>
         <button
           className="sidebar__toggle"
           type="button"
@@ -61,6 +68,15 @@ function Sidebar({
           );
         })}
       </nav>
+      {onLogout && (
+        <button
+          className="sidebar__item sidebar__logout"
+          type="button"
+          onClick={onLogout}
+        >
+          <span className="sidebar__label">Sign out</span>
+        </button>
+      )}
     </aside>
   );
 }

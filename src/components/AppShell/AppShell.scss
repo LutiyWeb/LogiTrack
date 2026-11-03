@@ -1,3 +1,18 @@
+.auth-screen {
+  display: grid;
+  place-items: center;
+  min-height: 100vh;
+  padding: 28px;
+  font-family: var(--font-family);
+  color: var(--color-text);
+  background: var(--color-bg);
+
+  &__card {
+    width: 100%;
+    max-width: 640px;
+  }
+}
+
 .shell {
   display: grid;
   grid-template-columns: 212px minmax(0, 1fr);
@@ -29,7 +44,9 @@
     gap: 12px;
   }
 
+  &.is-collapsed &__user-info,
   &.is-collapsed &__name,
+  &.is-collapsed &__role,
   &.is-collapsed &__label {
     display: none;
   }
@@ -55,6 +72,12 @@
     min-width: 0;
   }
 
+  &__user-info {
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+  }
+
   &__photo {
     flex: 0 0 auto;
     width: 40px;
@@ -68,6 +91,15 @@
     overflow: hidden;
     font-size: var(--font-size-s);
     font-weight: 600;
+    line-height: 1.25;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+  }
+
+  &__role {
+    min-width: 0;
+    overflow: hidden;
+    font-size: 12px;
     line-height: 1.25;
     white-space: nowrap;
     text-overflow: ellipsis;
@@ -139,6 +171,11 @@
         transform: translateY(-50%);
       }
     }
+  }
+
+  &__logout {
+    margin-top: auto;
+    font-weight: 600;
   }
 
   &__label {
