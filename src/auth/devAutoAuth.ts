@@ -4,6 +4,7 @@ import {
   type DemoUser,
   type UserRole,
 } from '../store/slices/authSlice';
+import { openRun } from '../store/slices/runsSlice';
 import { setActiveSection, updateCarrierTargets } from '../store/slices/uiSlice';
 import type { AppDispatch } from '../store/store';
 
@@ -38,8 +39,7 @@ export function runDevAutoLogin({
     }),
   );
   dispatch(updateCarrierTargets({ dispatcherName: user.name }));
-  if (user.role === 'driver') {
-    dispatch(setActiveSection('board'));
-  }
+  dispatch(openRun(null));
+  dispatch(setActiveSection('board'));
   return user;
 }

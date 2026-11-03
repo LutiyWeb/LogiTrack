@@ -135,6 +135,48 @@ function Account() {
             }
           />
         </label>
+        <label className="runs__field">
+          <span className="runs__label">
+            Fuel cost per mile ($/mi)
+          </span>
+          <input
+            className="runs__input"
+            type="number"
+            min="0"
+            max="5"
+            step="0.05"
+            disabled={!permissions.canEditTargets}
+            value={ui.fuelCostPerMile || ''}
+            onChange={(event) =>
+              dispatch(
+                updateCarrierTargets({
+                  fuelCostPerMile: readNumber(event.target.value),
+                }),
+              )
+            }
+          />
+        </label>
+        <label className="runs__field">
+          <span className="runs__label">
+            Driver pay per mile ($/mi)
+          </span>
+          <input
+            className="runs__input"
+            type="number"
+            min="0"
+            max="5"
+            step="0.05"
+            disabled={!permissions.canEditTargets}
+            value={ui.driverPayPerMile || ''}
+            onChange={(event) =>
+              dispatch(
+                updateCarrierTargets({
+                  driverPayPerMile: readNumber(event.target.value),
+                }),
+              )
+            }
+          />
+        </label>
       </section>
 
       <section className="runs__block" aria-label="Demo controls">

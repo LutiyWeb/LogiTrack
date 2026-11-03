@@ -19,6 +19,8 @@ export type UiState = {
   dispatcherName: string;
   targetRatePerMile: number;
   maxEmptyPercent: number;
+  fuelCostPerMile: number;
+  driverPayPerMile: number;
 };
 
 export function createInitialUiState(): UiState {
@@ -29,6 +31,8 @@ export function createInitialUiState(): UiState {
     dispatcherName: 'Alex Mercer',
     targetRatePerMile: 3.0,
     maxEmptyPercent: 20,
+    fuelCostPerMile: 0.62,
+    driverPayPerMile: 0.65,
   };
 }
 
@@ -51,6 +55,8 @@ const uiSlice = createSlice({
         targetRatePerMile?: number;
         maxEmptyPercent?: number;
         dispatcherName?: string;
+        fuelCostPerMile?: number;
+        driverPayPerMile?: number;
       }>,
     ) {
       Object.assign(state, action.payload);

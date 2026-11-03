@@ -10,6 +10,7 @@ export type DemoUser = {
   role: UserRole;
   roleTitle: string;
   summary: string;
+  assignedRunId?: string;
 };
 
 export type RolePermissions = {
@@ -50,6 +51,7 @@ export const demoUsers: DemoUser[] = [
     roleTitle: 'Driver · Truck 214',
     summary:
       'Driver access: view assigned runs and update load delivery status only.',
+    assignedRunId: '214',
   },
 ];
 

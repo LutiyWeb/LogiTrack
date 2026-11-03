@@ -22,6 +22,8 @@ export type EnrichedRun = {
   emptyMiles: number | null;
   totalMiles: number | null;
   revenue: number;
+  operatingCost: number | null;
+  netProfit: number | null;
   dollarsPerMile: number | null;
   deadheadPercent: number | null;
   lane: string;
@@ -31,6 +33,8 @@ export type EnrichedRun = {
 
 export type FleetKpiSummary = {
   totalRevenue: number;
+  totalOperatingCost: number;
+  totalNetProfit: number;
   totalPaidMiles: number;
   totalEmptyMiles: number;
   totalMiles: number;
@@ -49,6 +53,9 @@ const selectStatusFilter = (state: RootState) => state.ui.statusFilter;
 const selectMaxEmptyPercent = (state: RootState) => state.ui.maxEmptyPercent;
 const selectTargetRatePerMile = (state: RootState) =>
   state.ui.targetRatePerMile;
+const selectFuelCostPerMile = (state: RootState) => state.ui.fuelCostPerMile;
+const selectDriverPayPerMile = (state: RootState) => state.ui.driverPayPerMile;
+const selectCurrentUser = (state: RootState) => state.auth.currentUser;
 
 export const selectEnrichedRuns = createSelector(
   [
@@ -56,20 +63,30 @@ export const selectEnrichedRuns = createSelector(
     selectManualMiles,
     selectMaxEmptyPercent,
     selectTargetRatePerMile,
+    selectFuelCostPerMile,
+    selectDriverPayPerMile,
   ],
   (
     runs,
     manualMiles,
     maxEmptyPercent,
     targetRatePerMile,
-  ): EnrichedRun[] =>
-    runs.map((run) => {
+    fuelCostPerMile,
+    driverPayPerMile,
+  ): EnrichedRun[] => {
+    const costPerMile = fuelCostPerMile + driverPayPerMile;
+
+    return runs.map((run) => {
       const legs = runLegs(run, manualMiles);
       const timeline = routeTimeline(run, manualMiles);
       const paid = paidMiles(run);
       const empty = emptyMilesTotal(legs);
       const total = empty === null ? null : paid + empty;
       const earned = revenue(run);
+      const operatingCost =
+        total === null ? null : Math.round(total * costPerMile);
+      const netProfit =
+        operatingCost === null ? null : earned - operatingCost;
       const perMile = dollarsPerMile(run, legs);
       const deadheadPercent =
         empty !== null && total !== null && total > 0
@@ -90,20 +107,29 @@ export const selectEnrichedRuns = createSelector(
         emptyMiles: empty,
         totalMiles: total,
         revenue: earned,
+        operatingCost,
+        netProfit,
         dollarsPerMile: perMile,
         deadheadPercent,
         lane: lane(run),
         yard: placeName(run.yardCity, run.yardState),
         needsBackhaul,
       };
-    }),
+    });
+  },
 );
 
 export const selectFilteredRuns = createSelector(
-  [selectEnrichedRuns, selectStatusFilter],
-  (enrichedRuns, filter) => {
-    if (filter === 'All') return enrichedRuns;
-    return enrichedRuns.filter((item) => item.run.status === filter);
+  [selectEnrichedRuns, selectStatusFilter, selectCurrentUser],
+  (enrichedRuns, filter, currentUser) => {
+    const scopedRuns = currentUser?.assignedRunId
+      ? enrichedRuns.filter(
+          (item) => item.run.id === currentUser.assignedRunId,
+        )
+      : enrichedRuns;
+
+    if (filter === 'All') return scopedRuns;
+    return scopedRuns.filter((item) => item.run.status === filter);
   },
 );
 
@@ -120,6 +146,11 @@ export const selectFleetKpis = createSelector(
       (sum, item) => sum + item.revenue,
       0,
     );
+    const totalOperatingCost = enrichedRuns.reduce(
+      (sum, item) => sum + (item.operatingCost ?? 0),
+      0,
+    );
+    const totalNetProfit = totalRevenue - totalOperatingCost;
     const totalPaidMiles = enrichedRuns.reduce(
       (sum, item) => sum + item.paidMiles,
       0,
@@ -150,6 +181,8 @@ export const selectFleetKpis = createSelector(
 
     return {
       totalRevenue,
+      totalOperatingCost,
+      totalNetProfit,
       totalPaidMiles,
       totalEmptyMiles,
       totalMiles,
