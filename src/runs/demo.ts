@@ -48,9 +48,6 @@ export type RouteStep = {
   label: string;
   customer?: string;
   rate?: number;
-  status?: LoadStatus;
-  legKey?: string;
-  isKnownEmpty?: boolean;
 };
 
 export type LoadDraft = {
@@ -509,8 +506,6 @@ export function routeTimeline(
         to: beforeLeg.to,
         miles: beforeLeg.miles,
         label: index === 0 ? 'Deadhead from yard' : 'Repositioning empty leg',
-        legKey: emptyLegKey(beforeLeg.from, beforeLeg.to),
-        isKnownEmpty: isKnownEmptyLeg(beforeLeg.from, beforeLeg.to),
       });
     }
 
@@ -523,7 +518,6 @@ export function routeTimeline(
       label: load.commodity || 'Loaded freight leg',
       customer: load.customer,
       rate: load.rate,
-      status: load.status,
     });
   });
 
@@ -536,8 +530,6 @@ export function routeTimeline(
       to: returnLeg.to,
       miles: returnLeg.miles,
       label: 'Return to home yard',
-      legKey: emptyLegKey(returnLeg.from, returnLeg.to),
-      isKnownEmpty: isKnownEmptyLeg(returnLeg.from, returnLeg.to),
     });
   }
 

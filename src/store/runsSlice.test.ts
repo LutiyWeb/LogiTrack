@@ -6,7 +6,7 @@ import {
   selectOpenRun,
 } from './selectors/runsSelectors';
 import {
-  addLoadFromDraft,
+  addLoad,
   applyPresetToDraft,
   openRun,
   removeLoad,
@@ -36,14 +36,14 @@ describe('Redux store (runsSlice, uiSlice, and selectors)', () => {
     const store = createAppStore();
 
     store.dispatch(openRun('214'));
-    expect(selectOpenRun(store.getState())?.truck).toBe('Truck 214');
+    expect(selectOpenRun(store.getState())?.run.truck).toBe('Truck 214');
 
     store.dispatch(applyPresetToDraft(backhaulPreset));
     expect(store.getState().runs.draft.customer).toBe('Blue Ridge Logistics');
 
-    store.dispatch(addLoadFromDraft('214'));
+    store.dispatch(addLoad('214'));
     const updatedRun = selectOpenRun(store.getState())!;
-    expect(updatedRun.loads).toHaveLength(2);
+    expect(updatedRun.run.loads).toHaveLength(2);
     expect(store.getState().runs.draft.customer).toBe('');
 
     const enriched214 = selectEnrichedRuns(store.getState()).find(
@@ -56,8 +56,7 @@ describe('Redux store (runsSlice, uiSlice, and selectors)', () => {
 
   it('updates run status, load status, manual miles, and removes a load', () => {
     const store = createAppStore();
-    store.dispatch(applyPresetToDraft(backhaulPreset));
-    store.dispatch(addLoadFromDraft('214'));
+    store.dispatch(addLoad({ runId: '214', draft: backhaulPreset }));
 
     const run214 = store.getState().runs.runs.find((r) => r.id === '214')!;
     const addedLoadId = run214.loads[1].id;
@@ -91,11 +90,13 @@ describe('Redux store (runsSlice, uiSlice, and selectors)', () => {
     ).toHaveLength(1);
   });
 
-  it('switches UI tabs, filters, and resets all demo state cleanly', () => {
+  it('switches UI tabs, clears draft on run change, and resets all demo state cleanly', () => {
     const store = createAppStore();
     store.dispatch(setActiveSection('overview'));
     store.dispatch(setStatusFilter('Completed'));
+    store.dispatch(applyPresetToDraft(backhaulPreset));
     store.dispatch(openRun('214'));
+    expect(store.getState().runs.draft.customer).toBe('');
 
     resetAllDemoData(store.dispatch);
 
