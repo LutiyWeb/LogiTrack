@@ -6,8 +6,10 @@ import {
   paidMiles,
   placeName,
   revenue,
+  routeTimeline,
   runLegs,
   type Leg,
+  type RouteStep,
   type Run,
 } from '../../runs/demo';
 import type { RootState } from '../store';
@@ -15,6 +17,7 @@ import type { RootState } from '../store';
 export type EnrichedRun = {
   run: Run;
   legs: Leg[];
+  timeline: RouteStep[];
   paidMiles: number;
   emptyMiles: number | null;
   totalMiles: number | null;
@@ -62,6 +65,7 @@ export const selectEnrichedRuns = createSelector(
   ): EnrichedRun[] =>
     runs.map((run) => {
       const legs = runLegs(run, manualMiles);
+      const timeline = routeTimeline(run, manualMiles);
       const paid = paidMiles(run);
       const empty = emptyMilesTotal(legs);
       const total = empty === null ? null : paid + empty;
@@ -81,6 +85,7 @@ export const selectEnrichedRuns = createSelector(
       return {
         run,
         legs,
+        timeline,
         paidMiles: paid,
         emptyMiles: empty,
         totalMiles: total,
@@ -103,8 +108,9 @@ export const selectFilteredRuns = createSelector(
 );
 
 export const selectOpenRun = createSelector(
-  [selectRunsList, selectOpenRunId],
-  (runs, openRunId) => runs.find((run) => run.id === openRunId) ?? null,
+  [selectEnrichedRuns, selectOpenRunId],
+  (enrichedRuns, openRunId) =>
+    enrichedRuns.find((item) => item.run.id === openRunId) ?? null,
 );
 
 export const selectFleetKpis = createSelector(

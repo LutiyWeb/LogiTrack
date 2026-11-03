@@ -1,22 +1,16 @@
-import {
-  formatHours,
-  formatMiles,
-  formatMoney,
-} from '../../runs/demo';
+import { formatHours, formatMiles, formatMoney } from '../../runs/demo';
 import { useAppDispatch, useAppSelector } from '../../store/hooks';
 import {
   selectEnrichedRuns,
   selectFleetKpis,
 } from '../../store/selectors/runsSelectors';
 import { openRun } from '../../store/slices/runsSlice';
-import { setActiveSection } from '../../store/slices/uiSlice';
+import { carrierProfile, setActiveSection } from '../../store/slices/uiSlice';
 
 function Overview() {
   const dispatch = useAppDispatch();
   const kpis = useAppSelector(selectFleetKpis);
   const enrichedRuns = useAppSelector(selectEnrichedRuns);
-  const carrierName = useAppSelector((state) => state.ui.carrierName);
-  const homeYard = useAppSelector((state) => state.ui.homeYard);
   const targetRate = useAppSelector((state) => state.ui.targetRatePerMile);
   const maxEmptyPercent = useAppSelector((state) => state.ui.maxEmptyPercent);
 
@@ -31,8 +25,8 @@ function Overview() {
         <div>
           <h1 className="workspace__title">Overview</h1>
           <p className="runs__meta">
-            {carrierName} · Home yard {homeYard} · {kpis.totalLoadsCount} total
-            loads
+            {carrierProfile.carrierName} · Home yard {carrierProfile.homeYard} ·{' '}
+            {kpis.totalLoadsCount} total loads
           </p>
         </div>
       </header>

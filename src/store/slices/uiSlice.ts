@@ -4,16 +4,19 @@ import type { RunStatus } from '../../runs/demo';
 
 export type StatusFilter = 'All' | RunStatus;
 
+export const carrierProfile = {
+  dispatcherRole: 'Senior Fleet Dispatcher',
+  carrierName: 'LogiTrack Freight LLC',
+  mcNumber: 'MC-849201',
+  dotNumber: 'USDOT 3194820',
+  homeYard: 'Indianapolis, IN',
+} as const;
+
 export type UiState = {
   activeSectionId: MenuItem['id'];
   isSidebarOpen: boolean;
   statusFilter: StatusFilter;
   dispatcherName: string;
-  dispatcherRole: string;
-  carrierName: string;
-  mcNumber: string;
-  dotNumber: string;
-  homeYard: string;
   targetRatePerMile: number;
   maxEmptyPercent: number;
 };
@@ -24,21 +27,14 @@ export function createInitialUiState(): UiState {
     isSidebarOpen: true,
     statusFilter: 'All',
     dispatcherName: 'Alex Mercer',
-    dispatcherRole: 'Senior Fleet Dispatcher',
-    carrierName: 'LogiTrack Freight LLC',
-    mcNumber: 'MC-849201',
-    dotNumber: 'USDOT 3194820',
-    homeYard: 'Indianapolis, IN',
     targetRatePerMile: 3.0,
     maxEmptyPercent: 20,
   };
 }
 
-const initialState: UiState = createInitialUiState();
-
 const uiSlice = createSlice({
   name: 'ui',
-  initialState,
+  initialState: createInitialUiState(),
   reducers: {
     setActiveSection(state, action: PayloadAction<MenuItem['id']>) {
       state.activeSectionId = action.payload;
@@ -57,15 +53,7 @@ const uiSlice = createSlice({
         dispatcherName?: string;
       }>,
     ) {
-      if (action.payload.targetRatePerMile !== undefined) {
-        state.targetRatePerMile = action.payload.targetRatePerMile;
-      }
-      if (action.payload.maxEmptyPercent !== undefined) {
-        state.maxEmptyPercent = action.payload.maxEmptyPercent;
-      }
-      if (action.payload.dispatcherName !== undefined) {
-        state.dispatcherName = action.payload.dispatcherName;
-      }
+      Object.assign(state, action.payload);
     },
     resetUiState() {
       return createInitialUiState();

@@ -26,42 +26,37 @@ export function createInitialRunsState(): RunsState {
   };
 }
 
-const initialState: RunsState = createInitialRunsState();
-
 const runsSlice = createSlice({
   name: 'runs',
-  initialState,
+  initialState: createInitialRunsState(),
   reducers: {
     openRun(state, action: PayloadAction<string | null>) {
       state.openRunId = action.payload;
-    },
-    setDraft(state, action: PayloadAction<LoadDraft>) {
-      state.draft = action.payload;
+      state.draft = { ...emptyDraft };
     },
     patchDraft(state, action: PayloadAction<Partial<LoadDraft>>) {
       state.draft = { ...state.draft, ...action.payload };
     },
     applyPresetToDraft(state, action: PayloadAction<LoadDraft | undefined>) {
-      const preset = action.payload ?? backhaulPreset;
-      state.draft = { ...emptyDraft, ...preset };
+      state.draft = { ...emptyDraft, ...(action.payload ?? backhaulPreset) };
     },
-    addLoadFromDraft(state, action: PayloadAction<string>) {
-      const run = state.runs.find((item) => item.id === action.payload);
-      if (!run) return;
-
-      const load = draftToLoad(state.draft, crypto.randomUUID());
-      run.loads.push(load);
-      state.draft = { ...emptyDraft };
-    },
-    addLoadDirect(
+    addLoad(
       state,
-      action: PayloadAction<{ runId: string; draft: LoadDraft }>,
+      action: PayloadAction<string | { runId: string; draft?: LoadDraft }>,
     ) {
-      const run = state.runs.find((item) => item.id === action.payload.runId);
+      const runId =
+        typeof action.payload === 'string'
+          ? action.payload
+          : action.payload.runId;
+      const sourceDraft =
+        typeof action.payload === 'string'
+          ? state.draft
+          : (action.payload.draft ?? state.draft);
+
+      const run = state.runs.find((item) => item.id === runId);
       if (!run) return;
 
-      const load = draftToLoad(action.payload.draft, crypto.randomUUID());
-      run.loads.push(load);
+      run.loads.push(draftToLoad(sourceDraft, crypto.randomUUID()));
       state.draft = { ...emptyDraft };
     },
     updateLoadStatus(
@@ -114,16 +109,16 @@ const runsSlice = createSlice({
 
 export const {
   openRun,
-  setDraft,
   patchDraft,
   applyPresetToDraft,
-  addLoadFromDraft,
-  addLoadDirect,
+  addLoad,
   updateLoadStatus,
   removeLoad,
   updateRunStatus,
   setManualMiles,
   resetRunsState,
 } = runsSlice.actions;
+
+export const addLoadFromDraft = addLoad;
 
 export default runsSlice.reducer;

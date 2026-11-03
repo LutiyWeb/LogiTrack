@@ -1,6 +1,9 @@
-import { formatMoney } from '../../runs/demo';
+import { formatMoney, readNumber } from '../../runs/demo';
 import { useAppDispatch, useAppSelector } from '../../store/hooks';
-import { updateCarrierTargets } from '../../store/slices/uiSlice';
+import {
+  carrierProfile,
+  updateCarrierTargets,
+} from '../../store/slices/uiSlice';
 import { resetAllDemoData } from '../../store/store';
 
 function Account() {
@@ -23,23 +26,23 @@ function Account() {
         <div className="runs__stats">
           <div className="runs__stat runs__stat--blue">
             <dt>Carrier</dt>
-            <dd className="runs__stat-text">{ui.carrierName}</dd>
-            <span className="runs__meta">{ui.mcNumber}</span>
+            <dd className="runs__stat-text">{carrierProfile.carrierName}</dd>
+            <span className="runs__meta">{carrierProfile.mcNumber}</span>
           </div>
           <div className="runs__stat runs__stat--slate">
             <dt>DOT authority</dt>
-            <dd className="runs__stat-text">{ui.dotNumber}</dd>
+            <dd className="runs__stat-text">{carrierProfile.dotNumber}</dd>
             <span className="runs__meta">Active interstate carrier</span>
           </div>
           <div className="runs__stat runs__stat--blue">
             <dt>Home terminal</dt>
-            <dd className="runs__stat-text">{ui.homeYard}</dd>
+            <dd className="runs__stat-text">{carrierProfile.homeYard}</dd>
             <span className="runs__meta">Midwest dispatch region</span>
           </div>
           <div className="runs__stat runs__stat--slate">
             <dt>Dispatcher on duty</dt>
             <dd className="runs__stat-text">{ui.dispatcherName}</dd>
-            <span className="runs__meta">{ui.dispatcherRole}</span>
+            <span className="runs__meta">{carrierProfile.dispatcherRole}</span>
           </div>
         </div>
       </section>
@@ -71,16 +74,17 @@ function Account() {
           <input
             className="runs__input"
             type="number"
-            min="1"
+            min="0"
             max="10"
             step="0.25"
-            value={ui.targetRatePerMile}
-            onChange={(event) => {
-              const next = Number(event.target.value);
-              if (Number.isFinite(next) && next > 0) {
-                dispatch(updateCarrierTargets({ targetRatePerMile: next }));
-              }
-            }}
+            value={ui.targetRatePerMile || ''}
+            onChange={(event) =>
+              dispatch(
+                updateCarrierTargets({
+                  targetRatePerMile: readNumber(event.target.value),
+                }),
+              )
+            }
           />
         </label>
         <label className="runs__field">
@@ -90,16 +94,17 @@ function Account() {
           <input
             className="runs__input"
             type="number"
-            min="5"
+            min="0"
             max="80"
             step="5"
-            value={ui.maxEmptyPercent}
-            onChange={(event) => {
-              const next = Number(event.target.value);
-              if (Number.isFinite(next) && next >= 0) {
-                dispatch(updateCarrierTargets({ maxEmptyPercent: next }));
-              }
-            }}
+            value={ui.maxEmptyPercent || ''}
+            onChange={(event) =>
+              dispatch(
+                updateCarrierTargets({
+                  maxEmptyPercent: readNumber(event.target.value),
+                }),
+              )
+            }
           />
         </label>
       </section>
