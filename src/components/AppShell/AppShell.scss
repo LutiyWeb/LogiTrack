@@ -20,6 +20,7 @@
   font-family: var(--font-family);
   color: var(--color-text);
   background: var(--color-bg);
+  transition: grid-template-columns var(--transition-base);
 
   &.is-collapsed {
     grid-template-columns: 72px minmax(0, 1fr);
@@ -33,6 +34,7 @@
   min-width: 0;
   padding: 20px 16px;
   background: var(--color-surface);
+  transition: padding var(--transition-base);
 
   &.is-collapsed {
     align-items: center;
@@ -114,9 +116,17 @@
     margin-left: auto;
     color: var(--color-text);
     border-radius: var(--radius-m);
+    transition:
+      color var(--transition-fast),
+      background-color var(--transition-fast),
+      transform var(--transition-fast);
 
     &:hover {
       background: var(--color-hover);
+    }
+
+    &:active {
+      transform: scale(0.95);
     }
 
     &:focus-visible {
@@ -145,9 +155,17 @@
     text-align: left;
     color: var(--color-text);
     border-radius: var(--radius-m);
+    transition:
+      color var(--transition-fast),
+      background-color var(--transition-fast),
+      transform var(--transition-fast);
 
     &:hover {
       background: var(--color-hover);
+    }
+
+    &:active {
+      transform: translateY(1px);
     }
 
     &:focus-visible {
@@ -169,6 +187,7 @@
         background: var(--color-text);
         border-radius: 0 4px 4px 0;
         transform: translateY(-50%);
+        transition: height var(--transition-fast);
       }
     }
   }

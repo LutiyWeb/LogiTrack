@@ -15,4 +15,7 @@
   --font-family: Inter, system-ui, sans-serif;
   --font-size-s: 14px;
   --font-size-l: 24px;
+
+  --transition-fast: 160ms ease;
+  --transition-base: 220ms cubic-bezier(0.22, 1, 0.36, 1);
 }
