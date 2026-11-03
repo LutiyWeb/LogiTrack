@@ -1,4 +1,6 @@
 import type { MenuItem } from '../../navigation';
+import Account from './Account';
+import Overview from './Overview';
 import Runs from './Runs';
 
 type WorkspaceProps = {
@@ -9,11 +11,9 @@ type WorkspaceProps = {
 function Workspace({ sectionId, title }: WorkspaceProps) {
   return (
     <section className="workspace" aria-label={title}>
-      {sectionId === 'board' ? (
-        <Runs />
-      ) : (
-        <h1 className="workspace__title">{title}</h1>
-      )}
+      {sectionId === 'board' && <Runs />}
+      {sectionId === 'overview' && <Overview />}
+      {sectionId === 'account' && <Account />}
     </section>
   );
 }

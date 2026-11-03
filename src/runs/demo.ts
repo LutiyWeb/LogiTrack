@@ -39,6 +39,48 @@ export type Leg = {
   miles: number | null;
 };
 
+export type RouteStep = {
+  id: string;
+  kind: 'empty' | 'paid';
+  from: string;
+  to: string;
+  miles: number | null;
+  label: string;
+  customer?: string;
+  rate?: number;
+  status?: LoadStatus;
+  legKey?: string;
+  isKnownEmpty?: boolean;
+};
+
+export type LoadDraft = {
+  customer: string;
+  rate: string;
+  pickupPlace: string;
+  pickupCity: string;
+  pickupState: string;
+  pickupAt: string;
+  deliveryPlace: string;
+  deliveryCity: string;
+  deliveryState: string;
+  deliveryAt: string;
+  miles: string;
+  driveHours: string;
+  bol: string;
+  commodity: string;
+  status: LoadStatus;
+};
+
+export type BackhaulOffer = {
+  id: string;
+  tag: string;
+  tone: 'recommended' | 'warning' | 'muted';
+  summary: string;
+  draft: LoadDraft;
+};
+
+export const runStatuses: RunStatus[] = ['Planned', 'In transit', 'Completed'];
+
 export const loadStatuses: LoadStatus[] = [
   'Assigned',
   'At pickup',
@@ -46,7 +88,25 @@ export const loadStatuses: LoadStatus[] = [
   'Delivered',
 ];
 
-export const backhaulPreset = {
+export const emptyDraft: LoadDraft = {
+  customer: '',
+  rate: '',
+  pickupPlace: '',
+  pickupCity: '',
+  pickupState: '',
+  pickupAt: '',
+  deliveryPlace: '',
+  deliveryCity: '',
+  deliveryState: '',
+  deliveryAt: '',
+  miles: '',
+  driveHours: '',
+  bol: '',
+  commodity: '',
+  status: 'Assigned',
+};
+
+export const backhaulPreset: LoadDraft = {
   customer: 'Blue Ridge Logistics',
   rate: '2100',
   pickupPlace: 'Piedmont Yard',
@@ -61,14 +121,82 @@ export const backhaulPreset = {
   driveHours: '9',
   bol: '90214',
   commodity: 'Packaged beverages',
-  status: 'Assigned' as LoadStatus,
+  status: 'Assigned',
 };
+
+export const backhaulOffers: BackhaulOffer[] = [
+  {
+    id: 'blue-ridge',
+    tag: 'Best backhaul match',
+    tone: 'recommended',
+    summary:
+      '20 mi deadhead from Atlanta, delivers 15 mi from Indianapolis yard. Morning pickup waits for 10 h reset.',
+    draft: backhaulPreset,
+  },
+  {
+    id: 'southern-express',
+    tag: 'HOS conflict · Urgent pickup',
+    tone: 'warning',
+    summary:
+      'Pickup today at 5:00 PM does not wait for required 10 h off-duty reset after 3.5 h remaining shift.',
+    draft: {
+      customer: 'Southern Express Brokerage',
+      rate: '1950',
+      pickupPlace: 'Southgate Cold Storage',
+      pickupCity: 'Forest Park',
+      pickupState: 'GA',
+      pickupAt: '2026-10-28T17:00',
+      deliveryPlace: 'Riverport Hub',
+      deliveryCity: 'Louisville',
+      deliveryState: 'KY',
+      deliveryAt: '2026-10-29T06:00',
+      miles: '420',
+      driveHours: '7.5',
+      bol: '77410',
+      commodity: 'Refrigerated produce',
+      status: 'Assigned',
+    },
+  },
+  {
+    id: 'delta-freight',
+    tag: 'High deadhead · Low $/mi',
+    tone: 'muted',
+    summary:
+      '85 mi empty south to Macon plus 170 mi empty return from Effingham keeps total $/mi low.',
+    draft: {
+      customer: 'Delta Freight Partners',
+      rate: '1250',
+      pickupPlace: 'Central Georgia Mill',
+      pickupCity: 'Macon',
+      pickupState: 'GA',
+      pickupAt: '2026-10-29T09:00',
+      deliveryPlace: 'Crossroads Terminal',
+      deliveryCity: 'Effingham',
+      deliveryState: 'IL',
+      deliveryAt: '2026-10-29T20:00',
+      miles: '560',
+      driveHours: '10',
+      bol: '61309',
+      commodity: 'Paper rolls',
+      status: 'Assigned',
+    },
+  },
+];
 
 const emptyMiles: Record<string, number> = {
   'Indianapolis, IN|Joliet, IL': 180,
   'Atlanta, GA|Indianapolis, IN': 530,
   'Atlanta, GA|Marietta, GA': 20,
   'Greenwood, IN|Indianapolis, IN': 15,
+  'Atlanta, GA|Forest Park, GA': 12,
+  'Louisville, KY|Indianapolis, IN': 115,
+  'Atlanta, GA|Macon, GA': 85,
+  'Effingham, IL|Indianapolis, IN': 170,
+  'Indianapolis, IN|Fort Wayne, IN': 125,
+  'Columbus, OH|Indianapolis, IN': 175,
+  'Indianapolis, IN|Louisville, KY': 115,
+  'Indianapolis, IN|Cincinnati, OH': 110,
+  'Nashville, TN|Bowling Green, KY': 65,
 };
 
 const demoNow = new Date('2026-10-28T15:00:00');
@@ -114,18 +242,28 @@ export const runs: Run[] = [
     yardCity: 'Indianapolis',
     yardState: 'IN',
     status: 'Planned',
-    drivingHoursLeft: null,
+    drivingHoursLeft: 8.0,
     loads: [
       {
         id: '118-load',
-        customer: '',
-        rate: 0,
-        pickup: { place: '', city: 'Fort Wayne', state: 'IN', at: '' },
-        delivery: { place: '', city: 'Columbus', state: 'OH', at: '' },
-        miles: 0,
-        driveHours: 0,
-        bol: '',
-        commodity: '',
+        customer: 'Midwest Steel Co.',
+        rate: 1450,
+        pickup: {
+          place: 'Northside Foundry',
+          city: 'Fort Wayne',
+          state: 'IN',
+          at: '2026-10-29T07:30',
+        },
+        delivery: {
+          place: 'Buckeye Stamping Plant',
+          city: 'Columbus',
+          state: 'OH',
+          at: '2026-10-29T12:30',
+        },
+        miles: 160,
+        driveHours: 3.5,
+        bol: '31904',
+        commodity: 'Steel coils',
         status: 'Assigned',
       },
     ],
@@ -137,19 +275,84 @@ export const runs: Run[] = [
     yardCity: 'Indianapolis',
     yardState: 'IN',
     status: 'Completed',
-    drivingHoursLeft: null,
+    drivingHoursLeft: 6.0,
     loads: [
       {
         id: '107-load',
-        customer: '',
-        rate: 0,
-        pickup: { place: '', city: 'Louisville', state: 'KY', at: '' },
-        delivery: { place: '', city: 'Indianapolis', state: 'IN', at: '' },
-        miles: 0,
-        driveHours: 0,
-        bol: '',
-        commodity: '',
+        customer: 'Bluegrass Retail',
+        rate: 950,
+        pickup: {
+          place: 'Derby Fulfillment Center',
+          city: 'Louisville',
+          state: 'KY',
+          at: '2026-10-26T09:00',
+        },
+        delivery: {
+          place: 'Circle City Depot',
+          city: 'Indianapolis',
+          state: 'IN',
+          at: '2026-10-26T13:00',
+        },
+        miles: 115,
+        driveHours: 2.5,
+        bol: '18452',
+        commodity: 'Consumer electronics',
         status: 'Delivered',
+      },
+    ],
+  },
+  {
+    id: '305',
+    truck: 'Truck 305',
+    driver: 'Elena Rostova',
+    yardCity: 'Indianapolis',
+    yardState: 'IN',
+    status: 'In transit',
+    drivingHoursLeft: 5.5,
+    loads: [
+      {
+        id: '305-load-1',
+        customer: 'Apex Industrial',
+        rate: 1650,
+        pickup: {
+          place: 'Queen City Logistics Park',
+          city: 'Cincinnati',
+          state: 'OH',
+          at: '2026-10-27T10:00',
+        },
+        delivery: {
+          place: 'Cumberland Freight Yard',
+          city: 'Nashville',
+          state: 'TN',
+          at: '2026-10-27T17:00',
+        },
+        miles: 290,
+        driveHours: 5,
+        bol: '55120',
+        commodity: 'HVAC equipment',
+        status: 'Delivered',
+      },
+      {
+        id: '305-load-2',
+        customer: 'Heartland Foods',
+        rate: 1400,
+        pickup: {
+          place: 'Valley Packaging',
+          city: 'Bowling Green',
+          state: 'KY',
+          at: '2026-10-28T09:00',
+        },
+        delivery: {
+          place: 'Crossroads Cold Hub',
+          city: 'Indianapolis',
+          state: 'IN',
+          at: '2026-10-28T15:30',
+        },
+        miles: 225,
+        driveHours: 4,
+        bol: '55892',
+        commodity: 'Dry grocery goods',
+        status: 'In transit',
       },
     ],
   },
@@ -242,6 +445,108 @@ export function shiftNote(run: Run, load: Load) {
     : 'The pickup does not wait, so this load drops off.';
 
   return `This leg is ${formatHours(load.driveHours)}. ${formatHours(run.drivingHoursLeft)} left in this shift. He drives the remaining hours, then needs 10 h off before hours start again. A 30-minute break does not restore hours. ${waitLine}`;
+}
+
+export function draftToLoad(draft: LoadDraft, id = 'preview'): Load {
+  return {
+    id,
+    customer: draft.customer.trim(),
+    rate: readNumber(draft.rate),
+    pickup: {
+      place: draft.pickupPlace.trim(),
+      city: draft.pickupCity.trim(),
+      state: draft.pickupState.trim().toUpperCase(),
+      at: draft.pickupAt,
+    },
+    delivery: {
+      place: draft.deliveryPlace.trim(),
+      city: draft.deliveryCity.trim(),
+      state: draft.deliveryState.trim().toUpperCase(),
+      at: draft.deliveryAt,
+    },
+    miles: readNumber(draft.miles),
+    driveHours: readNumber(draft.driveHours),
+    bol: draft.bol.trim(),
+    commodity: draft.commodity.trim(),
+    status: draft.status,
+  };
+}
+
+export function previewOfferMetrics(
+  run: Run,
+  offer: BackhaulOffer,
+  manual: Record<string, number>,
+) {
+  const candidateLoad = draftToLoad(offer.draft, offer.id);
+  const simulatedRun: Run = {
+    ...run,
+    loads: [...run.loads, candidateLoad],
+  };
+  const legs = runLegs(simulatedRun, manual);
+  return {
+    emptyMiles: emptyMilesTotal(legs),
+    perMile: dollarsPerMile(simulatedRun, legs),
+    totalRevenue: revenue(simulatedRun),
+    hosNote: shiftNote(simulatedRun, candidateLoad),
+  };
+}
+
+export function routeTimeline(
+  run: Run,
+  manual: Record<string, number>,
+): RouteStep[] {
+  if (run.loads.length === 0) return [];
+  const legs = runLegs(run, manual);
+  const steps: RouteStep[] = [];
+
+  run.loads.forEach((load, index) => {
+    const beforeLeg = legs[index];
+    if (beforeLeg) {
+      steps.push({
+        id: `empty-${index}-${beforeLeg.from}-${beforeLeg.to}`,
+        kind: 'empty',
+        from: beforeLeg.from,
+        to: beforeLeg.to,
+        miles: beforeLeg.miles,
+        label: index === 0 ? 'Deadhead from yard' : 'Repositioning empty leg',
+        legKey: emptyLegKey(beforeLeg.from, beforeLeg.to),
+        isKnownEmpty: isKnownEmptyLeg(beforeLeg.from, beforeLeg.to),
+      });
+    }
+
+    steps.push({
+      id: `paid-${load.id}`,
+      kind: 'paid',
+      from: stopName(load.pickup),
+      to: stopName(load.delivery),
+      miles: load.miles,
+      label: load.commodity || 'Loaded freight leg',
+      customer: load.customer,
+      rate: load.rate,
+      status: load.status,
+    });
+  });
+
+  const returnLeg = legs[legs.length - 1];
+  if (returnLeg) {
+    steps.push({
+      id: `empty-return-${returnLeg.from}-${returnLeg.to}`,
+      kind: 'empty',
+      from: returnLeg.from,
+      to: returnLeg.to,
+      miles: returnLeg.miles,
+      label: 'Return to home yard',
+      legKey: emptyLegKey(returnLeg.from, returnLeg.to),
+      isKnownEmpty: isKnownEmptyLeg(returnLeg.from, returnLeg.to),
+    });
+  }
+
+  return steps;
+}
+
+export function readNumber(value: string) {
+  const number = Number(value);
+  return Number.isFinite(number) ? number : 0;
 }
 
 export function formatHours(value: number) {

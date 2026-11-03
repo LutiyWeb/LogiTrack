@@ -2,14 +2,52 @@
   display: flex;
   flex-direction: column;
   gap: 16px;
-  max-width: 920px;
+  max-width: 960px;
 
   &__list,
   &__loads,
-  &__legs {
+  &__legs,
+  &__offers,
+  &__timeline {
     display: flex;
     flex-direction: column;
     gap: 8px;
+  }
+
+  &__toolbar,
+  &__toolbar-actions,
+  &__filters,
+  &__row-title,
+  &__heading-controls,
+  &__load-actions {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px;
+  }
+
+  &__toolbar {
+    justify-content: space-between;
+  }
+
+  &__filter {
+    padding: 6px 12px;
+    border: 1px solid var(--color-line);
+    font-size: var(--font-size-s);
+    color: var(--color-text);
+    background: var(--color-surface);
+    border-radius: var(--radius-m);
+
+    &:hover {
+      background: var(--color-hover);
+    }
+
+    &.is-active {
+      border-color: var(--color-text);
+      font-weight: 600;
+      color: var(--color-surface);
+      background: var(--color-text);
+    }
   }
 
   &__row {
@@ -43,13 +81,19 @@
     gap: 8px;
   }
 
-  &__row-main {
+  &__row-main,
+  &__step-main {
+    display: flex;
     flex-direction: column;
+    gap: 4px;
   }
 
-  &__row-side {
+  &__row-side,
+  &__step-side {
+    display: flex;
     flex-direction: column;
     align-items: flex-end;
+    gap: 4px;
     text-align: right;
   }
 
@@ -70,6 +114,26 @@
   &__label {
     font-size: var(--font-size-s);
     line-height: 1.4;
+  }
+
+  &__badge {
+    display: inline-flex;
+    align-items: center;
+    width: fit-content;
+    padding: 2px 8px;
+    font-size: 12px;
+    font-weight: 600;
+    line-height: 1.4;
+    background: var(--color-tint-slate);
+    border-radius: var(--radius-m);
+
+    &--ok {
+      background: var(--color-tint-green);
+    }
+
+    &--warn {
+      background: var(--color-tint-amber);
+    }
   }
 
   &__back {
@@ -98,7 +162,9 @@
 
   &__stat,
   &__load,
-  &__block {
+  &__block,
+  &__offer,
+  &__step {
     padding: 16px;
     background: var(--color-surface);
     border-radius: var(--radius-m);
@@ -119,6 +185,18 @@
       font-weight: 600;
       line-height: 1.2;
     }
+
+    &--blue {
+      background: var(--color-tint-blue);
+    }
+
+    &--slate {
+      background: var(--color-tint-slate);
+    }
+  }
+
+  &__stat-text {
+    font-size: var(--font-size-s) !important;
   }
 
   &__subtitle {
@@ -130,6 +208,45 @@
     display: flex;
     flex-direction: column;
     gap: 12px;
+  }
+
+  &__load,
+  &__offer {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    border: 1px solid var(--color-line);
+  }
+
+  &__offer {
+    &--recommended {
+      background: var(--color-tint-blue);
+    }
+
+    &--warning {
+      background: var(--color-tint-amber);
+    }
+
+    &--muted {
+      background: var(--color-hover);
+    }
+  }
+
+  &__step {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 12px 14px;
+    border: 1px solid var(--color-line);
+
+    &--paid {
+      background: var(--color-tint-blue);
+    }
+
+    &--empty {
+      background: var(--color-hover);
+    }
   }
 
   &__note {
@@ -193,8 +310,22 @@
     }
   }
 
+  select#{&}__input {
+    padding-right: 36px;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1.5 6 6.5 11 1.5' fill='none' stroke='%231c1c1c' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 12px center;
+    background-size: 12px 8px;
+    appearance: none;
+  }
+
   &__input--miles {
     width: 96px;
+  }
+
+  &__input--compact {
+    width: auto;
+    padding: 6px 32px 6px 10px;
   }
 
   &__button {
@@ -223,19 +354,26 @@
     color: var(--color-text);
     background: var(--color-hover);
   }
+
+  &__button--small {
+    padding: 6px 12px;
+  }
 }
 
 @media (max-width: 800px) {
   .runs {
+    &__toolbar,
     &__row,
     &__leg,
+    &__step,
     &__heading,
     &__form-head {
       flex-direction: column;
       align-items: flex-start;
     }
 
-    &__row-side {
+    &__row-side,
+    &__step-side {
       align-items: flex-start;
       text-align: left;
     }

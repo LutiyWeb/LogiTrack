@@ -1,5 +1,6 @@
-import { useState, type ReactNode } from 'react';
+import type { ReactNode } from 'react';
 import {
+  backhaulOffers,
   backhaulPreset,
   dollarsPerMile,
   emptyLegKey,
@@ -9,136 +10,154 @@ import {
   formatMoney,
   formatWhen,
   isKnownEmptyLeg,
-  lane,
+  loadStatuses,
   paidMiles,
   placeName,
+  previewOfferMetrics,
+  readNumber,
   revenue,
+  routeTimeline,
   runLegs,
-  runs as seedRuns,
+  runStatuses,
   shiftNote,
   stopName,
+  type BackhaulOffer,
   type Load,
+  type LoadDraft,
   type LoadStatus,
   type Run,
-  loadStatuses,
+  type RunStatus,
 } from '../../runs/demo';
+import { useAppDispatch, useAppSelector } from '../../store/hooks';
+import {
+  selectFilteredRuns,
+  selectOpenRun,
+  type EnrichedRun,
+} from '../../store/selectors/runsSelectors';
+import {
+  addLoadDirect,
+  addLoadFromDraft,
+  applyPresetToDraft,
+  openRun,
+  patchDraft,
+  removeLoad,
+  setManualMiles,
+  updateLoadStatus,
+  updateRunStatus,
+} from '../../store/slices/runsSlice';
+import {
+  setStatusFilter,
+  type StatusFilter,
+} from '../../store/slices/uiSlice';
+import { resetAllDemoData } from '../../store/store';
 import './Workspace.scss';
 
-type Draft = {
-  customer: string;
-  rate: string;
-  pickupPlace: string;
-  pickupCity: string;
-  pickupState: string;
-  pickupAt: string;
-  deliveryPlace: string;
-  deliveryCity: string;
-  deliveryState: string;
-  deliveryAt: string;
-  miles: string;
-  driveHours: string;
-  bol: string;
-  commodity: string;
-  status: LoadStatus;
-};
-
-const emptyDraft: Draft = {
-  customer: '',
-  rate: '',
-  pickupPlace: '',
-  pickupCity: '',
-  pickupState: '',
-  pickupAt: '',
-  deliveryPlace: '',
-  deliveryCity: '',
-  deliveryState: '',
-  deliveryAt: '',
-  miles: '',
-  driveHours: '',
-  bol: '',
-  commodity: '',
-  status: 'Assigned',
-};
+const filterOptions: StatusFilter[] = [
+  'All',
+  'In transit',
+  'Planned',
+  'Completed',
+];
 
 function Runs() {
-  const [runs, setRuns] = useState<Run[]>(seedRuns);
-  const [openId, setOpenId] = useState<string | null>(null);
-  const [manualMiles, setManualMiles] = useState<Record<string, number>>({});
-  const [draft, setDraft] = useState<Draft>(emptyDraft);
-  const openRun = runs.find((run) => run.id === openId) ?? null;
+  const dispatch = useAppDispatch();
+  const filteredRuns = useAppSelector(selectFilteredRuns);
+  const currentOpenRun = useAppSelector(selectOpenRun);
+  const manualMiles = useAppSelector((state) => state.runs.manualMiles);
+  const draft = useAppSelector((state) => state.runs.draft);
+  const statusFilter = useAppSelector((state) => state.ui.statusFilter);
+  const targetRate = useAppSelector((state) => state.ui.targetRatePerMile);
 
-  function addLoad(runId: string) {
-    const load: Load = {
-      id: crypto.randomUUID(),
-      customer: draft.customer.trim(),
-      rate: readNumber(draft.rate),
-      pickup: {
-        place: draft.pickupPlace.trim(),
-        city: draft.pickupCity.trim(),
-        state: draft.pickupState.trim().toUpperCase(),
-        at: draft.pickupAt,
-      },
-      delivery: {
-        place: draft.deliveryPlace.trim(),
-        city: draft.deliveryCity.trim(),
-        state: draft.deliveryState.trim().toUpperCase(),
-        at: draft.deliveryAt,
-      },
-      miles: readNumber(draft.miles),
-      driveHours: readNumber(draft.driveHours),
-      bol: draft.bol.trim(),
-      commodity: draft.commodity.trim(),
-      status: draft.status,
-    };
-
-    setRuns((current) =>
-      current.map((run) =>
-        run.id === runId ? { ...run, loads: [...run.loads, load] } : run,
-      ),
-    );
-    setDraft(emptyDraft);
-  }
-
-  return openRun ? (
+  return currentOpenRun ? (
     <RunDetail
-      run={openRun}
+      run={currentOpenRun}
       manualMiles={manualMiles}
       draft={draft}
-      onDraft={setDraft}
-      onBack={() => setOpenId(null)}
-      onMiles={(key, miles) =>
-        setManualMiles((current) => {
-          const next = { ...current };
-          if (miles === null) delete next[key];
-          else next[key] = miles;
-          return next;
-        })
+      targetRate={targetRate}
+      onDraftPatch={(partial) => dispatch(patchDraft(partial))}
+      onApplyPreset={(preset) => dispatch(applyPresetToDraft(preset))}
+      onAssignOffer={(offerDraft) =>
+        dispatch(addLoadDirect({ runId: currentOpenRun.id, draft: offerDraft }))
       }
-      onAdd={() => addLoad(openRun.id)}
+      onBack={() => dispatch(openRun(null))}
+      onMiles={(key, miles) => dispatch(setManualMiles({ key, miles }))}
+      onAdd={() => dispatch(addLoadFromDraft(currentOpenRun.id))}
+      onRunStatusChange={(status) =>
+        dispatch(updateRunStatus({ runId: currentOpenRun.id, status }))
+      }
+      onLoadStatusChange={(loadId, status) =>
+        dispatch(
+          updateLoadStatus({ runId: currentOpenRun.id, loadId, status }),
+        )
+      }
+      onRemoveLoad={(loadId) =>
+        dispatch(removeLoad({ runId: currentOpenRun.id, loadId }))
+      }
     />
   ) : (
-    <RunList runs={runs} manualMiles={manualMiles} onOpen={setOpenId} />
+    <RunList
+      runs={filteredRuns}
+      statusFilter={statusFilter}
+      onFilterChange={(filter) => dispatch(setStatusFilter(filter))}
+      onResetDemo={() => resetAllDemoData(dispatch)}
+      onOpen={(id) => dispatch(openRun(id))}
+    />
   );
 }
 
 function RunList({
   runs,
-  manualMiles,
+  statusFilter,
+  onFilterChange,
+  onResetDemo,
   onOpen,
 }: {
-  runs: Run[];
-  manualMiles: Record<string, number>;
+  runs: EnrichedRun[];
+  statusFilter: StatusFilter;
+  onFilterChange: (filter: StatusFilter) => void;
+  onResetDemo: () => void;
   onOpen: (id: string) => void;
 }) {
   return (
     <div className="runs">
-      <h1 className="workspace__title">Runs</h1>
+      <div className="runs__toolbar">
+        <h1 className="workspace__title">Runs</h1>
+        <div className="runs__toolbar-actions">
+          <div className="runs__filters" role="group" aria-label="Filter runs by status">
+            {filterOptions.map((option) => (
+              <button
+                key={option}
+                type="button"
+                className={
+                  statusFilter === option
+                    ? 'runs__filter is-active'
+                    : 'runs__filter'
+                }
+                onClick={() => onFilterChange(option)}
+              >
+                {option}
+              </button>
+            ))}
+          </div>
+          <button
+            type="button"
+            className="runs__button runs__button--ghost"
+            onClick={onResetDemo}
+          >
+            Reset demo
+          </button>
+        </div>
+      </div>
       <ul className="runs__list">
-        {runs.map((run) => {
-          const legs = runLegs(run, manualMiles);
-          const empty = emptyMilesTotal(legs);
-          const perMile = dollarsPerMile(run, legs);
-          const earned = revenue(run);
+        {runs.map((item) => {
+          const {
+            run,
+            emptyMiles: empty,
+            dollarsPerMile: perMile,
+            revenue: earned,
+            deadheadPercent,
+            needsBackhaul,
+          } = item;
 
           return (
             <li key={run.id}>
@@ -148,19 +167,41 @@ function RunList({
                 onClick={() => onOpen(run.id)}
               >
                 <span className="runs__row-main">
-                  <span className="runs__truck">{run.truck}</span>
+                  <span className="runs__row-title">
+                    <span className="runs__truck">{run.truck}</span>
+                    {needsBackhaul && (
+                      <span className="runs__badge runs__badge--warn">
+                        Backhaul needed · {deadheadPercent}% empty
+                      </span>
+                    )}
+                    {!needsBackhaul &&
+                      run.loads.length > 1 &&
+                      run.status !== 'Completed' && (
+                        <span className="runs__badge runs__badge--ok">
+                          Backhaul assigned
+                        </span>
+                      )}
+                  </span>
                   <span className="runs__meta">
                     {run.driver} · {placeName(run.yardCity, run.yardState)}
                   </span>
-                  <span className="runs__meta">{lane(run)}</span>
+                  <span className="runs__meta">{item.lane}</span>
                 </span>
                 <span className="runs__row-side">
                   <span className="runs__status">{run.status}</span>
                   <span className="runs__meta">
-                    {empty === null ? 'Empty miles needed' : `Empty ${formatMiles(empty)}`}
+                    {empty === null
+                      ? 'Empty miles needed'
+                      : `Empty ${formatMiles(empty)}`}
                     {perMile !== null && earned > 0
                       ? ` · ${formatMoney(perMile, 2)} / mi`
                       : ''}
+                  </span>
+                  <span className="runs__meta">
+                    {run.loads.length === 1
+                      ? '1 load'
+                      : `${run.loads.length} loads`}{' '}
+                    · {formatMoney(earned, 0)}
                   </span>
                 </span>
               </button>
@@ -176,22 +217,35 @@ function RunDetail({
   run,
   manualMiles,
   draft,
-  onDraft,
+  targetRate,
+  onDraftPatch,
+  onApplyPreset,
+  onAssignOffer,
   onBack,
   onMiles,
   onAdd,
+  onRunStatusChange,
+  onLoadStatusChange,
+  onRemoveLoad,
 }: {
   run: Run;
   manualMiles: Record<string, number>;
-  draft: Draft;
-  onDraft: (draft: Draft) => void;
+  draft: LoadDraft;
+  targetRate: number;
+  onDraftPatch: (partial: Partial<LoadDraft>) => void;
+  onApplyPreset: (preset?: LoadDraft) => void;
+  onAssignOffer: (draft: LoadDraft) => void;
   onBack: () => void;
   onMiles: (key: string, miles: number | null) => void;
   onAdd: () => void;
+  onRunStatusChange: (status: RunStatus) => void;
+  onLoadStatusChange: (loadId: string, status: LoadStatus) => void;
+  onRemoveLoad: (loadId: string) => void;
 }) {
   const legs = runLegs(run, manualMiles);
   const empty = emptyMilesTotal(legs);
   const perMile = dollarsPerMile(run, legs);
+  const timeline = routeTimeline(run, manualMiles);
   const canAdd =
     draft.customer.trim() !== '' &&
     draft.pickupCity.trim() !== '' &&
@@ -207,18 +261,51 @@ function RunDetail({
       </button>
       <header className="runs__heading">
         <h1 className="workspace__title">{run.truck}</h1>
-        <p className="runs__status">{run.status}</p>
+        <div className="runs__heading-controls">
+          <p className="runs__status">{run.status}</p>
+          <select
+            className="runs__input runs__input--compact"
+            aria-label="Run status"
+            value={run.status}
+            onChange={(event) =>
+              onRunStatusChange(event.target.value as RunStatus)
+            }
+          >
+            {runStatuses.map((status) => (
+              <option key={status} value={status}>
+                {status}
+              </option>
+            ))}
+          </select>
+        </div>
       </header>
       <dl className="runs__stats">
-        <Stat label="Paid miles" value={formatMiles(paidMiles(run))} />
+        <Stat
+          label="Paid miles"
+          value={formatMiles(paidMiles(run))}
+          tone="blue"
+        />
         <Stat
           label="Empty miles"
           value={empty === null ? '—' : formatMiles(empty)}
+          tone="slate"
         />
-        <Stat label="Revenue" value={formatMoney(revenue(run), 0)} />
+        <Stat
+          label="Revenue"
+          value={formatMoney(revenue(run), 0)}
+          tone="blue"
+        />
         <Stat
           label="$ per mile"
           value={perMile === null ? '—' : formatMoney(perMile, 2)}
+          tone="slate"
+          subtext={
+            perMile !== null
+              ? perMile >= targetRate
+                ? `Above ${formatMoney(targetRate, 2)} target`
+                : `Below ${formatMoney(targetRate, 2)} target`
+              : undefined
+          }
         />
       </dl>
       <p className="runs__meta">
@@ -239,7 +326,35 @@ function RunDetail({
                   <p className="runs__truck">
                     {load.customer || 'No customer yet'}
                   </p>
-                  <p className="runs__status">{load.status}</p>
+                  <div className="runs__load-actions">
+                    <p className="runs__status">{load.status}</p>
+                    <select
+                      className="runs__input runs__input--compact"
+                      aria-label={`Status for ${load.customer || load.id}`}
+                      value={load.status}
+                      onChange={(event) =>
+                        onLoadStatusChange(
+                          load.id,
+                          event.target.value as LoadStatus,
+                        )
+                      }
+                    >
+                      {loadStatuses.map((status) => (
+                        <option key={status} value={status}>
+                          {status}
+                        </option>
+                      ))}
+                    </select>
+                    {run.loads.length > 1 && (
+                      <button
+                        type="button"
+                        className="runs__button runs__button--ghost runs__button--small"
+                        onClick={() => onRemoveLoad(load.id)}
+                      >
+                        Remove
+                      </button>
+                    )}
+                  </div>
                 </div>
                 <p className="runs__meta">
                   {load.rate > 0 ? formatMoney(load.rate, 0) : 'Rate not set'}
@@ -299,6 +414,62 @@ function RunDetail({
           })}
         </ul>
       </section>
+      <section className="runs__block" aria-label="Route timeline">
+        <h2 className="runs__subtitle">Route & leg breakdown</h2>
+        <ol className="runs__timeline">
+          {timeline.map((step) => (
+            <li
+              key={step.id}
+              className={`runs__step runs__step--${step.kind}`}
+            >
+              <div className="runs__step-main">
+                <span className="runs__badge">
+                  {step.kind === 'paid' ? 'Paid load' : 'Empty leg'}
+                </span>
+                <span className="runs__truck">
+                  {step.from} → {step.to}
+                </span>
+                <span className="runs__meta">
+                  {step.customer ? `${step.customer} · ` : ''}
+                  {step.label}
+                </span>
+              </div>
+              <div className="runs__step-side">
+                <span className="runs__truck">
+                  {step.miles === null ? '—' : formatMiles(step.miles)}
+                </span>
+                {step.rate !== undefined && (
+                  <span className="runs__meta">{formatMoney(step.rate, 0)}</span>
+                )}
+              </div>
+            </li>
+          ))}
+        </ol>
+      </section>
+      {run.id === '214' && run.loads.length === 1 && (
+        <section className="runs__block" aria-label="Broker load board">
+          <div className="runs__form-head">
+            <h2 className="runs__subtitle">
+              Available backhaul offers near Atlanta, GA
+            </h2>
+            <span className="runs__meta">
+              Compare how each broker load impacts deadhead and $/mile
+            </span>
+          </div>
+          <ul className="runs__offers">
+            {backhaulOffers.map((offer) => (
+              <OfferCard
+                key={offer.id}
+                run={run}
+                offer={offer}
+                manualMiles={manualMiles}
+                onFillForm={() => onApplyPreset(offer.draft)}
+                onAssign={() => onAssignOffer(offer.draft)}
+              />
+            ))}
+          </ul>
+        </section>
+      )}
       <form
         className="runs__form"
         onSubmit={(event) => {
@@ -312,7 +483,7 @@ function RunDetail({
             <button
               className="runs__button runs__button--ghost"
               type="button"
-              onClick={() => onDraft({ ...emptyDraft, ...backhaulPreset })}
+              onClick={() => onApplyPreset(backhaulPreset)}
             >
               Use Blue Ridge Logistics
             </button>
@@ -322,9 +493,7 @@ function RunDetail({
           <input
             className="runs__input"
             value={draft.customer}
-            onChange={(event) =>
-              onDraft({ ...draft, customer: event.target.value })
-            }
+            onChange={(event) => onDraftPatch({ customer: event.target.value })}
           />
         </Field>
         <Field label="Rate, $">
@@ -334,7 +503,7 @@ function RunDetail({
             min="0"
             step="1"
             value={draft.rate}
-            onChange={(event) => onDraft({ ...draft, rate: event.target.value })}
+            onChange={(event) => onDraftPatch({ rate: event.target.value })}
           />
         </Field>
         <Field label="Status">
@@ -342,7 +511,7 @@ function RunDetail({
             className="runs__input"
             value={draft.status}
             onChange={(event) =>
-              onDraft({ ...draft, status: event.target.value as LoadStatus })
+              onDraftPatch({ status: event.target.value as LoadStatus })
             }
           >
             {loadStatuses.map((status) => (
@@ -357,7 +526,7 @@ function RunDetail({
             className="runs__input"
             value={draft.pickupPlace}
             onChange={(event) =>
-              onDraft({ ...draft, pickupPlace: event.target.value })
+              onDraftPatch({ pickupPlace: event.target.value })
             }
           />
         </Field>
@@ -366,7 +535,7 @@ function RunDetail({
             className="runs__input"
             value={draft.pickupCity}
             onChange={(event) =>
-              onDraft({ ...draft, pickupCity: event.target.value })
+              onDraftPatch({ pickupCity: event.target.value })
             }
           />
         </Field>
@@ -376,7 +545,9 @@ function RunDetail({
             maxLength={2}
             value={draft.pickupState}
             onChange={(event) =>
-              onDraft({ ...draft, pickupState: event.target.value.toUpperCase() })
+              onDraftPatch({
+                pickupState: event.target.value.toUpperCase(),
+              })
             }
           />
         </Field>
@@ -385,9 +556,7 @@ function RunDetail({
             className="runs__input"
             type="datetime-local"
             value={draft.pickupAt}
-            onChange={(event) =>
-              onDraft({ ...draft, pickupAt: event.target.value })
-            }
+            onChange={(event) => onDraftPatch({ pickupAt: event.target.value })}
           />
         </Field>
         <Field label="Delivery place">
@@ -395,7 +564,7 @@ function RunDetail({
             className="runs__input"
             value={draft.deliveryPlace}
             onChange={(event) =>
-              onDraft({ ...draft, deliveryPlace: event.target.value })
+              onDraftPatch({ deliveryPlace: event.target.value })
             }
           />
         </Field>
@@ -404,7 +573,7 @@ function RunDetail({
             className="runs__input"
             value={draft.deliveryCity}
             onChange={(event) =>
-              onDraft({ ...draft, deliveryCity: event.target.value })
+              onDraftPatch({ deliveryCity: event.target.value })
             }
           />
         </Field>
@@ -414,8 +583,7 @@ function RunDetail({
             maxLength={2}
             value={draft.deliveryState}
             onChange={(event) =>
-              onDraft({
-                ...draft,
+              onDraftPatch({
                 deliveryState: event.target.value.toUpperCase(),
               })
             }
@@ -427,7 +595,7 @@ function RunDetail({
             type="datetime-local"
             value={draft.deliveryAt}
             onChange={(event) =>
-              onDraft({ ...draft, deliveryAt: event.target.value })
+              onDraftPatch({ deliveryAt: event.target.value })
             }
           />
         </Field>
@@ -438,9 +606,7 @@ function RunDetail({
             min="0"
             step="1"
             value={draft.miles}
-            onChange={(event) =>
-              onDraft({ ...draft, miles: event.target.value })
-            }
+            onChange={(event) => onDraftPatch({ miles: event.target.value })}
           />
         </Field>
         <Field label="Drive time, hours">
@@ -451,7 +617,7 @@ function RunDetail({
             step="0.1"
             value={draft.driveHours}
             onChange={(event) =>
-              onDraft({ ...draft, driveHours: event.target.value })
+              onDraftPatch({ driveHours: event.target.value })
             }
           />
         </Field>
@@ -459,7 +625,7 @@ function RunDetail({
           <input
             className="runs__input"
             value={draft.bol}
-            onChange={(event) => onDraft({ ...draft, bol: event.target.value })}
+            onChange={(event) => onDraftPatch({ bol: event.target.value })}
           />
         </Field>
         <Field label="Commodity">
@@ -467,7 +633,7 @@ function RunDetail({
             className="runs__input"
             value={draft.commodity}
             onChange={(event) =>
-              onDraft({ ...draft, commodity: event.target.value })
+              onDraftPatch({ commodity: event.target.value })
             }
           />
         </Field>
@@ -481,11 +647,98 @@ function RunDetail({
   );
 }
 
-function Stat({ label, value }: { label: string; value: string }) {
+function OfferCard({
+  run,
+  offer,
+  manualMiles,
+  onFillForm,
+  onAssign,
+}: {
+  run: Run;
+  offer: BackhaulOffer;
+  manualMiles: Record<string, number>;
+  onFillForm: () => void;
+  onAssign: () => void;
+}) {
+  const preview = previewOfferMetrics(run, offer, manualMiles);
+  const { draft } = offer;
+
   return (
-    <div className="runs__stat">
+    <li className={`runs__offer runs__offer--${offer.tone}`}>
+      <div className="runs__load-head">
+        <div>
+          <span
+            className={
+              offer.tone === 'recommended'
+                ? 'runs__badge runs__badge--ok'
+                : offer.tone === 'warning'
+                  ? 'runs__badge runs__badge--warn'
+                  : 'runs__badge'
+            }
+          >
+            {offer.tag}
+          </span>
+          <p className="runs__truck">{draft.customer}</p>
+        </div>
+        <div className="runs__load-actions">
+          <button
+            type="button"
+            className="runs__button runs__button--ghost runs__button--small"
+            onClick={onFillForm}
+          >
+            Fill form
+          </button>
+          <button
+            type="button"
+            className="runs__button runs__button--small"
+            onClick={onAssign}
+          >
+            Assign load
+          </button>
+        </div>
+      </div>
+      <p className="runs__meta">
+        {placeName(draft.pickupCity, draft.pickupState)} →{' '}
+        {placeName(draft.deliveryCity, draft.deliveryState)} ·{' '}
+        {formatMoney(Number(draft.rate), 0)} · {formatMiles(Number(draft.miles))}{' '}
+        · Drive time {formatHours(Number(draft.driveHours))}
+      </p>
+      <p className="runs__meta">
+        Projected run result:{' '}
+        <strong>
+          {preview.emptyMiles === null
+            ? '—'
+            : `Empty ${formatMiles(preview.emptyMiles)}`}
+        </strong>{' '}
+        ·{' '}
+        <strong>
+          {preview.perMile === null
+            ? '—'
+            : `${formatMoney(preview.perMile, 2)} / mi`}
+        </strong>{' '}
+        · Revenue {formatMoney(preview.totalRevenue, 0)}
+      </p>
+      <p className="runs__meta">{offer.summary}</p>
+    </li>
+  );
+}
+
+function Stat({
+  label,
+  value,
+  tone,
+  subtext,
+}: {
+  label: string;
+  value: string;
+  tone: 'blue' | 'slate';
+  subtext?: string;
+}) {
+  return (
+    <div className={`runs__stat runs__stat--${tone}`}>
       <dt>{label}</dt>
       <dd>{value}</dd>
+      {subtext && <span className="runs__meta">{subtext}</span>}
     </div>
   );
 }
@@ -509,11 +762,6 @@ function stopLine(stop: Load['pickup']) {
   const place = [stop.place, stopName(stop)].filter(Boolean).join(', ');
   const when = formatWhen(stop.at);
   return when ? `${place} · ${when}` : place;
-}
-
-function readNumber(value: string) {
-  const number = Number(value);
-  return Number.isFinite(number) ? number : 0;
 }
 
 export default Runs;
