@@ -16,6 +16,7 @@ import {
 } from '../../runs/demo';
 import { useAppDispatch, useAppSelector } from '../../store/hooks';
 import { selectOpenRun } from '../../store/selectors/runsSelectors';
+import { selectPermissions } from '../../store/slices/authSlice';
 import {
   openRun,
   removeLoad,
@@ -29,6 +30,7 @@ import BackhaulOffers from './BackhaulOffers';
 function RunDetail() {
   const dispatch = useAppDispatch();
   const enriched = useAppSelector(selectOpenRun);
+  const permissions = useAppSelector(selectPermissions);
   const manualMiles = useAppSelector((state) => state.runs.manualMiles);
   const targetRate = useAppSelector((state) => state.ui.targetRatePerMile);
 
@@ -45,16 +47,18 @@ function RunDetail() {
         <h1 className="workspace__title">{run.truck}</h1>
         <div className="runs__heading-controls">
           <p className="runs__status">{run.status}</p>
-          <select
-            className="runs__input runs__input--compact"
-            aria-label="Run status"
-            value={run.status}
-            onChange={(e) => dispatch(updateRunStatus({ runId: run.id, status: e.target.value as RunStatus }))}
-          >
-            {runStatuses.map((s) => (
-              <option key={s} value={s}>{s}</option>
-            ))}
-          </select>
+          {permissions.canUpdateRunStatus && (
+            <select
+              className="runs__input runs__input--compact"
+              aria-label="Run status"
+              value={run.status}
+              onChange={(e) => dispatch(updateRunStatus({ runId: run.id, status: e.target.value as RunStatus }))}
+            >
+              {runStatuses.map((s) => (
+                <option key={s} value={s}>{s}</option>
+              ))}
+            </select>
+          )}
         </div>
       </header>
       <dl className="runs__stats">
@@ -87,19 +91,21 @@ function RunDetail() {
                   <p className="runs__truck">{load.customer || 'No customer yet'}</p>
                   <div className="runs__load-actions">
                     <p className="runs__status">{load.status}</p>
-                    <select
-                      className="runs__input runs__input--compact"
-                      aria-label={`Status for ${load.customer || load.id}`}
-                      value={load.status}
-                      onChange={(e) =>
-                        dispatch(updateLoadStatus({ runId: run.id, loadId: load.id, status: e.target.value as LoadStatus }))
-                      }
-                    >
-                      {loadStatuses.map((s) => (
-                        <option key={s} value={s}>{s}</option>
-                      ))}
-                    </select>
-                    {run.loads.length > 1 && (
+                    {permissions.canUpdateLoadStatus && (
+                      <select
+                        className="runs__input runs__input--compact"
+                        aria-label={`Status for ${load.customer || load.id}`}
+                        value={load.status}
+                        onChange={(e) =>
+                          dispatch(updateLoadStatus({ runId: run.id, loadId: load.id, status: e.target.value as LoadStatus }))
+                        }
+                      >
+                        {loadStatuses.map((s) => (
+                          <option key={s} value={s}>{s}</option>
+                        ))}
+                      </select>
+                    )}
+                    {permissions.canManageLoads && run.loads.length > 1 && (
                       <button
                         type="button"
                         className="runs__button runs__button--ghost runs__button--small"
@@ -133,7 +139,7 @@ function RunDetail() {
             return (
               <li className="runs__leg" key={key}>
                 <span>{leg.from} → {leg.to}</span>
-                {isKnownEmptyLeg(leg.from, leg.to) ? (
+                {isKnownEmptyLeg(leg.from, leg.to) || !permissions.canManageLoads ? (
                   <span>{leg.miles === null ? '—' : formatMiles(leg.miles)}</span>
                 ) : (
                   <input
@@ -172,8 +178,10 @@ function RunDetail() {
           ))}
         </ol>
       </section>
-      {run.id === '214' && run.loads.length === 1 && <BackhaulOffers run={run} />}
-      <AddLoadForm runId={run.id} />
+      {permissions.canManageLoads && run.id === '214' && run.loads.length === 1 && (
+        <BackhaulOffers run={run} />
+      )}
+      {permissions.canManageLoads && <AddLoadForm runId={run.id} />}
     </div>
   );
 }

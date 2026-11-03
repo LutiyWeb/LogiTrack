@@ -1,4 +1,5 @@
 import { combineReducers, configureStore } from '@reduxjs/toolkit';
+import authReducer, { createInitialAuthState } from './slices/authSlice';
 import runsReducer, {
   createInitialRunsState,
   resetRunsState,
@@ -11,6 +12,7 @@ import uiReducer, {
 const STORAGE_KEY = 'logitrack_demo_state_v1';
 
 const rootReducer = combineReducers({
+  auth: authReducer,
   runs: runsReducer,
   ui: uiReducer,
 });
@@ -25,6 +27,10 @@ function loadPersistedState(): Partial<RootState> | undefined {
     const parsed = JSON.parse(raw) as Partial<RootState>;
     if (!parsed || typeof parsed !== 'object') return undefined;
     return {
+      auth: {
+        ...createInitialAuthState(),
+        ...(parsed.auth ?? {}),
+      },
       runs: {
         ...createInitialRunsState(),
         ...(parsed.runs ?? {}),

@@ -1,27 +1,44 @@
+import LoginScreen from '../Auth/LoginScreen';
 import Sidebar from '../Sidebar/Sidebar';
 import Workspace from '../Workspace/Workspace';
 import { menuItems } from '../../navigation';
 import { useAppDispatch, useAppSelector } from '../../store/hooks';
+import {
+  logout,
+  selectCurrentUser,
+  selectPermissions,
+} from '../../store/slices/authSlice';
 import { setActiveSection, toggleSidebar } from '../../store/slices/uiSlice';
 import './AppShell.scss';
 
 function AppShell() {
   const dispatch = useAppDispatch();
+  const currentUser = useAppSelector(selectCurrentUser);
+  const permissions = useAppSelector(selectPermissions);
   const activeId = useAppSelector((state) => state.ui.activeSectionId);
   const isOpen = useAppSelector((state) => state.ui.isSidebarOpen);
-  const dispatcherName = useAppSelector((state) => state.ui.dispatcherName);
+
+  if (!currentUser) {
+    return <LoginScreen />;
+  }
+
+  const visibleItems = permissions.canViewOverview
+    ? menuItems
+    : menuItems.filter((item) => item.id !== 'overview');
   const active =
-    menuItems.find((item) => item.id === activeId) ?? menuItems[0];
+    visibleItems.find((item) => item.id === activeId) ?? visibleItems[0];
 
   return (
     <div className={isOpen ? 'shell' : 'shell is-collapsed'}>
       <Sidebar
-        items={menuItems}
+        items={visibleItems}
         activeId={active.id}
         isOpen={isOpen}
-        userName={dispatcherName}
+        userName={currentUser.name}
+        userRole={currentUser.roleTitle}
         onSelect={(sectionId) => dispatch(setActiveSection(sectionId))}
         onToggle={() => dispatch(toggleSidebar())}
+        onLogout={() => dispatch(logout())}
       />
       <Workspace sectionId={active.id} title={active.label} />
     </div>

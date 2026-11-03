@@ -6,6 +6,13 @@ import {
   selectOpenRun,
 } from './selectors/runsSelectors';
 import {
+  loginAsDemoUser,
+  loginWithCredentials,
+  logout,
+  selectCurrentUser,
+  selectPermissions,
+} from './slices/authSlice';
+import {
   addLoad,
   applyPresetToDraft,
   openRun,
@@ -17,7 +24,7 @@ import {
 import { setActiveSection, setStatusFilter } from './slices/uiSlice';
 import { createAppStore, resetAllDemoData } from './store';
 
-describe('Redux store (runsSlice, uiSlice, and selectors)', () => {
+describe('Redux store (runsSlice, uiSlice, authSlice, and selectors)', () => {
   it('initializes with 4 seeded runs and computes initial fleet KPIs', () => {
     const store = createAppStore();
     const state = store.getState();
@@ -104,5 +111,40 @@ describe('Redux store (runsSlice, uiSlice, and selectors)', () => {
     expect(state.ui.activeSectionId).toBe('board');
     expect(state.ui.statusFilter).toBe('All');
     expect(state.runs.openRunId).toBeNull();
+  });
+
+  it('authenticates users and maps role permissions (manager, dispatcher, driver)', () => {
+    const store = createAppStore();
+    expect(selectCurrentUser(store.getState())).toBeNull();
+
+    store.dispatch(
+      loginWithCredentials({ email: 'alex@logitrack.demo', password: 'wrong' }),
+    );
+    expect(store.getState().auth.loginError).toBe('Invalid email or password');
+
+    store.dispatch(
+      loginWithCredentials({
+        email: '  ALEX@logitrack.demo ',
+        password: 'demo123',
+      }),
+    );
+    expect(selectCurrentUser(store.getState())?.role).toBe('dispatcher');
+    expect(selectPermissions(store.getState())).toEqual({
+      canViewOverview: true,
+      canManageLoads: true,
+      canUpdateRunStatus: true,
+      canUpdateLoadStatus: true,
+      canEditTargets: false,
+    });
+
+    store.dispatch(loginAsDemoUser('manager'));
+    expect(selectPermissions(store.getState()).canEditTargets).toBe(true);
+
+    store.dispatch(loginAsDemoUser('driver'));
+    expect(selectPermissions(store.getState()).canViewOverview).toBe(false);
+    expect(selectPermissions(store.getState()).canManageLoads).toBe(false);
+
+    store.dispatch(logout());
+    expect(selectCurrentUser(store.getState())).toBeNull();
   });
 });
