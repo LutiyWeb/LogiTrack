@@ -32,6 +32,22 @@ export type Load = {
   status: LoadStatus;
   billingStatus?: BillingStatus;
   detentionFee?: number;
+  loadNumber?: string;
+  poNumber?: string;
+  equipment?: string;
+  weightLbs?: number;
+  brokerMc?: string;
+  brokerContact?: string;
+  brokerPhone?: string;
+  brokerEmail?: string;
+  rateConFile?: string;
+};
+
+export type TruckLocation = {
+  lng: number;
+  lat: number;
+  label: string;
+  at: string;
 };
 
 export type Run = {
@@ -44,6 +60,7 @@ export type Run = {
   drivingHoursLeft: number | null;
   loads: Load[];
   notes?: DispatchNote[];
+  location?: TruckLocation;
 };
 
 export type Leg = {
@@ -79,6 +96,15 @@ export type LoadDraft = {
   bol: string;
   commodity: string;
   status: LoadStatus;
+  // Reference details that usually come from a rate confirmation.
+  loadNumber?: string;
+  poNumber?: string;
+  equipment?: string;
+  weight?: string;
+  brokerMc?: string;
+  brokerContact?: string;
+  brokerPhone?: string;
+  brokerEmail?: string;
 };
 
 export type BackhaulOffer = {
@@ -176,6 +202,14 @@ export const emptyDraft: LoadDraft = {
   bol: '',
   commodity: '',
   status: 'Assigned',
+  loadNumber: '',
+  poNumber: '',
+  equipment: '',
+  weight: '',
+  brokerMc: '',
+  brokerContact: '',
+  brokerPhone: '',
+  brokerEmail: '',
 };
 
 export const backhaulPreset: LoadDraft = {
@@ -282,6 +316,12 @@ export const runs: Run[] = [
     yardState: 'IN',
     status: 'Empty return',
     drivingHoursLeft: 3.5,
+    location: {
+      lng: -84.388,
+      lat: 33.749,
+      label: 'South Park Warehouse, Atlanta, GA',
+      at: '2026-10-28T14:15',
+    },
     loads: [
       {
         id: 'hart',
@@ -332,6 +372,12 @@ export const runs: Run[] = [
     yardState: 'IN',
     status: 'Planned',
     drivingHoursLeft: 8.0,
+    location: {
+      lng: -86.1581,
+      lat: 39.7684,
+      label: 'Home yard, Indianapolis, IN',
+      at: '2026-10-28T06:00',
+    },
     loads: [
       {
         id: '118-load',
@@ -365,6 +411,12 @@ export const runs: Run[] = [
     yardState: 'IN',
     status: 'Completed',
     drivingHoursLeft: 6.0,
+    location: {
+      lng: -86.1581,
+      lat: 39.7684,
+      label: 'Home yard, Indianapolis, IN',
+      at: '2026-10-26T15:40',
+    },
     loads: [
       {
         id: '107-load',
@@ -399,6 +451,12 @@ export const runs: Run[] = [
     yardState: 'IN',
     status: 'In transit',
     drivingHoursLeft: 5.5,
+    location: {
+      lng: -85.8338,
+      lat: 38.7724,
+      label: 'I-65 N near Scottsburg, IN',
+      at: '2026-10-28T14:50',
+    },
     loads: [
       {
         id: '305-load-1',
@@ -560,7 +618,22 @@ export function draftToLoad(draft: LoadDraft, id = 'preview'): Load {
     bol: draft.bol.trim(),
     commodity: draft.commodity.trim(),
     status: draft.status,
+    ...optionalText('loadNumber', draft.loadNumber),
+    ...optionalText('poNumber', draft.poNumber),
+    ...optionalText('equipment', draft.equipment),
+    ...optionalText('brokerMc', draft.brokerMc),
+    ...optionalText('brokerContact', draft.brokerContact),
+    ...optionalText('brokerPhone', draft.brokerPhone),
+    ...optionalText('brokerEmail', draft.brokerEmail),
+    ...(draft.weight && readNumber(draft.weight) > 0
+      ? { weightLbs: readNumber(draft.weight) }
+      : {}),
   };
+}
+
+function optionalText<K extends keyof Load>(key: K, value?: string) {
+  const text = value?.trim();
+  return text ? ({ [key]: text } as Pick<Load, K>) : {};
 }
 
 export function previewOfferMetrics(
@@ -696,3 +769,30 @@ export function lane(run: Run) {
 
   return stops.join(' → ');
 }
+
+/** Where the truck heads next: pickup, delivery or the home yard. */
+export function nextStop(run: Run): string | null {
+  if (run.status === 'Completed') return null;
+  const load = run.loads.find((item) => item.status !== 'Delivered');
+  if (!load) return placeName(run.yardCity, run.yardState);
+  return load.status === 'Assigned' || load.status === 'At pickup'
+    ? stopName(load.pickup)
+    : stopName(load.delivery);
+}
+
+export type FleetTruck = {
+  truck: string;
+  driver: string;
+  drivingHoursLeft: number;
+};
+
+/** Trucks and their assigned drivers, used when booking a new run. */
+export const fleetRoster: FleetTruck[] = [
+  { truck: 'Truck 412', driver: 'Sam Carter', drivingHoursLeft: 11 },
+  { truck: 'Truck 226', driver: 'Priya Nair', drivingHoursLeft: 11 },
+  { truck: 'Truck 331', driver: 'Jamal Wright', drivingHoursLeft: 9.5 },
+  { truck: 'Truck 214', driver: 'Marcus Hill', drivingHoursLeft: 3.5 },
+  { truck: 'Truck 118', driver: 'Dana Brooks', drivingHoursLeft: 8 },
+  { truck: 'Truck 107', driver: 'Luis Ortega', drivingHoursLeft: 6 },
+  { truck: 'Truck 305', driver: 'Elena Rostova', drivingHoursLeft: 5.5 },
+];

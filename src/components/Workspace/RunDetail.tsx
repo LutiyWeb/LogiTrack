@@ -297,6 +297,32 @@ function RunDetail() {
                       .join(' · ')}
                   </p>
                 )}
+                {(load.loadNumber || load.equipment || load.weightLbs || load.poNumber) && (
+                  <p className="runs__meta">
+                    {[
+                      load.loadNumber ? `Load # ${load.loadNumber}` : '',
+                      load.poNumber ? `PO ${load.poNumber}` : '',
+                      load.equipment,
+                      load.weightLbs
+                        ? `${new Intl.NumberFormat('en-US').format(load.weightLbs)} lbs`
+                        : '',
+                    ]
+                      .filter(Boolean)
+                      .join(' · ')}
+                  </p>
+                )}
+                {(load.brokerContact || load.rateConFile) && (
+                  <p className="runs__meta">
+                    {[
+                      load.brokerContact
+                        ? `Broker contact ${load.brokerContact}${load.brokerPhone ? ` · ${load.brokerPhone}` : ''}`
+                        : '',
+                      load.rateConFile ? `Rate con: ${load.rateConFile}` : '',
+                    ]
+                      .filter(Boolean)
+                      .join(' · ')}
+                  </p>
+                )}
                 {note && <p className="runs__note">{note}</p>}
               </li>
             );

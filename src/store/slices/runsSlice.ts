@@ -4,12 +4,28 @@ import {
   deriveRunStatus,
   draftToLoad,
   emptyDraft,
+  formatMoney,
   runs as seedRuns,
   type LoadDraft,
   type LoadStatus,
   type Run,
   type RunStatus,
 } from '../../runs/demo';
+import { carrierProfile } from './uiSlice';
+
+export type RateConTarget =
+  | { kind: 'new'; truck: string; driver: string; drivingHoursLeft: number }
+  | { kind: 'existing'; runId: string };
+
+export type BookRateConPayload = {
+  target: RateConTarget;
+  draft: LoadDraft;
+  /** Empty-leg miles worked out by routing, keyed like manualMiles. */
+  legMiles: Record<string, number>;
+  fileName: string;
+  author: string;
+  roleTitle: string;
+};
 
 export type RunsState = {
   runs: Run[];
@@ -145,6 +161,55 @@ const runsSlice = createSlice({
       run.status = deriveRunStatus(run);
       state.isLoadModalOpen = false;
       state.draft = { ...emptyDraft };
+    },
+    bookRateCon(state, action: PayloadAction<BookRateConPayload>) {
+      const { target, draft, legMiles, fileName, author, roleTitle } =
+        action.payload;
+      let run: Run | undefined;
+
+      if (target.kind === 'new') {
+        const [yardCity, yardState] = carrierProfile.homeYard
+          .split(',')
+          .map((part) => part.trim());
+        run = {
+          id: crypto.randomUUID(),
+          truck: target.truck,
+          driver: target.driver,
+          yardCity,
+          yardState,
+          status: 'Planned',
+          drivingHoursLeft: target.drivingHoursLeft,
+          loads: [],
+          notes: [],
+        };
+        state.runs.unshift(run);
+      } else {
+        run = state.runs.find((item) => item.id === target.runId);
+      }
+      if (!run) return;
+
+      const load = draftToLoad(draft, crypto.randomUUID());
+      load.rateConFile = fileName;
+      run.loads.push(load);
+      run.status = deriveRunStatus(run);
+      Object.assign(state.manualMiles, legMiles);
+
+      const reference = load.loadNumber ? `load ${load.loadNumber}` : 'a load';
+      run.notes = [
+        ...(run.notes ?? []),
+        {
+          id: crypto.randomUUID(),
+          author,
+          roleTitle,
+          at: 'Just now',
+          text: `Booked ${reference} from rate con ${fileName}: ${load.customer}, ${load.pickup.city}, ${load.pickup.state} → ${load.delivery.city}, ${load.delivery.state}, ${formatMoney(load.rate, 0)}.`,
+        },
+      ];
+
+      state.openRunId = run.id;
+      state.modalRunId = run.id;
+      state.isLoadModalOpen = false;
+      state.scrollToOffers = false;
     },
     updateLoadStatus(
       state,
@@ -284,6 +349,7 @@ export const {
   patchDraft,
   applyPresetToDraft,
   addLoad,
+  bookRateCon,
   updateLoadStatus,
   advanceLoadBilling,
   invoiceCustomerLoads,

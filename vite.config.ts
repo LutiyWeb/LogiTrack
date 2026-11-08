@@ -7,6 +7,11 @@ export default defineConfig({
   css: {
     devSourcemap: true,
   },
+  // maplibre-gl loads its worker relative to its own module URL,
+  // so it must not be moved into Vite's pre-bundled deps folder.
+  optimizeDeps: {
+    exclude: ['maplibre-gl'],
+  },
   test: {
     environment: 'jsdom',
     globals: true,

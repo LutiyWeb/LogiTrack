@@ -1,0 +1,78 @@
+// Text lines as extracted from public/samples/*.pdf by extractPdfLines.
+// Regenerate if the sample PDFs change.
+
+export const crestlineLines: string[] = [
+  "Crestline Freight Brokerage",
+  "1200 Commerce Pkwy, Suite 400, Nashville, TN 37203 | MC# 718244 | ops@crestline-demo.example",
+  "RATE CONFIRMATION Load # CFB-240917 Date: 10/28/2026",
+  "CARRIER",
+  "Carrier | LogiTrack Freight LLC",
+  "Carrier MC | MC-849201",
+  "Dispatcher | Alex Mercer",
+  "PICKUP",
+  "Facility | Ohio Valley Paper Mill",
+  "Address | 4100 Bells Ln, Louisville, KY 40211",
+  "Date / Time | 10/30/2026 08:00",
+  "Pickup # | PU-55821",
+  "DELIVERY",
+  "Facility | Delta Distribution Center",
+  "Address | 3050 Democrat Rd, Memphis, TN 38118",
+  "Date / Time | 10/31/2026 07:00",
+  "LOAD DETAILS",
+  "Commodity | Packaged paper goods",
+  "Weight | 38,500 lbs",
+  "Equipment | Dry Van 53'",
+  "Miles | 385",
+  "BOL # | OV-77310",
+  "RATE",
+  "Linehaul | $1,850.00 flat",
+  "Total Carrier Pay | $1,850.00",
+  "Broker contact | Jenna Collins (615) 555-0142 jenna.collins@crestline-demo.example",
+  "Carrier agrees to haul the load described above at the agreed rate. Detention is paid after 2 free hours at $50/hr with in/out",
+  "times on the BOL. Signed BOL/POD must be sent within 24 hours of delivery to get paid. No double brokering. Sample",
+  "document for LogiTrack demo only."
+];
+
+export const northboundLines: string[] = [
+  "NORTHBOUND LOGISTICS GROUP",
+  "Freight Broker \u00b7 MC 603917 \u00b7 77 Lakeshore Dr, Cleveland, OH 44114",
+  "Carrier Rate & Load Confirmation | Order No. NLG-88214 | PO # 4410-QC",
+  "STOPS",
+  "Stop | Type | Facility | Address | Appointment",
+  "1 | Pickup | Gem City Cold Storage | 400 Webster St, Dayton, OH 45402 | Oct 30, 2026 6:00 AM",
+  "2 | Delivery | Queen City Grocers DC | 8800 Statesville Rd, Charlotte, NC | Oct 31, 2026 9:00 AM",
+  "28269",
+  "FREIGHT",
+  "Description | Frozen bakery goods, keep at -10F",
+  "Equipment | Reefer 53'",
+  "Weight | 42,000 lb",
+  "Pallets | 24",
+  "Temperature | -10F continuous",
+  "CHARGES",
+  "Charge | Amount",
+  "Line Haul | $2,200.00",
+  "Fuel Surcharge | $250.00",
+  "Total Carrier Pay | $2,450.00",
+  "Carrier | LogiTrack Freight LLC (MC-849201)",
+  "Your rep | Marco Diaz \u00b7 216-555-0187 \u00b7 mdiaz@northbound-demo.example",
+  "Carrier agrees to haul the load described above at the agreed rate. Detention is paid after 2 free hours at $50/hr with in/out",
+  "times on the BOL. Signed BOL/POD must be sent within 24 hours of delivery to get paid. No double brokering. Sample",
+  "document for LogiTrack demo only."
+];
+
+export const prairieRouteLines: string[] = [
+  "Prairie Route Brokerage",
+  "MC-552190 \u00b7 900 Main St, Peoria, IL 61602 \u00b7 (309) 555-0110",
+  "Load Confirmation #PRB-55102",
+  "To: LogiTrack Freight LLC (MC-849201), Attn: Dispatch",
+  "This confirms that your truck will haul the following load for an all-in rate of $1,150.00, including fuel.",
+  "Equipment: Flatbed 48' with tarps. Freight: Structural steel beams, 44,000 lbs.",
+  "Pick up at Wabash Steel Supply, 2800 Concord Rd, Lafayette, IN 47909 on 10/31/2026 at 07:00. Pickup",
+  "number 7781-WS. Driver must have 8 straps and edge protectors.",
+  "Deliver to Gateway Fabrication, 1500 N Broadway, St. Louis, MO 63102 on 10/31/2026 at 15:00. BOL 22907.",
+  "Call 2 hours before arrival.",
+  "Questions? Contact Ruth Ann Baker at (309) 555-0136 or rbaker@prairieroute-demo.example.",
+  "Carrier agrees to haul the load described above at the agreed rate. Detention is paid after 2 free hours at $50/hr with in/out",
+  "times on the BOL. Signed BOL/POD must be sent within 24 hours of delivery to get paid. No double brokering. Sample",
+  "document for LogiTrack demo only."
+];

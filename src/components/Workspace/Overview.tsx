@@ -146,7 +146,7 @@ function Overview() {
           )}
         </section>
 
-        <FleetRouteMap runs={enrichedRuns} />
+        <FleetRouteMap runs={enrichedRuns} onOpenRun={(runId) => jumpToRun(runId)} />
       </div>
 
       <section className="runs__block" aria-label="Fleet status board">

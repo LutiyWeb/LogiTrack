@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { backhaulPreset } from '../runs/demo';
+import { backhaulPreset, emptyDraft } from '../runs/demo';
 import {
   selectBrokerSummaries,
   selectEnrichedRuns,
@@ -20,6 +20,7 @@ import {
   addRunNote,
   advanceLoadBilling,
   applyPresetToDraft,
+  bookRateCon,
   createRun,
   invoiceCustomerLoads,
   openRun,
@@ -243,5 +244,62 @@ describe('Redux store (runsSlice, uiSlice, authSlice, and selectors)', () => {
 
     store.dispatch(logout());
     expect(selectCurrentUser(store.getState())).toBeNull();
+  });
+
+  it('books a rate con as a new run with routed empty miles and a log note', () => {
+    const store = createAppStore();
+    store.dispatch(
+      bookRateCon({
+        target: { kind: 'new', truck: 'Truck 412', driver: 'Sam Carter', drivingHoursLeft: 11 },
+        draft: {
+          ...emptyDraft,
+          customer: 'Crestline Freight Brokerage',
+          rate: '1850',
+          pickupCity: 'Louisville',
+          pickupState: 'KY',
+          deliveryCity: 'Memphis',
+          deliveryState: 'TN',
+          miles: '385',
+          driveHours: '7',
+          loadNumber: 'CFB-240917',
+          weight: '38500',
+        },
+        legMiles: { 'Memphis, TN|Indianapolis, IN': 464 },
+        fileName: 'ratecon-crestline.pdf',
+        author: 'Alex Mercer',
+        roleTitle: 'Senior Fleet Dispatcher',
+      }),
+    );
+
+    const opened = selectOpenRun(store.getState())!;
+    expect(opened.run.truck).toBe('Truck 412');
+    expect(opened.run.status).toBe('Planned');
+    expect(opened.run.loads[0]).toMatchObject({
+      loadNumber: 'CFB-240917',
+      weightLbs: 38500,
+      rateConFile: 'ratecon-crestline.pdf',
+    });
+    // Indianapolis → Louisville comes from the demo table (115), the return leg from routing.
+    expect(opened.emptyMiles).toBe(115 + 464);
+    expect(opened.run.notes?.at(-1)?.text).toContain('Booked load CFB-240917');
+    expect(opened.run.notes?.at(-1)?.text).toContain('$1,850');
+  });
+
+  it('adds a rate con load to an existing run', () => {
+    const store = createAppStore();
+    store.dispatch(
+      bookRateCon({
+        target: { kind: 'existing', runId: '118' },
+        draft: { ...emptyDraft, customer: 'Northbound', rate: '2450', pickupCity: 'Dayton', pickupState: 'OH', deliveryCity: 'Charlotte', deliveryState: 'NC', miles: '456' },
+        legMiles: { 'Columbus, OH|Dayton, OH': 71, 'Charlotte, NC|Indianapolis, IN': 568 },
+        fileName: 'ratecon-northbound.pdf',
+        author: 'Alex Mercer',
+        roleTitle: 'Senior Fleet Dispatcher',
+      }),
+    );
+    const opened = selectOpenRun(store.getState())!;
+    expect(opened.run.id).toBe('118');
+    expect(opened.run.loads).toHaveLength(2);
+    expect(opened.emptyMiles).toBe(125 + 71 + 568);
   });
 });

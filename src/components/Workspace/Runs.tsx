@@ -14,6 +14,8 @@ import {
 } from '../../store/slices/runsSlice';
 import { setStatusFilter, type StatusFilter } from '../../store/slices/uiSlice';
 import { resetAllDemoData } from '../../store/store';
+import { isPdfFile, readSource } from '../../ratecon/files';
+import RateConImport, { type RateConImportState } from '../RateCon/RateConImport';
 import AddLoadModal from './AddLoadForm';
 import RunDetail from './RunDetail';
 import { HosRing, MilesSplitBar, RunStatusBadge } from './RunVisuals';
@@ -60,14 +62,49 @@ function Runs() {
   const [yardCity, setYardCity] = useState('Indianapolis');
   const [yardState, setYardState] = useState('IN');
   const [hours, setHours] = useState('11');
+  const [rateCon, setRateCon] = useState<RateConImportState>(null);
+  const [draggingFile, setDraggingFile] = useState(false);
 
   if (currentOpenRun) return <RunDetail />;
+
+  const acceptsDrop = permissions.canManageLoads && !rateCon;
+  const hasFiles = (event: React.DragEvent) =>
+    Array.from(event.dataTransfer.types).includes('Files');
 
   const query = search.trim().toLowerCase();
   const visibleRuns = filteredRuns.filter((item) => matchesSearch(item, query));
 
   return (
-    <div className="runs">
+    <div
+      className="runs runs--droppable"
+      onDragOver={(event) => {
+        if (!acceptsDrop || !hasFiles(event)) return;
+        event.preventDefault();
+        setDraggingFile(true);
+      }}
+      onDragLeave={(event) => {
+        if (event.currentTarget.contains(event.relatedTarget as Node | null)) return;
+        setDraggingFile(false);
+      }}
+      onDrop={(event) => {
+        if (!acceptsDrop) return;
+        event.preventDefault();
+        setDraggingFile(false);
+        const file = event.dataTransfer.files[0];
+        if (!file) return;
+        if (isPdfFile(file)) {
+          void readSource(file).then((source) => setRateCon({ stage: 'review', source }));
+        } else {
+          setRateCon({ stage: 'pick' });
+        }
+      }}
+    >
+      {draggingFile && (
+        <div className="runs__drop-overlay" aria-hidden="true">
+          <strong>Drop the rate con to book a load</strong>
+          <span>PDF from any broker</span>
+        </div>
+      )}
       <div className="runs__toolbar">
         <h1 className="workspace__title">Runs</h1>
         <div className="runs__toolbar-actions">
@@ -88,6 +125,13 @@ function Runs() {
               <button
                 type="button"
                 className="runs__button runs__button--small"
+                onClick={() => setRateCon({ stage: 'pick' })}
+              >
+                Upload rate con
+              </button>
+              <button
+                type="button"
+                className="runs__button runs__button--ghost runs__button--small"
                 onClick={() => dispatch(openLoadModal('214'))}
               >
                 New load
@@ -254,6 +298,9 @@ function Runs() {
       </ul>
 
       {permissions.canManageLoads && <AddLoadModal defaultRunId="214" />}
+      {permissions.canManageLoads && (
+        <RateConImport state={rateCon} onChange={setRateCon} />
+      )}
     </div>
   );
 }
