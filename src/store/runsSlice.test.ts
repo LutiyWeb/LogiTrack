@@ -21,7 +21,6 @@ import {
   advanceLoadBilling,
   applyPresetToDraft,
   bookRateCon,
-  createRun,
   invoiceCustomerLoads,
   openRun,
   removeLoad,
@@ -57,7 +56,7 @@ describe('Redux store (runsSlice, uiSlice, authSlice, and selectors)', () => {
 
     store.dispatch(openRun('214'));
     const before = selectOpenRun(store.getState())!;
-    expect(before.run.truck).toBe('Truck 214');
+    expect(before.run.truck).toBe('Тягач 214');
     expect(before.run.status).toBe('Empty return');
     expect(before.operatingCost).toBe(1791);
     expect(before.netProfit).toBe(1409);
@@ -142,7 +141,7 @@ describe('Redux store (runsSlice, uiSlice, authSlice, and selectors)', () => {
     ).toHaveLength(1);
   });
 
-  it('creates a new run, adds $150 detention fee with log note, and aggregates broker summaries', () => {
+  it('adds $150 detention fee with log note, and aggregates broker summaries', () => {
     const store = createAppStore();
 
     const initialHart = selectBrokerSummaries(store.getState()).find(
@@ -165,7 +164,7 @@ describe('Redux store (runsSlice, uiSlice, authSlice, and selectors)', () => {
     const run214 = store.getState().runs.runs.find((r) => r.id === '214')!;
     expect(run214.loads[0].rate).toBe(3350);
     expect(run214.loads[0].detentionFee).toBe(150);
-    expect(run214.notes?.at(-1)?.text).toContain('Added $150 detention fee');
+    expect(run214.notes?.at(-1)?.text).toContain('Додано $150 за простій');
 
     store.dispatch(advanceLoadBilling({ runId: '214', loadId: 'hart' }));
     store.dispatch(invoiceCustomerLoads('Hart Freight'));
@@ -177,18 +176,6 @@ describe('Redux store (runsSlice, uiSlice, authSlice, and selectors)', () => {
     expect(billedHart.totalRevenue).toBe(3350);
     expect(billedHart.invoicedRevenue).toBe(3350);
     expect(billedHart.pendingRevenue).toBe(0);
-
-    store.dispatch(
-      createRun({
-        truck: 'Truck 412',
-        driver: 'Sam Carter',
-        yardCity: 'Indianapolis',
-        yardState: 'in',
-        drivingHoursLeft: 11,
-      }),
-    );
-    expect(store.getState().runs.runs).toHaveLength(5);
-    expect(selectOpenRun(store.getState())?.run.truck).toBe('Truck 412');
   });
 
   it('switches UI tabs, clears draft on run change, and resets all demo state cleanly', () => {
@@ -214,7 +201,7 @@ describe('Redux store (runsSlice, uiSlice, authSlice, and selectors)', () => {
     store.dispatch(
       loginWithCredentials({ email: 'alex@logitrack.demo', password: 'wrong' }),
     );
-    expect(store.getState().auth.loginError).toBe('Invalid email or password');
+    expect(store.getState().auth.loginError).toBe('Невірний email або пароль');
 
     store.dispatch(
       loginWithCredentials({
@@ -230,6 +217,7 @@ describe('Redux store (runsSlice, uiSlice, authSlice, and selectors)', () => {
       canUpdateRunStatus: true,
       canUpdateLoadStatus: true,
       canEditTargets: false,
+      canViewFinance: false,
     });
 
     store.dispatch(loginAsDemoUser('manager'));
@@ -250,7 +238,7 @@ describe('Redux store (runsSlice, uiSlice, authSlice, and selectors)', () => {
     const store = createAppStore();
     store.dispatch(
       bookRateCon({
-        target: { kind: 'new', truck: 'Truck 412', driver: 'Sam Carter', drivingHoursLeft: 11 },
+        target: { kind: 'new', runId: 'run-new', truck: 'Тягач 412', driver: 'Sam Carter', drivingHoursLeft: 11 },
         draft: {
           ...emptyDraft,
           customer: 'Crestline Freight Brokerage',
@@ -272,7 +260,7 @@ describe('Redux store (runsSlice, uiSlice, authSlice, and selectors)', () => {
     );
 
     const opened = selectOpenRun(store.getState())!;
-    expect(opened.run.truck).toBe('Truck 412');
+    expect(opened.run.truck).toBe('Тягач 412');
     expect(opened.run.status).toBe('Planned');
     expect(opened.run.loads[0]).toMatchObject({
       loadNumber: 'CFB-240917',
@@ -281,7 +269,7 @@ describe('Redux store (runsSlice, uiSlice, authSlice, and selectors)', () => {
     });
     // Indianapolis → Louisville comes from the demo table (115), the return leg from routing.
     expect(opened.emptyMiles).toBe(115 + 464);
-    expect(opened.run.notes?.at(-1)?.text).toContain('Booked load CFB-240917');
+    expect(opened.run.notes?.at(-1)?.text).toContain('Створено вантаж CFB-240917');
     expect(opened.run.notes?.at(-1)?.text).toContain('$1,850');
   });
 

@@ -1,3 +1,4 @@
+import { loadStatusLabel, runStatusLabel, t } from '../../i18n';
 import { loadStatuses, type LoadStatus, type RunStatus } from '../../runs/demo';
 
 const statusModifiers: Record<RunStatus, string> = {
@@ -18,7 +19,7 @@ export function RunStatusBadge({ status }: { status: RunStatus }) {
   return (
     <span className={`runs__status ${statusModifiers[status]}`}>
       <span className="runs__status-dot" aria-hidden="true" />
-      {status}
+      {runStatusLabel(status)}
     </span>
   );
 }
@@ -27,7 +28,7 @@ export function LoadStatusBadge({ status }: { status: LoadStatus }) {
   return (
     <span className={`runs__status ${loadStatusModifiers[status]}`}>
       <span className="runs__status-dot" aria-hidden="true" />
-      {status}
+      {loadStatusLabel(status)}
     </span>
   );
 }
@@ -50,7 +51,7 @@ export function LoadStatusSelect({
     >
       {loadStatuses.map((s) => (
         <option key={s} value={s}>
-          {s}
+          {loadStatusLabel(s)}
         </option>
       ))}
     </select>
@@ -73,7 +74,7 @@ export function MilesSplitBar({
     <span
       className="runs__miles-bar"
       aria-hidden="true"
-      title={`Paid ${paidPct}% · Empty ${emptyPct}%`}
+      title={`${t.common.paidMiles(`${paidPct}%`)} · ${t.common.emptyMiles(`${emptyPct}%`)}`}
     >
       <span
         className="runs__miles-segment runs__miles-segment--paid"
@@ -95,7 +96,7 @@ export function HosRing({ hoursLeft }: { hoursLeft: number | null }) {
   const ratio = Math.max(0, Math.min(1, hoursLeft / 11));
   const dash = `${(ratio * circumference).toFixed(1)} ${circumference.toFixed(1)}`;
   const isLow = hoursLeft < 4;
-  const strokeColor = isLow ? 'var(--color-warn)' : 'var(--color-good)';
+  const strokeColor = isLow ? 'var(--color-warn)' : 'var(--color-good-fill)';
 
   return (
     <svg

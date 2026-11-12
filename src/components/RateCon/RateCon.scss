@@ -1,5 +1,5 @@
 .ratecon {
-  --rc-muted: #64748b;
+  --rc-muted: var(--color-muted);
 
   &__dialog {
     display: flex;
@@ -16,6 +16,11 @@
     &--review {
       max-width: 1240px;
       height: calc(100vh - 48px);
+    }
+
+    // Проверка груза без PDF — только форма.
+    &--form {
+      max-width: 760px;
     }
   }
 
@@ -87,7 +92,7 @@
 
     &:hover,
     &.is-dragging {
-      background: var(--color-tint-blue);
+      background: var(--color-tint-primary);
       border-color: var(--color-primary);
     }
   }
@@ -175,6 +180,10 @@
     min-height: 0;
   }
 
+  &__review--no-pdf {
+    grid-template-columns: 1fr;
+  }
+
   &__preview {
     overflow-y: auto;
     padding: 16px;
@@ -218,8 +227,8 @@
     padding: 10px 12px;
     font-size: 13px;
     font-weight: 500;
-    color: var(--color-good);
-    background: var(--color-tint-green);
+    color: var(--color-text);
+    background: var(--color-hover);
     border-radius: 8px;
 
     &.is-warn {
@@ -278,14 +287,15 @@
       padding: 8px 10px;
     }
 
+    // Поле из PDF — нейтральное: признак «Із PDF» несёт только метка.
     &--pdf .runs__input {
-      background: #f6fbf8;
-      border-color: #bbe5cb;
+      background: #fafbfc;
+      border-color: var(--color-line);
     }
 
     &--calc .runs__input {
-      background: #f5f9ff;
-      border-color: #c7dafc;
+      background: var(--color-tint-primary);
+      border-color: var(--color-primary-line);
     }
 
     &--missing .runs__input {
@@ -311,13 +321,13 @@
     border-radius: 999px;
 
     &--pdf {
-      color: var(--color-good);
-      background: var(--color-tint-green);
+      color: var(--color-muted);
+      background: var(--color-tint-slate);
     }
 
     &--calc {
       color: var(--color-primary);
-      background: var(--color-tint-blue);
+      background: var(--color-tint-primary);
     }
 
     &--missing {
@@ -409,14 +419,17 @@
 
   &__footer {
     display: flex;
+    flex-wrap: wrap;
+    justify-content: flex-end;
     align-items: center;
     gap: 8px;
     padding: 12px 20px;
     border-top: 1px solid var(--color-line);
   }
 
+  // Подсказка — отдельной строкой над кнопками.
   &__footer-hint {
-    flex: 1;
+    flex: 1 0 100%;
     min-width: 0;
     overflow: hidden;
     font-size: 13px;

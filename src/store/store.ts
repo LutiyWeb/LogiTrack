@@ -1,5 +1,30 @@
 import { combineReducers, configureStore } from '@reduxjs/toolkit';
 import authReducer, { createInitialAuthState } from './slices/authSlice';
+import chatsReducer, {
+  createInitialChatsState,
+  resetChatsState,
+} from './slices/chatsSlice';
+import driversReducer, {
+  createInitialDriversState,
+  resetDriversState,
+} from './slices/driversSlice';
+import financeReducer, {
+  createInitialFinanceState,
+  resetFinanceState,
+} from './slices/financeSlice';
+import brokerReducer, {
+  createInitialBrokerState,
+  resetBrokerState,
+} from './slices/brokerSlice';
+import plannerReducer, {
+  createInitialPlannerState,
+  resetPlannerState,
+} from './slices/plannerSlice';
+import toastsReducer from './slices/toastsSlice';
+import inboxReducer, {
+  createInitialInboxState,
+  resetInboxState,
+} from './slices/inboxSlice';
 import runsReducer, {
   createInitialRunsState,
   resetRunsState,
@@ -9,12 +34,20 @@ import uiReducer, {
   resetUiState,
 } from './slices/uiSlice';
 
-const STORAGE_KEY = 'logitrack_demo_state_v1';
+// Поднимать версию, когда меняется форма сохранённого состояния.
+const STORAGE_KEY = 'logitrack_demo_state_v8';
 
 const rootReducer = combineReducers({
   auth: authReducer,
   runs: runsReducer,
   ui: uiReducer,
+  inbox: inboxReducer,
+  drivers: driversReducer,
+  finance: financeReducer,
+  chats: chatsReducer,
+  toasts: toastsReducer,
+  broker: brokerReducer,
+  planner: plannerReducer,
 });
 
 export type RootState = ReturnType<typeof rootReducer>;
@@ -38,6 +71,30 @@ function loadPersistedState(): Partial<RootState> | undefined {
       ui: {
         ...createInitialUiState(),
         ...(parsed.ui ?? {}),
+      },
+      inbox: {
+        ...createInitialInboxState(),
+        ...(parsed.inbox ?? {}),
+      },
+      drivers: {
+        ...createInitialDriversState(),
+        ...(parsed.drivers ?? {}),
+      },
+      finance: {
+        ...createInitialFinanceState(),
+        ...(parsed.finance ?? {}),
+      },
+      chats: {
+        ...createInitialChatsState(),
+        ...(parsed.chats ?? {}),
+      },
+      broker: {
+        ...createInitialBrokerState(),
+        ...(parsed.broker ?? {}),
+      },
+      planner: {
+        ...createInitialPlannerState(),
+        ...(parsed.planner ?? {}),
       },
     };
   } catch {
@@ -90,4 +147,10 @@ export function resetAllDemoData(dispatch: AppDispatch) {
   clearPersistedState();
   dispatch(resetRunsState());
   dispatch(resetUiState());
+  dispatch(resetInboxState());
+  dispatch(resetDriversState());
+  dispatch(resetFinanceState());
+  dispatch(resetChatsState());
+  dispatch(resetBrokerState());
+  dispatch(resetPlannerState());
 }

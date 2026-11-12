@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
+import { t } from '../../i18n';
 import { openPdf } from '../../ratecon/pdfText';
 
 /** Renders every page of a PDF into canvases that fit the container width. */
@@ -26,7 +27,7 @@ function PdfPreview({ data, fileName }: { data: ArrayBuffer; fileName: string })
           canvas.width = viewport.width;
           canvas.height = viewport.height;
           canvas.style.width = `${width}px`;
-          canvas.setAttribute('aria-label', `${fileName}, page ${pageNumber}`);
+          canvas.setAttribute('aria-label', t.rateCon.pageLabel(fileName, pageNumber));
           host.append(canvas);
           await page.render({ canvas, viewport }).promise;
         }
@@ -42,7 +43,7 @@ function PdfPreview({ data, fileName }: { data: ArrayBuffer; fileName: string })
 
   return (
     <div className="ratecon__preview">
-      {failed && <p className="ratecon__preview-error">Preview is not available for this file.</p>}
+      {failed && <p className="ratecon__preview-error">{t.rateCon.previewFailed}</p>}
       <div ref={hostRef} className="ratecon__pages" />
     </div>
   );

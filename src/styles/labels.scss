@@ -1,18 +1,26 @@
 :root {
-  --color-bg: #f7f9fb;
+  // Палитра по референсу (Monday CRM): тёмно-бирюзовый основной, зелёный «Won», коралловый «Lost».
+  --color-bg: #f5f7fb;
   --color-surface: #fff;
-  --color-text: #1c1c1c;
-  --color-hover: #f5f5f5;
+  --color-text: #323338;
+  --color-hover: #f0f2f6;
   --color-line: #e1e4ea;
-  --color-primary: #2563eb;
-  --color-good: #16a34a;
+  --color-primary: #2a6177;
+  --color-primary-hover: #1f4a5c;
+  --color-primary-line: #bcd3dc;
+  --color-muted: #676879;
+  // good/danger — затемнённые «Won»/«Lost», чтобы текст читался на светлом фоне.
+  --color-good: #2b8a4e;
+  --color-good-fill: #5bc67d;
   --color-warn: #d97706;
-  --color-danger: #dc2626;
-  --color-tint-blue: #e3f5ff;
-  --color-tint-slate: #e5ecf6;
-  --color-tint-green: #e6f6ec;
+  --color-danger: #c23b52;
+  --color-danger-fill: #e46b7c;
+  --color-danger-line: #f4c4cc;
+  --color-tint-primary: #e3eef2;
+  --color-tint-slate: #e9ebf1;
+  --color-tint-green: #e6f4ea;
   --color-tint-amber: #fff4df;
-  --color-tint-red: #fee2e2;
+  --color-tint-red: #fdecee;
 
   --radius-m: 8px;
   --radius-full: 50%;

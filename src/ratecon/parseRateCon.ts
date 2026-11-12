@@ -1,3 +1,4 @@
+import { t } from '../i18n';
 import { emptyDraft, type LoadDraft } from '../runs/demo';
 import { carrierProfile } from '../store/slices/uiSlice';
 
@@ -213,11 +214,11 @@ export function parseRateCon(lines: string[]): ParsedRateCon {
     draft.deliveryAt = delivery.at;
     if (stops.length > 2) {
       warnings.push(
-        `This rate con has ${stops.length} stops. Only the first pickup and the last delivery were imported.`,
+        t.rateCon.warnings.manyStops(stops.length),
       );
     }
   } else if (stops.length === 1) {
-    warnings.push('Only one stop address was found. Fill in the other stop by hand.');
+    warnings.push(t.rateCon.warnings.oneStop);
   }
 
   const found = (Object.keys(draft) as (keyof LoadDraft)[]).filter(
@@ -232,7 +233,7 @@ export function parseRateCon(lines: string[]): ParsedRateCon {
       draft: { ...emptyDraft },
       found: [],
       warnings: [
-        "This file doesn't look like a rate confirmation we can read. Fill in the load by hand.",
+        t.rateCon.warnings.notRateCon,
       ],
       unrecognized,
     };

@@ -1,7 +1,8 @@
 import { useEffect, useMemo, useState, type ReactNode } from 'react';
-import { parseRateCon, type RateConField } from '../../ratecon/parseRateCon';
-import type { RateConSource } from '../../ratecon/files';
-import { extractPdfLines } from '../../ratecon/pdfText';
+import { runStatusLabel, t } from '../../i18n';
+import { daysUntil, seedDrivers } from '../../drivers/drivers';
+import type { InboxLoad } from '../../inbox/inbox';
+import type { RateConField } from '../../ratecon/parseRateCon';
 import { planLoadRoute, type LoadRoutePlan } from '../../ratecon/routing';
 import {
   dollarsPerMile,
@@ -21,7 +22,9 @@ import {
 } from '../../runs/demo';
 import { useAppDispatch, useAppSelector } from '../../store/hooks';
 import { selectCurrentUser } from '../../store/slices/authSlice';
-import { bookRateCon } from '../../store/slices/runsSlice';
+import { addInboxLoad, saveInboxLoad } from '../../store/slices/inboxSlice';
+import { showToast } from '../../store/slices/toastsSlice';
+import { bookRateCon, openRun } from '../../store/slices/runsSlice';
 import { carrierProfile, setActiveSection } from '../../store/slices/uiSlice';
 import PdfPreview from './PdfPreview';
 
@@ -44,70 +47,66 @@ const SHOULD_HAVE: FieldKey[] = ['pickupAt', 'deliveryAt', 'commodity', 'loadNum
 
 const [yardCity, yardState] = carrierProfile.homeYard.split(',').map((part) => part.trim());
 const YARD = placeName(yardCity, yardState);
-const MIN_READING_MS = 700;
 
 function isStopComplete(city: string, state: string) {
   return city.trim().length > 1 && /^[A-Za-z]{2}$/.test(state.trim());
 }
 
-function RateConReview({ source, onClose }: { source: RateConSource; onClose: () => void }) {
+/** Проверка груза из очереди и назначение его на тягач. */
+function RateConReview({
+  item,
+  pdf,
+  onClose,
+}: {
+  item: InboxLoad;
+  /** PDF груза; null — PDF нет (груз добавлен вручную или файл недоступен). */
+  pdf: ArrayBuffer | null;
+  onClose: () => void;
+}) {
   const dispatch = useAppDispatch();
   const runs = useAppSelector((state) => state.runs.runs);
   const manualMiles = useAppSelector((state) => state.runs.manualMiles);
   const targetRate = useAppSelector((state) => state.ui.targetRatePerMile);
   const user = useAppSelector(selectCurrentUser);
+  // Груз, добавленный вручную, попадает в очередь только при сохранении или назначении.
+  const inQueue = useAppSelector((state) =>
+    state.inbox.items.some((entry) => entry.id === item.id),
+  );
 
-  const [reading, setReading] = useState(true);
   const [form, setForm] = useState<{
     draft: LoadDraft;
     sources: Partial<Record<FieldKey, FieldSource>>;
-  } | null>(null);
-  const draft = form?.draft ?? null;
-  const sources = form?.sources ?? {};
-  const [warnings, setWarnings] = useState<string[]>([]);
-  const [unrecognized, setUnrecognized] = useState(false);
+  }>(() => ({
+    draft: item.draft,
+    sources: Object.fromEntries(item.found.map((key) => [key, 'pdf' as const])),
+  }));
+  const { draft, sources } = form;
+  const { warnings, unrecognized } = item;
   const [plan, setPlan] = useState<LoadRoutePlan | null>(null);
   const [routing, setRouting] = useState(false);
 
   const activeRuns = runs.filter((run) => run.status !== 'Completed');
   const busyTrucks = new Set(activeRuns.map((run) => run.truck));
-  const firstFreeTruck = fleetRoster.find((item) => !busyTrucks.has(item.truck));
+  // Водителя с просроченными правами или медсправкой назначать нельзя.
+  const expiredDrivers = new Set(
+    seedDrivers
+      .filter((driver) => Math.min(daysUntil(driver.cdlExpires), daysUntil(driver.medicalExpires)) < 0)
+      .map((driver) => driver.name),
+  );
+  const isBlocked = (item: (typeof fleetRoster)[number]) =>
+    busyTrucks.has(item.truck) || expiredDrivers.has(item.driver);
+  const firstFreeTruck = fleetRoster.find((item) => !isBlocked(item));
   const [target, setTarget] = useState<Target>(
     firstFreeTruck
       ? { kind: 'new', truck: firstFreeTruck.truck }
       : { kind: 'existing', runId: activeRuns[0]?.id ?? '' },
   );
 
-  // 1. Read the PDF and pull out the fields.
-  useEffect(() => {
-    let cancelled = false;
-    const startedAt = Date.now();
-    extractPdfLines(source.data)
-      .then((lines) => parseRateCon(lines))
-      .catch(() => parseRateCon([]))
-      .then(async (result) => {
-        const wait = MIN_READING_MS - (Date.now() - startedAt);
-        if (wait > 0) await new Promise((resolve) => setTimeout(resolve, wait));
-        if (cancelled) return;
-        setForm({
-          draft: result.draft,
-          sources: Object.fromEntries(result.found.map((key) => [key, 'pdf' as const])),
-        });
-        setWarnings(result.warnings);
-        setUnrecognized(result.unrecognized);
-        setReading(false);
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, [source]);
-
   const targetRun: Run | null =
     target.kind === 'existing' ? (runs.find((run) => run.id === target.runId) ?? null) : null;
-  const pickupName = draft ? placeName(draft.pickupCity.trim(), draft.pickupState.trim().toUpperCase()) : '';
-  const deliveryName = draft ? placeName(draft.deliveryCity.trim(), draft.deliveryState.trim().toUpperCase()) : '';
+  const pickupName = placeName(draft.pickupCity.trim(), draft.pickupState.trim().toUpperCase());
+  const deliveryName = placeName(draft.deliveryCity.trim(), draft.deliveryState.trim().toUpperCase());
   const stopsReady =
-    !!draft &&
     isStopComplete(draft.pickupCity, draft.pickupState) &&
     isStopComplete(draft.deliveryCity, draft.deliveryState);
   const previousStop = targetRun?.loads.length
@@ -138,7 +137,6 @@ function RateConReview({ source, onClose }: { source: RateConSource; onClose: ()
         if (!loaded) return;
         // Fill miles and drive time unless they came from the PDF or were typed in.
         setForm((current) => {
-          if (!current) return current;
           const next = { draft: { ...current.draft }, sources: { ...current.sources } };
           if (current.sources.miles === 'calc' || (!current.sources.miles && !current.draft.miles)) {
             next.draft.miles = String(loaded.miles);
@@ -173,14 +171,14 @@ function RateConReview({ source, onClose }: { source: RateConSource; onClose: ()
   const roster = fleetRoster.find((item) => target.kind === 'new' && item.truck === target.truck);
 
   const projection = useMemo(() => {
-    if (!draft || !stopsReady || !plan) return null;
+    if (!stopsReady || !plan) return null;
     const load = draftToLoad(draft, 'preview');
     const simulated: Run =
       targetRun
         ? { ...targetRun, loads: [...targetRun.loads, load] }
         : {
             id: 'preview',
-            truck: roster?.truck ?? 'New truck',
+            truck: roster?.truck ?? t.rateCon.newTruckFallback,
             driver: roster?.driver ?? '',
             yardCity,
             yardState,
@@ -197,19 +195,8 @@ function RateConReview({ source, onClose }: { source: RateConSource; onClose: ()
     };
   }, [draft, stopsReady, plan, targetRun, roster, manualMiles, legMiles]);
 
-  if (reading || !draft) {
-    return (
-      <div className="ratecon__reading" role="status">
-        <div className="ratecon__spinner" aria-hidden="true" />
-        <strong>Reading {source.name}…</strong>
-        <span>Extracting text, matching broker, stops, rate and references</span>
-      </div>
-    );
-  }
-
   const update = (key: FieldKey, value: string) => {
     setForm((current) => {
-      if (!current) return current;
       const nextSources = { ...current.sources };
       delete nextSources[key];
       return { draft: { ...current.draft, [key]: value }, sources: nextSources };
@@ -223,6 +210,7 @@ function RateConReview({ source, onClose }: { source: RateConSource; onClose: ()
     rateValue > 0 &&
     (target.kind === 'new' ? !!roster : !!targetRun);
   const foundCount = Object.values(sources).filter((value) => value === 'pdf').length;
+  const f = t.rateCon.fields;
 
   const field = (
     key: FieldKey,
@@ -235,7 +223,8 @@ function RateConReview({ source, onClose }: { source: RateConSource; onClose: ()
       value={String(draft[key] ?? '')}
       source={sources[key]}
       required={REQUIRED.includes(key)}
-      expected={SHOULD_HAVE.includes(key)}
+      expected={fromPdf && SHOULD_HAVE.includes(key)}
+      fromPdf={fromPdf}
       onChange={(value) => update(key, value)}
       {...options}
     />
@@ -243,83 +232,105 @@ function RateConReview({ source, onClose }: { source: RateConSource; onClose: ()
 
   const book = () => {
     if (!canBook) return;
+    const runId = target.kind === 'new' ? crypto.randomUUID() : (targetRun as Run).id;
+    if (!inQueue) dispatch(addInboxLoad({ ...item, draft }));
     dispatch(
       bookRateCon({
         target:
           target.kind === 'new' && roster
-            ? { kind: 'new', truck: roster.truck, driver: roster.driver, drivingHoursLeft: roster.drivingHoursLeft }
-            : { kind: 'existing', runId: (targetRun as Run).id },
+            ? { kind: 'new', runId, truck: roster.truck, driver: roster.driver, drivingHoursLeft: roster.drivingHoursLeft }
+            : { kind: 'existing', runId },
         draft,
         legMiles,
-        fileName: source.name,
-        author: user?.name ?? 'Dispatcher',
-        roleTitle: user?.roleTitle ?? 'Dispatcher',
+        fileName: item.fileName,
+        inboxId: item.id,
+        author: user?.name ?? t.common.dispatcherFallback,
+        roleTitle: user?.roleTitle ?? t.common.dispatcherFallback,
       }),
     );
+    dispatch(
+      showToast(
+        'success',
+        t.notify.assigned(
+          draft.customer,
+          target.kind === 'new' ? (roster?.truck ?? '') : (targetRun?.truck ?? ''),
+        ),
+      ),
+    );
+    dispatch(openRun(runId));
     dispatch(setActiveSection('board'));
     onClose();
   };
 
+  const save = () => {
+    if (!inQueue) dispatch(addInboxLoad({ ...item, draft }));
+    dispatch(saveInboxLoad({ id: item.id, draft }));
+    dispatch(showToast('success', t.notify.saved(draft.customer || t.inbox.noCustomer)));
+    onClose();
+  };
+
+  const fromPdf = item.source !== 'manual';
+
   return (
-    <div className="ratecon__review">
-      <PdfPreview data={source.data} fileName={source.name} />
+    <div className={pdf ? 'ratecon__review' : 'ratecon__review ratecon__review--no-pdf'}>
+      {pdf && item.fileName && <PdfPreview data={pdf} fileName={item.fileName} />}
 
       <div className="ratecon__panel">
         <div className="ratecon__scroll">
-          <p className={unrecognized ? 'ratecon__summary is-warn' : 'ratecon__summary'}>
-            {unrecognized
-              ? 'Could not read this document automatically.'
-              : `Filled ${foundCount} fields from the PDF. Check the highlighted ones before booking.`}
-          </p>
+          {fromPdf && (
+            <p className={unrecognized ? 'ratecon__summary is-warn' : 'ratecon__summary'}>
+              {unrecognized ? t.rateCon.unrecognized : t.rateCon.filled(foundCount)}
+            </p>
+          )}
           {warnings.map((warning) => (
             <p key={warning} className="ratecon__warning">
               {warning}
             </p>
           ))}
 
-          <RcSection title="Broker">
-            {field('customer', 'Broker / customer', { wide: true })}
-            {field('brokerMc', 'MC #')}
-            {field('loadNumber', 'Load #')}
-            {field('brokerContact', 'Contact')}
-            {field('brokerPhone', 'Phone')}
-            {field('brokerEmail', 'Email', { wide: true })}
+          <RcSection title={t.rateCon.sections.broker}>
+            {field('customer', f.customer, { wide: true })}
+            {field('brokerMc', f.brokerMc)}
+            {field('loadNumber', f.loadNumber)}
+            {field('brokerContact', f.brokerContact)}
+            {field('brokerPhone', f.brokerPhone)}
+            {field('brokerEmail', f.brokerEmail, { wide: true })}
           </RcSection>
 
-          <RcSection title="Pickup">
-            {field('pickupPlace', 'Facility', { wide: true })}
-            {field('pickupCity', 'City')}
-            {field('pickupState', 'State', { placeholder: 'IN' })}
-            {field('pickupAt', 'Appointment', { type: 'datetime-local', wide: true })}
+          <RcSection title={t.rateCon.sections.pickup}>
+            {field('pickupPlace', f.place, { wide: true })}
+            {field('pickupCity', f.city)}
+            {field('pickupState', f.state, { placeholder: 'IN' })}
+            {field('pickupAt', f.appointment, { type: 'datetime-local', wide: true })}
           </RcSection>
 
-          <RcSection title="Delivery">
-            {field('deliveryPlace', 'Facility', { wide: true })}
-            {field('deliveryCity', 'City')}
-            {field('deliveryState', 'State', { placeholder: 'GA' })}
-            {field('deliveryAt', 'Appointment', { type: 'datetime-local', wide: true })}
+          <RcSection title={t.rateCon.sections.delivery}>
+            {field('deliveryPlace', f.place, { wide: true })}
+            {field('deliveryCity', f.city)}
+            {field('deliveryState', f.state, { placeholder: 'GA' })}
+            {field('deliveryAt', f.appointment, { type: 'datetime-local', wide: true })}
           </RcSection>
 
-          <RcSection title="Freight & pay">
-            {field('rate', 'Rate, $', { type: 'number' })}
-            {field('commodity', 'Commodity')}
-            {field('equipment', 'Equipment')}
-            {field('weight', 'Weight, lbs', { type: 'number' })}
-            {field('bol', 'BOL #')}
-            {field('poNumber', 'PO / Pickup #')}
-            {field('miles', 'Loaded miles', { type: 'number' })}
-            {field('driveHours', 'Drive time, h', { type: 'number' })}
+          <RcSection title={t.rateCon.sections.freight}>
+            {field('rate', f.rate, { type: 'number' })}
+            {field('commodity', f.commodity)}
+            {field('equipment', f.equipment)}
+            {field('weight', f.weight, { type: 'number' })}
+            {field('bol', f.bol)}
+            {field('poNumber', f.poNumber)}
+            {field('miles', f.miles, { type: 'number' })}
+            {field('driveHours', f.driveHours, { type: 'number' })}
           </RcSection>
 
-          <RcSection title="Assign">
-            <div className="ratecon__segmented ratecon__wide" role="group" aria-label="Assign to">
+          <RcSection title={t.rateCon.sections.assign}>
+            <div className="ratecon__segmented ratecon__wide" role="group" aria-label={t.rateCon.assignAria}>
               <button
                 type="button"
                 className={target.kind === 'new' ? 'is-active' : ''}
                 disabled={!firstFreeTruck}
                 onClick={() => firstFreeTruck && setTarget({ kind: 'new', truck: firstFreeTruck.truck })}
               >
-                New run
+                {t.rateCon.newRun}
               </button>
               <button
                 type="button"
@@ -327,28 +338,29 @@ function RateConReview({ source, onClose }: { source: RateConSource; onClose: ()
                 disabled={activeRuns.length === 0}
                 onClick={() => activeRuns[0] && setTarget({ kind: 'existing', runId: activeRuns[0].id })}
               >
-                Add to an active run
+                {t.rateCon.existingRun}
               </button>
             </div>
             {target.kind === 'new' ? (
               <label className="ratecon__field ratecon__wide">
-                <span className="ratecon__label">Truck & driver</span>
+                <span className="ratecon__label">{t.rateCon.truckDriver}</span>
                 <select
                   className="runs__input"
                   value={target.truck}
                   onChange={(event) => setTarget({ kind: 'new', truck: event.target.value })}
                 >
                   {fleetRoster.map((item) => (
-                    <option key={item.truck} value={item.truck} disabled={busyTrucks.has(item.truck)}>
-                      {item.truck} · {item.driver} · {item.drivingHoursLeft} h left
-                      {busyTrucks.has(item.truck) ? ' · on an active run' : ''}
+                    <option key={item.truck} value={item.truck} disabled={isBlocked(item)}>
+                      {item.truck} · {item.driver} · {t.rateCon.hoursLeft(item.drivingHoursLeft)}
+                      {busyTrucks.has(item.truck) ? t.rateCon.onActiveRun : ''}
+                      {expiredDrivers.has(item.driver) ? t.drivers.cannotAssign : ''}
                     </option>
                   ))}
                 </select>
               </label>
             ) : (
               <label className="ratecon__field ratecon__wide">
-                <span className="ratecon__label">Run</span>
+                <span className="ratecon__label">{t.rateCon.run}</span>
                 <select
                   className="runs__input"
                   value={target.runId}
@@ -356,7 +368,7 @@ function RateConReview({ source, onClose }: { source: RateConSource; onClose: ()
                 >
                   {activeRuns.map((run) => (
                     <option key={run.id} value={run.id}>
-                      {run.truck} · {run.driver} · {run.status}
+                      {run.truck} · {run.driver} · {runStatusLabel(run.status)}
                     </option>
                   ))}
                 </select>
@@ -364,38 +376,38 @@ function RateConReview({ source, onClose }: { source: RateConSource; onClose: ()
             )}
           </RcSection>
 
-          <RcSection title="Route check">
+          <RcSection title={t.rateCon.sections.route}>
             <div className="ratecon__route ratecon__wide" aria-live="polite">
               {!stopsReady ? (
-                <span>Enter pickup and delivery city + state to route this load.</span>
+                <span>{t.rateCon.enterStops}</span>
               ) : routing && !plan ? (
-                <span>Routing {pickupName} → {deliveryName}…</span>
+                <span>{t.rateCon.routing(pickupName, deliveryName)}</span>
               ) : plan && projection ? (
                 <>
-                  <RouteStat label="Deadhead in" value={milesText(plan.emptyLegs[0].miles)} hint={`${previousStop} → ${pickupName}`} />
-                  <RouteStat label="Loaded" value={milesText(readNumber(draft.miles) || null)} hint={`${draft.driveHours || '–'} h driving`} />
-                  <RouteStat label="Return empty" value={milesText(plan.emptyLegs[1].miles)} hint={`${deliveryName} → ${YARD}`} />
+                  <RouteStat label={t.rateCon.deadheadIn} value={milesText(plan.emptyLegs[0].miles)} hint={`${previousStop} → ${pickupName}`} />
+                  <RouteStat label={t.rateCon.loaded} value={milesText(readNumber(draft.miles) || null)} hint={t.rateCon.drivingHours(draft.driveHours || '–')} />
+                  <RouteStat label={t.rateCon.returnEmpty} value={milesText(plan.emptyLegs[1].miles)} hint={`${deliveryName} → ${YARD}`} />
                   <RouteStat
-                    label="Run All-in $/mi"
+                    label={t.rateCon.runAllIn}
                     value={projection.perMile === null ? '–' : formatMoney(projection.perMile, 2)}
                     hint={
                       projection.perMile === null
-                        ? 'Some empty miles are unknown'
+                        ? t.rateCon.someUnknown
                         : projection.perMile >= targetRate
-                          ? `At or above ${formatMoney(targetRate, 2)} target`
-                          : `Below ${formatMoney(targetRate, 2)} target`
+                          ? t.rateCon.atOrAbove(formatMoney(targetRate, 2))
+                          : t.rateCon.below(formatMoney(targetRate, 2))
                     }
                     tone={projection.perMile === null ? undefined : projection.perMile >= targetRate ? 'good' : 'warn'}
                   />
                   {plan.unknownCities.length > 0 && (
                     <p className="ratecon__warning ratecon__wide">
-                      Could not find {plan.unknownCities.join(', ')} on the map. Check the spelling.
+                      {t.rateCon.cityNotFound(plan.unknownCities.join(', '))}
                     </p>
                   )}
                   {projection.hosNote && <p className="ratecon__note ratecon__wide">{projection.hosNote}</p>}
                 </>
               ) : (
-                <span>Route service is unavailable. Enter loaded miles by hand.</span>
+                <span>{t.rateCon.routeUnavailable}</span>
               )}
             </div>
           </RcSection>
@@ -404,14 +416,24 @@ function RateConReview({ source, onClose }: { source: RateConSource; onClose: ()
         <footer className="ratecon__footer">
           <span className="ratecon__footer-hint">
             {missingRequired.length > 0
-              ? `Missing: ${missingRequired.map(labelOf).join(', ')}`
+              ? t.rateCon.missing(missingRequired.map(labelOf).join(', '))
               : `${draft.customer} · ${formatMoney(rateValue, 0)}`}
           </span>
-          <button type="button" className="runs__button runs__button--ghost" onClick={onClose}>
-            Cancel
+          <button type="button" className="runs__button runs__button--tertiary" onClick={onClose}>
+            {t.common.cancel}
+          </button>
+          <button
+            type="button"
+            className="runs__button runs__button--secondary"
+            disabled={missingRequired.length > 0}
+            onClick={save}
+          >
+            {t.inbox.saveChecked}
           </button>
           <button type="button" className="runs__button" disabled={!canBook} onClick={book}>
-            {target.kind === 'new' ? `Create run · ${roster?.truck ?? ''}` : `Add to ${targetRun?.truck ?? 'run'}`}
+            {target.kind === 'new'
+              ? t.rateCon.createRun(roster?.truck ?? '')
+              : t.rateCon.addTo(targetRun?.truck ?? t.rateCon.runFallback)}
           </button>
         </footer>
       </div>
@@ -419,18 +441,8 @@ function RateConReview({ source, onClose }: { source: RateConSource; onClose: ()
   );
 }
 
-const LABELS: Partial<Record<FieldKey, string>> = {
-  customer: 'broker',
-  rate: 'rate',
-  pickupCity: 'pickup city',
-  pickupState: 'pickup state',
-  deliveryCity: 'delivery city',
-  deliveryState: 'delivery state',
-  miles: 'loaded miles',
-};
-
 function labelOf(key: FieldKey) {
-  return LABELS[key] ?? key;
+  return t.rateCon.missingLabels[key] ?? key;
 }
 
 function milesText(value: number | null) {
@@ -452,6 +464,7 @@ function RcField({
   source,
   required,
   expected,
+  fromPdf,
   onChange,
   type = 'text',
   wide,
@@ -462,18 +475,20 @@ function RcField({
   source?: FieldSource;
   required: boolean;
   expected: boolean;
+  fromPdf: boolean;
   onChange: (value: string) => void;
   type?: string;
   wide?: boolean;
   placeholder?: string;
 }) {
   const empty = !value.trim();
-  const state = source ?? (empty ? (required || expected ? 'missing' : 'absent') : 'edited');
+  const state =
+    source ?? (empty ? (required || expected ? 'missing' : fromPdf ? 'absent' : 'edited') : 'edited');
   const chip = {
-    pdf: 'From PDF',
-    calc: 'Calculated',
-    missing: required ? 'Required' : 'Not found',
-    absent: 'Not in PDF',
+    pdf: t.rateCon.chips.pdf,
+    calc: t.rateCon.chips.calc,
+    missing: required ? t.rateCon.chips.required : t.rateCon.chips.notFound,
+    absent: t.rateCon.chips.absent,
     edited: '',
   }[state];
 

@@ -1,3 +1,4 @@
+import { t } from '../../i18n';
 import { formatMoney, readNumber } from '../../runs/demo';
 import { useAppDispatch, useAppSelector } from '../../store/hooks';
 import {
@@ -21,40 +22,38 @@ function Account() {
     <div className="runs">
       <header className="runs__heading">
         <div>
-          <h1 className="workspace__title">Account</h1>
-          <p className="runs__meta">
-            Dispatcher profile, carrier operating standards & demo controls
-          </p>
+          <h1 className="workspace__title">{t.account.title}</h1>
+          <p className="runs__meta">{t.account.subtitle}</p>
         </div>
         <button
           type="button"
-          className="runs__button runs__button--ghost runs__button--small"
+          className="runs__button runs__button--tertiary runs__button--small"
           onClick={() => dispatch(logout())}
         >
-          Sign out
+          {t.nav.signOut}
         </button>
       </header>
 
-      <section className="runs__block" aria-label="Carrier profile">
-        <h2 className="runs__subtitle">Carrier & dispatcher profile</h2>
+      <section className="runs__block" aria-label={t.account.profileAria}>
+        <h2 className="runs__subtitle">{t.account.profileTitle}</h2>
         <div className="runs__stats">
           <div className="runs__stat runs__stat--blue">
-            <dt>Carrier</dt>
+            <dt>{t.account.carrier}</dt>
             <dd className="runs__stat-text">{carrierProfile.carrierName}</dd>
             <span className="runs__meta">{carrierProfile.mcNumber}</span>
           </div>
           <div className="runs__stat runs__stat--slate">
-            <dt>DOT authority</dt>
+            <dt>{t.account.dot}</dt>
             <dd className="runs__stat-text">{carrierProfile.dotNumber}</dd>
-            <span className="runs__meta">Active interstate carrier</span>
+            <span className="runs__meta">{t.account.dotSub}</span>
           </div>
           <div className="runs__stat runs__stat--blue">
-            <dt>Home terminal</dt>
+            <dt>{t.account.homeTerminal}</dt>
             <dd className="runs__stat-text">{carrierProfile.homeYard}</dd>
-            <span className="runs__meta">Midwest dispatch region</span>
+            <span className="runs__meta">{t.account.homeTerminalSub}</span>
           </div>
           <div className="runs__stat runs__stat--slate">
-            <dt>Signed in user</dt>
+            <dt>{t.account.signedIn}</dt>
             <dd className="runs__stat-text">
               {currentUser?.name ?? ui.dispatcherName}
             </dd>
@@ -66,22 +65,18 @@ function Account() {
         </div>
       </section>
 
-      <section className="runs__form" aria-label="Dispatch targets">
+      <section className="runs__form" aria-label={t.account.targetsAria}>
         <div className="runs__form-head">
-          <h2 className="runs__subtitle">Dispatch profitability targets</h2>
-          <span className="runs__meta">
-            Used across Runs and Overview to flag high deadhead or low-rate
-            loads
-          </span>
+          <h2 className="runs__subtitle">{t.account.targetsTitle}</h2>
+          <span className="runs__meta">{t.account.targetsSub}</span>
         </div>
         {!permissions.canEditTargets && (
           <p className="runs__note runs__form-head">
-            Read-only for your role · Only Fleet Manager can modify company
-            profitability targets
+            {t.account.readOnly}
           </p>
         )}
         <label className="runs__field">
-          <span className="runs__label">Dispatcher name</span>
+          <span className="runs__label">{t.account.dispatcherName}</span>
           <input
             className="runs__input"
             disabled={!permissions.canEditTargets}
@@ -95,7 +90,7 @@ function Account() {
         </label>
         <label className="runs__field">
           <span className="runs__label">
-            Target rate per mile ({formatMoney(ui.targetRatePerMile, 2)}/mi)
+            {t.account.targetRate(formatMoney(ui.targetRatePerMile, 2))}
           </span>
           <input
             className="runs__input"
@@ -116,7 +111,7 @@ function Account() {
         </label>
         <label className="runs__field">
           <span className="runs__label">
-            Max empty miles threshold ({ui.maxEmptyPercent}%)
+            {t.account.maxEmpty(ui.maxEmptyPercent)}
           </span>
           <input
             className="runs__input"
@@ -137,7 +132,7 @@ function Account() {
         </label>
         <label className="runs__field">
           <span className="runs__label">
-            Fuel cost per mile ($/mi)
+            {t.account.fuelCost}
           </span>
           <input
             className="runs__input"
@@ -158,7 +153,7 @@ function Account() {
         </label>
         <label className="runs__field">
           <span className="runs__label">
-            Driver pay per mile ($/mi)
+            {t.account.driverPay}
           </span>
           <input
             className="runs__input"
@@ -177,23 +172,35 @@ function Account() {
             }
           />
         </label>
+        <label className="runs__field">
+          <span className="runs__label">{t.drivers.idleSetting(ui.idleDaysAlert)}</span>
+          <input
+            className="runs__input"
+            type="number"
+            min="1"
+            max="14"
+            step="1"
+            disabled={!permissions.canEditTargets}
+            value={ui.idleDaysAlert || ''}
+            onChange={(event) =>
+              dispatch(updateCarrierTargets({ idleDaysAlert: readNumber(event.target.value) }))
+            }
+          />
+        </label>
       </section>
 
-      <section className="runs__block" aria-label="Demo controls">
+      <section className="runs__block" aria-label={t.account.demoAria}>
         <div className="runs__load-head">
           <div>
-            <h2 className="runs__subtitle">Demo environment controls</h2>
-            <p className="runs__meta">
-              Restore all runs, loads, and settings to the initial presentation
-              state (Truck 214 before backhaul assignment).
-            </p>
+            <h2 className="runs__subtitle">{t.account.demoTitle}</h2>
+            <p className="runs__meta">{t.account.demoSub}</p>
           </div>
           <button
             type="button"
-            className="runs__button"
+            className="runs__button runs__button--secondary"
             onClick={() => resetAllDemoData(dispatch)}
           >
-            Reset Demo Data
+            {t.account.resetDemo}
           </button>
         </div>
       </section>

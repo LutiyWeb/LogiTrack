@@ -1,3 +1,4 @@
+import { t } from '../../i18n';
 import {
   backhaulOffers,
   formatHours,
@@ -23,12 +24,12 @@ function BackhaulOffers({ run }: { run: Run }) {
     <section
       id="backhaul-offers"
       className="runs__block"
-      aria-label="Broker load board"
+      aria-label={t.backhaul.aria}
     >
       <div className="runs__form-head">
-        <h2 className="runs__subtitle">Available backhaul offers near Atlanta, GA</h2>
+        <h2 className="runs__subtitle">{t.backhaul.title}</h2>
         <span className="runs__meta">
-          Compare how each broker load impacts deadhead and All-in $/mi
+          {t.backhaul.subtitle}
         </span>
       </div>
       <ul className="runs__offers">
@@ -74,7 +75,7 @@ function OfferCard({
         ? '--warn'
         : '';
   const hasHosConflict =
-    offer.tone === 'warning' || preview.hosNote.includes('drops off');
+    offer.tone === 'warning' || preview.hosNote.includes(t.hos.pickupDropsOff);
 
   return (
     <li className={`runs__offer runs__offer--${offer.tone}`}>
@@ -90,10 +91,10 @@ function OfferCard({
         <div className="runs__load-actions">
           <button
             type="button"
-            className="runs__button runs__button--ghost runs__button--small"
+            className="runs__button runs__button--secondary runs__button--small"
             onClick={onFillForm}
           >
-            Fill form
+            {t.backhaul.fillForm}
           </button>
           <button
             type="button"
@@ -101,12 +102,12 @@ function OfferCard({
             disabled={hasHosConflict}
             title={
               hasHosConflict
-                ? 'HOS conflict: pickup at 5:00 PM does not wait for required 10h off-duty reset'
+                ? t.backhaul.hosConflict
                 : undefined
             }
             onClick={onAssign}
           >
-            Assign load
+            {t.backhaul.assign}
           </button>
         </div>
       </div>
@@ -114,22 +115,22 @@ function OfferCard({
         {placeName(draft.pickupCity, draft.pickupState)} →{' '}
         {placeName(draft.deliveryCity, draft.deliveryState)} ·{' '}
         {formatMoney(Number(draft.rate), 0)} · {formatMiles(Number(draft.miles))}{' '}
-        · Drive time {formatHours(Number(draft.driveHours))}
+        · {t.backhaul.driveTime(formatHours(Number(draft.driveHours)))}
       </p>
       <p className="runs__meta">
-        Projected run result:{' '}
+        {t.backhaul.projected}{' '}
         <strong>
           {preview.emptyMiles === null
-            ? '—'
-            : `Empty ${formatMiles(preview.emptyMiles)}`}
+            ? t.units.dash
+            : t.backhaul.projectedEmpty(formatMiles(preview.emptyMiles))}
         </strong>{' '}
         ·{' '}
-        <strong title="Revenue ÷ total miles (paid + empty)">
+        <strong title={t.common.allInTooltip}>
           {preview.perMile === null
-            ? '—'
-            : `All-in ${formatMoney(preview.perMile, 2)} / mi`}
+            ? t.units.dash
+            : t.common.allIn(formatMoney(preview.perMile, 2))}
         </strong>{' '}
-        · Revenue {formatMoney(preview.totalRevenue, 0)}
+        · {t.backhaul.projectedRevenue(formatMoney(preview.totalRevenue, 0))}
       </p>
       <p className="runs__meta">{offer.summary}</p>
     </li>

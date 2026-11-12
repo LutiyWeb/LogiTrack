@@ -1,3 +1,5 @@
+import { DATE_LOCALE, t } from '../i18n';
+
 export type RunStatus = 'Planned' | 'In transit' | 'Empty return' | 'Completed';
 
 export type LoadStatus = 'Assigned' | 'At pickup' | 'In transit' | 'Delivered';
@@ -6,6 +8,8 @@ export type BillingStatus = 'POD required' | 'POD received' | 'Invoiced';
 
 export type DispatchNote = {
   id: string;
+  /** Время в ISO для сортировки ленты рейса вместе с сообщениями чата. */
+  iso?: string;
   author: string;
   roleTitle: string;
   at: string;
@@ -127,37 +131,37 @@ export const brokerDirectory: Record<string, BrokerInfo> = {
     kind: 'Broker',
     mc: 'MC-410294',
     creditScore: '98 · A+',
-    terms: 'QuickPay 2d',
+    terms: 'Швидка оплата за 2 дні',
   },
   'Blue Ridge Logistics': {
     kind: 'Broker',
     mc: 'MC-582910',
     creditScore: '95 · A',
-    terms: 'Factoring Approved',
+    terms: 'Факторинг погоджено',
   },
   'Midwest Steel Co.': {
     kind: 'Shipper',
     mc: 'MC-309182',
     creditScore: '92 · A',
-    terms: 'Net 15',
+    terms: 'Оплата за 15 днів',
   },
   'Bluegrass Retail': {
     kind: 'Shipper',
     mc: 'MC-774120',
     creditScore: '96 · A+',
-    terms: 'QuickPay 1d',
+    terms: 'Швидка оплата за 1 день',
   },
   'Apex Industrial': {
     kind: 'Broker',
     mc: 'MC-619044',
     creditScore: '89 · B+',
-    terms: 'Net 30',
+    terms: 'Оплата за 30 днів',
   },
   'Heartland Foods': {
     kind: 'Shipper',
     mc: 'MC-512800',
     creditScore: '94 · A',
-    terms: 'Factoring Approved',
+    terms: 'Факторинг погоджено',
   },
 };
 
@@ -165,9 +169,9 @@ export function getBrokerInfo(customer: string): BrokerInfo {
   return (
     brokerDirectory[customer] ?? {
       kind: 'Broker',
-      mc: 'MC-Verified',
+      mc: 'MC перевірено',
       creditScore: '90 · A-',
-      terms: 'Net 30',
+      terms: 'Оплата за 30 днів',
     }
   );
 }
@@ -226,25 +230,25 @@ export const backhaulPreset: LoadDraft = {
   miles: '490',
   driveHours: '9',
   bol: '90214',
-  commodity: 'Packaged beverages',
+  commodity: 'Напої в упаковці',
   status: 'Assigned',
 };
 
 export const backhaulOffers: BackhaulOffer[] = [
   {
     id: 'blue-ridge',
-    tag: 'Best backhaul match',
+    tag: 'Найкращий зворотний вантаж',
     tone: 'recommended',
     summary:
-      '20 mi deadhead from Atlanta, delivers 15 mi from Indianapolis yard. Morning pickup waits for 10 h reset.',
+      '20 миль порожнім від Atlanta, доставка за 15 миль від бази в Indianapolis. Ранкове завантаження чекає 10-годинного відпочинку.',
     draft: backhaulPreset,
   },
   {
     id: 'southern-express',
-    tag: 'HOS conflict · Urgent pickup',
+    tag: 'Конфлікт годин водіння · Термінове завантаження',
     tone: 'warning',
     summary:
-      'Pickup today at 5:00 PM does not wait for required 10 h off-duty reset after 3.5 h remaining shift.',
+      'Завантаження сьогодні о 17:00 не чекає обов’язкового 10-годинного відпочинку після 3.5 год, що лишились у зміні.',
     draft: {
       customer: 'Southern Express Brokerage',
       rate: '1950',
@@ -259,16 +263,16 @@ export const backhaulOffers: BackhaulOffer[] = [
       miles: '420',
       driveHours: '7.5',
       bol: '77410',
-      commodity: 'Refrigerated produce',
+      commodity: 'Охолоджені овочі та фрукти',
       status: 'Assigned',
     },
   },
   {
     id: 'delta-freight',
-    tag: 'High deadhead · Low $/mi',
+    tag: 'Великий порожній пробіг · Низька $/милю',
     tone: 'muted',
     summary:
-      '85 mi empty south to Macon plus 170 mi empty return from Effingham keeps total $/mi low.',
+      '85 миль порожнім на південь до Macon і 170 миль порожнім назад з Effingham — загальна $/милю лишається низькою.',
     draft: {
       customer: 'Delta Freight Partners',
       rate: '1250',
@@ -283,7 +287,7 @@ export const backhaulOffers: BackhaulOffer[] = [
       miles: '560',
       driveHours: '10',
       bol: '61309',
-      commodity: 'Paper rolls',
+      commodity: 'Рулони паперу',
       status: 'Assigned',
     },
   },
@@ -305,12 +309,14 @@ const emptyMiles: Record<string, number> = {
   'Nashville, TN|Bowling Green, KY': 65,
 };
 
-const demoNow = new Date('2026-10-28T15:00:00');
+/** «Сейчас» в демо: все данные построены вокруг этой даты. */
+export const DEMO_NOW = '2026-10-28T15:00';
+const demoNow = new Date(DEMO_NOW);
 
 export const runs: Run[] = [
   {
     id: '214',
-    truck: 'Truck 214',
+    truck: 'Тягач 214',
     driver: 'Marcus Hill',
     yardCity: 'Indianapolis',
     yardState: 'IN',
@@ -319,13 +325,14 @@ export const runs: Run[] = [
     location: {
       lng: -84.388,
       lat: 33.749,
-      label: 'South Park Warehouse, Atlanta, GA',
+      label: 'Склад South Park Warehouse, Atlanta, GA',
       at: '2026-10-28T14:15',
     },
     loads: [
       {
         id: 'hart',
         customer: 'Hart Freight',
+        brokerEmail: 'dispatch@hartfreight-demo.example',
         rate: 3200,
         pickup: {
           place: 'Midwest DC',
@@ -342,7 +349,7 @@ export const runs: Run[] = [
         miles: 700,
         driveHours: 12,
         bol: '44821',
-        commodity: 'Palletized auto parts',
+        commodity: 'Автозапчастини на палетах',
         status: 'Delivered',
         billingStatus: 'POD required',
       },
@@ -351,22 +358,24 @@ export const runs: Run[] = [
       {
         id: 'n1',
         author: 'Marcus Hill',
-        roleTitle: 'Driver · Truck 214',
-        at: 'Oct 28, 2:15 PM',
-        text: 'Unloaded at South Park Warehouse (Atlanta, GA). 3.5 h driving shift remaining.',
+        roleTitle: 'Водій · Тягач 214',
+        iso: '2026-10-28T14:15',
+        at: '28 жовт., 14:15',
+        text: 'Розвантажився на South Park Warehouse (Atlanta, GA). До кінця зміни 3.5 год водіння.',
       },
       {
         id: 'n2',
         author: 'Alex Mercer',
-        roleTitle: 'Senior Fleet Dispatcher',
-        at: 'Oct 28, 2:30 PM',
-        text: 'Checking Atlanta backhaul offers that allow a 10 h overnight reset.',
+        roleTitle: 'Старший диспетчер',
+        iso: '2026-10-28T14:30',
+        at: '28 жовт., 14:30',
+        text: 'Шукаю зворотні вантажі з Atlanta, які дозволяють 10-годинний нічний відпочинок.',
       },
     ],
   },
   {
     id: '118',
-    truck: 'Truck 118',
+    truck: 'Тягач 118',
     driver: 'Dana Brooks',
     yardCity: 'Indianapolis',
     yardState: 'IN',
@@ -375,13 +384,14 @@ export const runs: Run[] = [
     location: {
       lng: -86.1581,
       lat: 39.7684,
-      label: 'Home yard, Indianapolis, IN',
+      label: 'База, Indianapolis, IN',
       at: '2026-10-28T06:00',
     },
     loads: [
       {
         id: '118-load',
         customer: 'Midwest Steel Co.',
+        brokerEmail: 'shipping@midweststeel-demo.example',
         rate: 1450,
         pickup: {
           place: 'Northside Foundry',
@@ -398,14 +408,14 @@ export const runs: Run[] = [
         miles: 160,
         driveHours: 3.5,
         bol: '31904',
-        commodity: 'Steel coils',
+        commodity: 'Сталеві рулони',
         status: 'Assigned',
       },
     ],
   },
   {
     id: '107',
-    truck: 'Truck 107',
+    truck: 'Тягач 107',
     driver: 'Luis Ortega',
     yardCity: 'Indianapolis',
     yardState: 'IN',
@@ -414,7 +424,7 @@ export const runs: Run[] = [
     location: {
       lng: -86.1581,
       lat: 39.7684,
-      label: 'Home yard, Indianapolis, IN',
+      label: 'База, Indianapolis, IN',
       at: '2026-10-26T15:40',
     },
     loads: [
@@ -437,7 +447,7 @@ export const runs: Run[] = [
         miles: 115,
         driveHours: 2.5,
         bol: '18452',
-        commodity: 'Consumer electronics',
+        commodity: 'Побутова електроніка',
         status: 'Delivered',
         billingStatus: 'Invoiced',
       },
@@ -445,7 +455,7 @@ export const runs: Run[] = [
   },
   {
     id: '305',
-    truck: 'Truck 305',
+    truck: 'Тягач 305',
     driver: 'Elena Rostova',
     yardCity: 'Indianapolis',
     yardState: 'IN',
@@ -454,13 +464,14 @@ export const runs: Run[] = [
     location: {
       lng: -85.8338,
       lat: 38.7724,
-      label: 'I-65 N near Scottsburg, IN',
+      label: 'Траса I-65 на північ, біля Scottsburg, IN',
       at: '2026-10-28T14:50',
     },
     loads: [
       {
         id: '305-load-1',
         customer: 'Apex Industrial',
+        brokerEmail: 'ops@apexindustrial-demo.example',
         rate: 1650,
         pickup: {
           place: 'Queen City Logistics Park',
@@ -477,13 +488,14 @@ export const runs: Run[] = [
         miles: 290,
         driveHours: 5,
         bol: '55120',
-        commodity: 'HVAC equipment',
+        commodity: 'Кліматичне обладнання',
         status: 'Delivered',
         billingStatus: 'POD received',
       },
       {
         id: '305-load-2',
         customer: 'Heartland Foods',
+        brokerEmail: 'logistics@heartlandfoods-demo.example',
         rate: 1400,
         pickup: {
           place: 'Valley Packaging',
@@ -500,7 +512,7 @@ export const runs: Run[] = [
         miles: 225,
         driveHours: 4,
         bol: '55892',
-        commodity: 'Dry grocery goods',
+        commodity: 'Бакалія',
         status: 'In transit',
       },
     ],
@@ -589,11 +601,14 @@ export function shiftNote(run: Run, load: Load) {
     demoNow.getTime() + (run.drivingHoursLeft + 10) * 60 * 60 * 1000;
   const pickupAt = load.pickup.at ? new Date(load.pickup.at).getTime() : NaN;
   const pickupWaits = Number.isFinite(pickupAt) && pickupAt >= resumeAt;
-  const waitLine = pickupWaits
-    ? 'The pickup can wait, so the load stays.'
-    : 'The pickup does not wait, so this load drops off.';
+  const waitLine = pickupWaits ? t.hos.pickupWaits : t.hos.pickupDropsOff;
 
-  return `This leg is ${formatHours(load.driveHours)}. ${formatHours(run.drivingHoursLeft)} left in this shift. He drives the remaining hours, then needs 10 h off before hours start again. A 30-minute break does not restore hours. ${waitLine}`;
+  return [
+    t.hos.leg(formatHours(load.driveHours)),
+    t.hos.left(formatHours(run.drivingHoursLeft)),
+    t.hos.rule,
+    waitLine,
+  ].join(' ');
 }
 
 export function draftToLoad(draft: LoadDraft, id = 'preview'): Load {
@@ -672,7 +687,7 @@ export function routeTimeline(
         from: beforeLeg.from,
         to: beforeLeg.to,
         miles: beforeLeg.miles,
-        label: index === 0 ? 'Deadhead from yard' : 'Repositioning empty leg',
+        label: index === 0 ? t.timeline.deadheadFromYard : t.timeline.repositioning,
       });
     }
 
@@ -682,7 +697,7 @@ export function routeTimeline(
       from: stopName(load.pickup),
       to: stopName(load.delivery),
       miles: load.miles,
-      label: load.commodity || 'Loaded freight leg',
+      label: load.commodity || t.timeline.loadedLeg,
       customer: load.customer,
       rate: load.rate,
     });
@@ -696,7 +711,7 @@ export function routeTimeline(
       from: returnLeg.from,
       to: returnLeg.to,
       miles: returnLeg.miles,
-      label: 'Return to home yard',
+      label: t.timeline.returnToYard,
     });
   }
 
@@ -709,7 +724,7 @@ export function readNumber(value: string) {
 }
 
 export function formatHours(value: number) {
-  return `${value} h`;
+  return `${value} ${t.units.hours}`;
 }
 
 export function formatMoney(value: number, digits: number) {
@@ -722,13 +737,13 @@ export function formatMoney(value: number, digits: number) {
 }
 
 export function formatMiles(value: number) {
-  return `${new Intl.NumberFormat('en-US').format(value)} mi`;
+  return `${new Intl.NumberFormat('en-US').format(value)} ${t.units.miles(value)}`;
 }
 
 export function formatWhen(value: string) {
   if (!value) return '';
 
-  return new Intl.DateTimeFormat('en-US', {
+  return new Intl.DateTimeFormat(DATE_LOCALE, {
     month: 'short',
     day: 'numeric',
     year: 'numeric',
@@ -788,11 +803,12 @@ export type FleetTruck = {
 
 /** Trucks and their assigned drivers, used when booking a new run. */
 export const fleetRoster: FleetTruck[] = [
-  { truck: 'Truck 412', driver: 'Sam Carter', drivingHoursLeft: 11 },
-  { truck: 'Truck 226', driver: 'Priya Nair', drivingHoursLeft: 11 },
-  { truck: 'Truck 331', driver: 'Jamal Wright', drivingHoursLeft: 9.5 },
-  { truck: 'Truck 214', driver: 'Marcus Hill', drivingHoursLeft: 3.5 },
-  { truck: 'Truck 118', driver: 'Dana Brooks', drivingHoursLeft: 8 },
-  { truck: 'Truck 107', driver: 'Luis Ortega', drivingHoursLeft: 6 },
-  { truck: 'Truck 305', driver: 'Elena Rostova', drivingHoursLeft: 5.5 },
+  { truck: 'Тягач 412', driver: 'Sam Carter', drivingHoursLeft: 11 },
+  { truck: 'Тягач 226', driver: 'Priya Nair', drivingHoursLeft: 11 },
+  { truck: 'Тягач 331', driver: 'Jamal Wright', drivingHoursLeft: 9.5 },
+  { truck: 'Тягач 214', driver: 'Marcus Hill', drivingHoursLeft: 3.5 },
+  { truck: 'Тягач 118', driver: 'Dana Brooks', drivingHoursLeft: 8 },
+  // Luis Ortega отъездил смену и стоит на 10-годинному відпочинку.
+  { truck: 'Тягач 107', driver: 'Luis Ortega', drivingHoursLeft: 0 },
+  { truck: 'Тягач 305', driver: 'Elena Rostova', drivingHoursLeft: 5.5 },
 ];

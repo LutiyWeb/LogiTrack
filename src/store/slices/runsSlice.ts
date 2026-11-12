@@ -11,10 +11,11 @@ import {
   type Run,
   type RunStatus,
 } from '../../runs/demo';
+import { t } from '../../i18n';
 import { carrierProfile } from './uiSlice';
 
 export type RateConTarget =
-  | { kind: 'new'; truck: string; driver: string; drivingHoursLeft: number }
+  | { kind: 'new'; runId: string; truck: string; driver: string; drivingHoursLeft: number }
   | { kind: 'existing'; runId: string };
 
 export type BookRateConPayload = {
@@ -22,9 +23,12 @@ export type BookRateConPayload = {
   draft: LoadDraft;
   /** Empty-leg miles worked out by routing, keyed like manualMiles. */
   legMiles: Record<string, number>;
-  fileName: string;
+  /** Имя PDF, если груз пришёл из подтверждения ставки. */
+  fileName?: string;
   author: string;
   roleTitle: string;
+  /** Груз из очереди «Вхідні вантажі». */
+  inboxId?: string;
 };
 
 export type RunsState = {
@@ -89,32 +93,6 @@ const runsSlice = createSlice({
     setModalRunId(state, action: PayloadAction<string>) {
       state.modalRunId = action.payload;
     },
-    createRun(
-      state,
-      action: PayloadAction<{
-        truck: string;
-        driver: string;
-        yardCity: string;
-        yardState: string;
-        drivingHoursLeft: number;
-      }>,
-    ) {
-      const newRun: Run = {
-        id: crypto.randomUUID(),
-        truck: action.payload.truck.trim(),
-        driver: action.payload.driver.trim(),
-        yardCity: action.payload.yardCity.trim(),
-        yardState: action.payload.yardState.trim().toUpperCase(),
-        status: 'Planned',
-        drivingHoursLeft: action.payload.drivingHoursLeft,
-        loads: [],
-        notes: [],
-      };
-      state.runs.unshift(newRun);
-      state.openRunId = newRun.id;
-      state.modalRunId = newRun.id;
-      state.draft = { ...emptyDraft };
-    },
     patchDraft(state, action: PayloadAction<Partial<LoadDraft>>) {
       state.draft = { ...state.draft, ...action.payload };
     },
@@ -135,22 +113,7 @@ const runsSlice = createSlice({
           ? state.draft
           : (action.payload.draft ?? state.draft);
 
-      let run = state.runs.find((item) => item.id === runId);
-      if (!run && runId === '__new__') {
-        run = {
-          id: crypto.randomUUID(),
-          truck: 'Truck 412',
-          driver: 'Sam Carter',
-          yardCity: 'Indianapolis',
-          yardState: 'IN',
-          status: 'Planned',
-          drivingHoursLeft: 11,
-          loads: [],
-          notes: [],
-        };
-        state.runs.unshift(run);
-        state.openRunId = run.id;
-      }
+      const run = state.runs.find((item) => item.id === runId);
       if (!run) return;
 
       const load = draftToLoad(sourceDraft, crypto.randomUUID());
@@ -172,7 +135,7 @@ const runsSlice = createSlice({
           .split(',')
           .map((part) => part.trim());
         run = {
-          id: crypto.randomUUID(),
+          id: target.runId,
           truck: target.truck,
           driver: target.driver,
           yardCity,
@@ -189,20 +152,27 @@ const runsSlice = createSlice({
       if (!run) return;
 
       const load = draftToLoad(draft, crypto.randomUUID());
-      load.rateConFile = fileName;
+      if (fileName) load.rateConFile = fileName;
       run.loads.push(load);
       run.status = deriveRunStatus(run);
       Object.assign(state.manualMiles, legMiles);
 
-      const reference = load.loadNumber ? `load ${load.loadNumber}` : 'a load';
+      const reference = load.loadNumber
+        ? t.notes.bookedLoad(load.loadNumber)
+        : t.notes.bookedAny;
       run.notes = [
         ...(run.notes ?? []),
         {
           id: crypto.randomUUID(),
           author,
           roleTitle,
-          at: 'Just now',
-          text: `Booked ${reference} from rate con ${fileName}: ${load.customer}, ${load.pickup.city}, ${load.pickup.state} → ${load.delivery.city}, ${load.delivery.state}, ${formatMoney(load.rate, 0)}.`,
+          at: t.common.justNow,
+          iso: new Date().toISOString(),
+          text: t.notes.booked(
+            reference,
+            fileName ? t.notes.fromRateCon(fileName) : t.notes.fromQueue,
+            `${load.customer}, ${load.pickup.city}, ${load.pickup.state} → ${load.delivery.city}, ${load.delivery.state}, ${formatMoney(load.rate, 0)}`,
+          ),
         },
       ];
 
@@ -276,8 +246,13 @@ const runsSlice = createSlice({
           id: crypto.randomUUID(),
           author: action.payload.author,
           roleTitle: action.payload.roleTitle,
-          at: 'Just now',
-          text: `Added $${action.payload.amount} detention fee to ${load.customer || 'load'} (rate updated to $${load.rate}).`,
+          at: t.common.justNow,
+          iso: new Date().toISOString(),
+          text: t.notes.detention(
+            action.payload.amount,
+            load.customer || t.notes.detentionFallback,
+            load.rate,
+          ),
         },
       ];
     },
@@ -299,7 +274,8 @@ const runsSlice = createSlice({
           id: crypto.randomUUID(),
           author: action.payload.author,
           roleTitle: action.payload.roleTitle,
-          at: 'Just now',
+          at: t.common.justNow,
+          iso: new Date().toISOString(),
           text,
         },
       ];
@@ -345,7 +321,6 @@ export const {
   openLoadModal,
   closeLoadModal,
   setModalRunId,
-  createRun,
   patchDraft,
   applyPresetToDraft,
   addLoad,

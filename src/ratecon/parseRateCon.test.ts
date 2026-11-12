@@ -120,7 +120,7 @@ describe('parseRateCon', () => {
       'Thanks for reading our updates this fall.',
     ]);
     expect(result.unrecognized).toBe(true);
-    expect(result.warnings[0]).toMatch(/doesn't look like a rate confirmation/);
+    expect(result.warnings[0]).toMatch(/не схожий на підтвердження ставки/);
     expect(result.draft.pickupCity).toBe('');
     expect(result.draft.customer).toBe('');
     expect(result.found).toEqual([]);

@@ -1,4 +1,5 @@
-import type { InputHTMLAttributes } from 'react';
+import { useEffect, type InputHTMLAttributes } from 'react';
+import { loadStatusLabel, runStatusLabel, t } from '../../i18n';
 import {
   backhaulPreset,
   loadStatuses,
@@ -21,6 +22,15 @@ function AddLoadModal({ defaultRunId }: { defaultRunId?: string }) {
   const modalRunId = useAppSelector((state) => state.runs.modalRunId);
   const draft = useAppSelector((state) => state.runs.draft);
 
+  useEffect(() => {
+    if (!isOpen) return;
+    const onKey = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') dispatch(closeLoadModal());
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [isOpen, dispatch]);
+
   if (!isOpen) return null;
 
   const targetRunId = modalRunId || defaultRunId || runs[0]?.id || '214';
@@ -37,9 +47,12 @@ function AddLoadModal({ defaultRunId }: { defaultRunId?: string }) {
   return (
     <div
       className="runs__modal-backdrop"
+      onMouseDown={(event) => {
+        if (event.target === event.currentTarget) dispatch(closeLoadModal());
+      }}
       role="dialog"
       aria-modal="true"
-      aria-label="Add a load"
+      aria-label={t.addLoad.aria}
     >
       <form
         className="runs__form runs__modal"
@@ -49,48 +62,47 @@ function AddLoadModal({ defaultRunId }: { defaultRunId?: string }) {
         }}
       >
         <div className="runs__form-head">
-          <h2 className="runs__subtitle">Add a load</h2>
+          <h2 className="runs__subtitle">{t.addLoad.title}</h2>
           <div className="runs__load-actions">
             <button
-              className="runs__button runs__button--ghost runs__button--small"
+              className="runs__button runs__button--secondary runs__button--small"
               type="button"
               onClick={() => dispatch(applyPresetToDraft(backhaulPreset))}
             >
-              Use Blue Ridge Logistics
+              {t.addLoad.usePreset}
             </button>
             <button
-              className="runs__button runs__button--ghost runs__button--small"
+              className="runs__button runs__button--tertiary runs__button--small"
               type="button"
-              aria-label="Close modal"
+              aria-label={t.addLoad.closeAria}
               onClick={() => dispatch(closeLoadModal())}
             >
-              Cancel
+              {t.common.cancel}
             </button>
           </div>
         </div>
         <label className="runs__field runs__form-head">
-          <span className="runs__label">Truck / Driver</span>
+          <span className="runs__label">{t.addLoad.truckDriver}</span>
           <select
             className="runs__input"
-            aria-label="Truck / Driver"
+            aria-label={t.addLoad.truckDriver}
             value={targetRunId}
             onChange={(e) => dispatch(setModalRunId(e.target.value))}
           >
             {runs.map((r) => (
               <option key={r.id} value={r.id}>
-                {r.truck} · {r.driver} ({r.status})
+                {r.truck} · {r.driver} ({runStatusLabel(r.status)})
               </option>
             ))}
-            <option value="__new__">+ New run (Truck 412 · Sam Carter)</option>
           </select>
         </label>
         <FormInput
-          label="Customer"
+          label={t.addLoad.customer}
           value={draft.customer}
           onText={(customer) => update({ customer })}
         />
         <FormInput
-          label="Rate, $"
+          label={t.addLoad.rate}
           type="number"
           min="0"
           step="1"
@@ -98,7 +110,7 @@ function AddLoadModal({ defaultRunId }: { defaultRunId?: string }) {
           onText={(rate) => update({ rate })}
         />
         <label className="runs__field">
-          <span className="runs__label">Status</span>
+          <span className="runs__label">{t.addLoad.status}</span>
           <select
             className="runs__input"
             value={draft.status}
@@ -106,7 +118,7 @@ function AddLoadModal({ defaultRunId }: { defaultRunId?: string }) {
           >
             {loadStatuses.map((s) => (
               <option key={s} value={s}>
-                {s}
+                {loadStatusLabel(s)}
               </option>
             ))}
           </select>
@@ -114,7 +126,7 @@ function AddLoadModal({ defaultRunId }: { defaultRunId?: string }) {
         <StopFields prefix="Pickup" draft={draft} onUpdate={update} />
         <StopFields prefix="Delivery" draft={draft} onUpdate={update} />
         <FormInput
-          label="Miles"
+          label={t.addLoad.miles}
           type="number"
           min="0"
           step="1"
@@ -122,7 +134,7 @@ function AddLoadModal({ defaultRunId }: { defaultRunId?: string }) {
           onText={(miles) => update({ miles })}
         />
         <FormInput
-          label="Drive time, hours"
+          label={t.addLoad.driveHours}
           type="number"
           min="0"
           step="0.1"
@@ -130,18 +142,18 @@ function AddLoadModal({ defaultRunId }: { defaultRunId?: string }) {
           onText={(driveHours) => update({ driveHours })}
         />
         <FormInput
-          label="BOL"
+          label={t.addLoad.bol}
           value={draft.bol}
           onText={(bol) => update({ bol })}
         />
         <FormInput
-          label="Commodity"
+          label={t.addLoad.commodity}
           value={draft.commodity}
           onText={(commodity) => update({ commodity })}
         />
         <div className="runs__form-submit">
           <button className="runs__button" type="submit" disabled={!canAdd}>
-            Add load
+            {t.addLoad.submit}
           </button>
         </div>
       </form>
@@ -159,26 +171,27 @@ function StopFields({
   onUpdate: (p: Partial<LoadDraft>) => void;
 }) {
   const k = prefix.toLowerCase() as 'pickup' | 'delivery';
+  const labels = t.addLoad[k];
   return (
     <>
       <FormInput
-        label={`${prefix} place`}
+        label={labels.place}
         value={draft[`${k}Place`]}
         onText={(v) => onUpdate({ [`${k}Place`]: v })}
       />
       <FormInput
-        label={`${prefix} city`}
+        label={labels.city}
         value={draft[`${k}City`]}
         onText={(v) => onUpdate({ [`${k}City`]: v })}
       />
       <FormInput
-        label={`${prefix} state`}
+        label={labels.state}
         maxLength={2}
         value={draft[`${k}State`]}
         onText={(v) => onUpdate({ [`${k}State`]: v.toUpperCase() })}
       />
       <FormInput
-        label={`${prefix} time`}
+        label={labels.time}
         type="datetime-local"
         value={draft[`${k}At`]}
         onText={(v) => onUpdate({ [`${k}At`]: v })}

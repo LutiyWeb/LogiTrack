@@ -5,7 +5,7 @@ import type { RunStatus } from '../../runs/demo';
 export type StatusFilter = 'All' | RunStatus;
 
 export const carrierProfile = {
-  dispatcherRole: 'Senior Fleet Dispatcher',
+  dispatcherRole: 'Старший диспетчер',
   carrierName: 'LogiTrack Freight LLC',
   mcNumber: 'MC-849201',
   dotNumber: 'USDOT 3194820',
@@ -21,6 +21,8 @@ export type UiState = {
   maxEmptyPercent: number;
   fuelCostPerMile: number;
   driverPayPerMile: number;
+  /** Через сколько дней без рейса показывать простой на «Огляді». */
+  idleDaysAlert: number;
 };
 
 export function createInitialUiState(): UiState {
@@ -33,6 +35,7 @@ export function createInitialUiState(): UiState {
     maxEmptyPercent: 20,
     fuelCostPerMile: 0.62,
     driverPayPerMile: 0.65,
+    idleDaysAlert: 2,
   };
 }
 
@@ -57,6 +60,7 @@ const uiSlice = createSlice({
         dispatcherName?: string;
         fuelCostPerMile?: number;
         driverPayPerMile?: number;
+        idleDaysAlert?: number;
       }>,
     ) {
       Object.assign(state, action.payload);

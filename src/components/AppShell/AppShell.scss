@@ -62,6 +62,15 @@
     padding: 8px;
   }
 
+  &.is-collapsed &__count {
+    position: absolute;
+    top: 2px;
+    right: 2px;
+    min-width: 16px;
+    padding: 1px 4px;
+    font-size: 10px;
+  }
+
   &.is-collapsed &__toggle {
     margin-left: 0;
   }
@@ -108,7 +117,7 @@
     font-size: 11px;
     font-weight: 500;
     line-height: 1.2;
-    color: #64748b;
+    color: var(--color-muted);
   }
 
   &__user {
@@ -186,6 +195,19 @@
     gap: 4px;
   }
 
+  &__count {
+    min-width: 20px;
+    margin-left: auto;
+    padding: 1px 6px;
+    font-size: 12px;
+    font-weight: 600;
+    line-height: 18px;
+    text-align: center;
+    color: var(--color-surface);
+    background: var(--color-primary);
+    border-radius: 999px;
+  }
+
   &__item {
     position: relative;
     display: flex;
@@ -236,8 +258,17 @@
     }
   }
 
+  // «Підтримка» и «Вийти» прижаты к низу меню.
+  &__support,
   &__logout {
     margin-top: auto;
+  }
+
+  &__support + &__logout {
+    margin-top: 0;
+  }
+
+  &__logout {
     font-weight: 600;
   }
 

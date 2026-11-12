@@ -1,4 +1,5 @@
 import { createSlice, type PayloadAction } from '@reduxjs/toolkit';
+import { t } from '../../i18n';
 
 export type UserRole = 'manager' | 'dispatcher' | 'driver';
 
@@ -19,6 +20,8 @@ export type RolePermissions = {
   canUpdateRunStatus: boolean;
   canUpdateLoadStatus: boolean;
   canEditTargets: boolean;
+  /** Раздел «Фінанси»: маржа и расходы компании — только владелец. */
+  canViewFinance: boolean;
 };
 
 export const demoUsers: DemoUser[] = [
@@ -28,9 +31,9 @@ export const demoUsers: DemoUser[] = [
     email: 'sarah@logitrack.demo',
     password: 'demo123',
     role: 'manager',
-    roleTitle: 'Fleet Manager',
+    roleTitle: 'Менеджер автопарку',
     summary:
-      'Full access: fleet overview, load assignment, and profitability targets.',
+      'Повний доступ: огляд автопарку, призначення вантажів і цілі прибутковості.',
   },
   {
     id: 'dispatcher',
@@ -38,9 +41,9 @@ export const demoUsers: DemoUser[] = [
     email: 'alex@logitrack.demo',
     password: 'demo123',
     role: 'dispatcher',
-    roleTitle: 'Senior Fleet Dispatcher',
+    roleTitle: 'Старший диспетчер',
     summary:
-      'Operations access: overview, runs, broker load board, and load statuses. Company targets are read-only.',
+      'Операційний доступ: огляд, рейси, біржа вантажів і статуси вантажів. Цілі компанії — лише перегляд.',
   },
   {
     id: 'driver',
@@ -48,9 +51,9 @@ export const demoUsers: DemoUser[] = [
     email: 'marcus@logitrack.demo',
     password: 'demo123',
     role: 'driver',
-    roleTitle: 'Driver · Truck 214',
+    roleTitle: 'Водій · Тягач 214',
     summary:
-      'Driver access: view assigned runs and update load delivery status only.',
+      'Доступ водія: лише перегляд своїх рейсів і зміна статусу доставки вантажу.',
     assignedRunId: '214',
   },
 ];
@@ -62,6 +65,7 @@ export const ROLE_PERMISSIONS: Record<UserRole, RolePermissions> = {
     canUpdateRunStatus: true,
     canUpdateLoadStatus: true,
     canEditTargets: true,
+    canViewFinance: true,
   },
   dispatcher: {
     canViewOverview: true,
@@ -69,6 +73,7 @@ export const ROLE_PERMISSIONS: Record<UserRole, RolePermissions> = {
     canUpdateRunStatus: true,
     canUpdateLoadStatus: true,
     canEditTargets: false,
+    canViewFinance: false,
   },
   driver: {
     canViewOverview: false,
@@ -76,6 +81,7 @@ export const ROLE_PERMISSIONS: Record<UserRole, RolePermissions> = {
     canUpdateRunStatus: false,
     canUpdateLoadStatus: true,
     canEditTargets: false,
+    canViewFinance: false,
   },
 };
 
@@ -109,7 +115,7 @@ const authSlice = createSlice({
       );
 
       if (!matched) {
-        state.loginError = 'Invalid email or password';
+        state.loginError = t.login.invalid;
         return;
       }
 

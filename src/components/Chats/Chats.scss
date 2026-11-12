@@ -1,0 +1,152 @@
+.chats {
+  display: grid;
+  grid-template-columns: minmax(240px, 320px) minmax(0, 1fr);
+  gap: 16px;
+  min-height: 520px;
+
+  &__list {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+
+  &__item {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    width: 100%;
+    padding: 12px 14px;
+    border: 1px solid transparent;
+    text-align: left;
+    color: var(--color-text);
+    background: var(--color-surface);
+    border-radius: var(--radius-m);
+    transition: border-color var(--transition-fast);
+
+    &:hover {
+      border-color: var(--color-line);
+    }
+
+    &.is-active {
+      border-color: var(--color-primary);
+    }
+  }
+
+  &__item-head {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  &__channel {
+    padding: 1px 6px;
+    font-size: 11px;
+    font-weight: 600;
+    border-radius: 999px;
+
+    &--whatsapp {
+      color: var(--color-good);
+      background: var(--color-tint-green);
+    }
+
+    &--sms {
+      color: var(--color-muted);
+      background: var(--color-tint-slate);
+    }
+  }
+
+  &__unread {
+    min-width: 18px;
+    margin-left: auto;
+    padding: 0 6px;
+    font-size: 11px;
+    font-weight: 600;
+    line-height: 18px;
+    text-align: center;
+    color: var(--color-surface);
+    background: var(--color-primary);
+    border-radius: 999px;
+  }
+
+  &__preview {
+    overflow: hidden;
+    font-size: 13px;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+    color: var(--color-muted);
+  }
+
+  &__thread {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    padding: 16px;
+    background: var(--color-surface);
+    border-radius: var(--radius-m);
+  }
+
+  &__thread-head {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 8px;
+    padding-bottom: 12px;
+    border-bottom: 1px solid var(--color-line);
+  }
+
+  &__messages {
+    display: flex;
+    flex: 1;
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  &__bubble {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    max-width: 75%;
+    padding: 8px 12px;
+    font-size: var(--font-size-s);
+    line-height: 1.4;
+    border-radius: 12px;
+
+    // Водитель — слева, серым; диспетчер — справа, синим.
+    &--driver {
+      align-self: flex-start;
+      background: var(--color-hover);
+      border-bottom-left-radius: 4px;
+    }
+
+    // Запись звонка — по центру, как служебная пометка.
+    &--call {
+      align-self: center;
+      border: 1px dashed var(--color-line);
+      color: var(--color-muted);
+      background: var(--color-surface);
+    }
+
+    &--dispatcher {
+      align-self: flex-end;
+      color: var(--color-text);
+      background: var(--color-tint-primary);
+      border-bottom-right-radius: 4px;
+    }
+  }
+
+  &__bubble-meta {
+    font-size: 11px;
+    color: var(--color-muted);
+  }
+
+  &__reply {
+    display: flex;
+    gap: 8px;
+  }
+}
+
+@media (max-width: 800px) {
+  .chats {
+    grid-template-columns: 1fr;
+  }
+}

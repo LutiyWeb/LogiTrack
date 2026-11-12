@@ -86,9 +86,9 @@ describe('demo domain calculations', () => {
   it('generates HOS shift note explaining 10-hour reset and whether pickup waits', () => {
     const waitingBackhaul = draftToLoad(backhaulPreset, 'wait-ok');
     const note = shiftNote(truck214, waitingBackhaul);
-    expect(note).toContain('This leg is 9 h.');
-    expect(note).toContain('3.5 h left in this shift.');
-    expect(note).toContain('The pickup can wait, so the load stays.');
+    expect(note).toContain('Ця ділянка — 9 год.');
+    expect(note).toContain('До кінця зміни 3.5 год.');
+    expect(note).toContain('Завантаження може зачекати, тож вантаж лишається.');
 
     const urgentOffer = backhaulOffers.find(
       (offer) => offer.id === 'southern-express',
@@ -96,7 +96,7 @@ describe('demo domain calculations', () => {
     const urgentLoad = draftToLoad(urgentOffer.draft, 'urgent');
     const urgentNote = shiftNote(truck214, urgentLoad);
     expect(urgentNote).toContain(
-      'The pickup does not wait, so this load drops off.',
+      'Завантаження не чекає, тож цей вантаж відпадає.',
     );
   });
 

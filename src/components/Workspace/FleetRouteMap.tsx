@@ -10,6 +10,7 @@ import {
   straightLeg,
   type LngLat,
 } from '../../geo/geo';
+import { runStatusLabel, t } from '../../i18n';
 import { formatWhen, nextStop, placeName, type Run } from '../../runs/demo';
 import type { EnrichedRun } from '../../store/selectors/runsSelectors';
 
@@ -101,10 +102,10 @@ function truckMarkerElement(run: Run) {
   const element = document.createElement('button');
   element.type = 'button';
   element.className = `truck-marker truck-marker--${statusTone[run.status]}`;
-  element.setAttribute('aria-label', `${run.truck} · ${run.status}`);
+  element.setAttribute('aria-label', `${run.truck} · ${runStatusLabel(run.status)}`);
   element.innerHTML = `
     <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 6h11v9H3zM14 9h4l3 3v3h-7z" fill="currentColor"/><circle cx="7" cy="17" r="2" fill="currentColor"/><circle cx="17" cy="17" r="2" fill="currentColor"/></svg>
-    <span>${run.truck.replace('Truck ', '')}</span>`;
+    <span>${run.truck.replace(/^\D+/, '')}</span>`;
   return element;
 }
 
@@ -117,16 +118,16 @@ function popupContent(run: Run, onOpenRun?: (runId: string) => void) {
 
   const status = document.createElement('span');
   status.className = `truck-popup__status truck-popup__status--${statusTone[run.status]}`;
-  status.textContent = run.status;
+  status.textContent = runStatusLabel(run.status);
 
   const where = document.createElement('p');
-  where.textContent = run.location?.label ?? `Home yard, ${run.yardCity}, ${run.yardState}`;
+  where.textContent = run.location?.label ?? t.map.homeYard(run.yardCity, run.yardState);
 
   const meta = document.createElement('p');
   meta.className = 'truck-popup__meta';
   const next = nextStop(run);
-  const ping = run.location ? `Last ping ${formatWhen(run.location.at)}` : '';
-  meta.textContent = [next ? `Next: ${next}` : 'Run completed', ping]
+  const ping = run.location ? t.map.lastPing(formatWhen(run.location.at)) : '';
+  meta.textContent = [next ? t.map.next(next) : t.map.runCompleted, ping]
     .filter(Boolean)
     .join(' · ');
 
@@ -136,7 +137,7 @@ function popupContent(run: Run, onOpenRun?: (runId: string) => void) {
     const button = document.createElement('button');
     button.type = 'button';
     button.className = 'truck-popup__open';
-    button.textContent = 'Open run →';
+    button.textContent = t.map.openRun;
     button.addEventListener('click', () => onOpenRun(run.id));
     root.append(button);
   }
@@ -146,7 +147,7 @@ function popupContent(run: Run, onOpenRun?: (runId: string) => void) {
 
 export function FleetRouteMap({
   runs,
-  title = 'Live fleet map',
+  title = t.map.title,
   onOpenRun,
 }: {
   runs: EnrichedRun[];
@@ -195,6 +196,7 @@ export function FleetRouteMap({
           fitBoundsOptions: { padding: 40 },
           attributionControl: { compact: true },
           cooperativeGestures: true,
+          locale: t.map.locale,
         });
         mapRef.current = map;
         map.addControl(
@@ -353,17 +355,17 @@ export function FleetRouteMap({
   }, [mapData.missing]);
 
   return (
-    <section className="runs__block runs__map-card" aria-label="Route map">
+    <section className="runs__block runs__map-card" aria-label={t.map.aria}>
       <div className="runs__form-head">
         <h2 className="runs__subtitle">{title}</h2>
         <div className="runs__map-legend">
-          <span className="runs__map-key runs__map-key--paid">Paid load</span>
-          <span className="runs__map-key runs__map-key--empty">Empty leg</span>
+          <span className="runs__map-key runs__map-key--paid">{t.map.paidLoad}</span>
+          <span className="runs__map-key runs__map-key--empty">{t.map.emptyLeg}</span>
         </div>
       </div>
       <div className="runs__map" ref={containerRef}>
         {failed && (
-          <p className="runs__map-fallback">Map is unavailable right now.</p>
+          <p className="runs__map-fallback">{t.map.unavailable}</p>
         )}
       </div>
     </section>

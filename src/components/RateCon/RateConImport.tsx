@@ -1,23 +1,34 @@
 import { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
+import { t } from '../../i18n';
+import { sampleUrl, type InboxLoad } from '../../inbox/inbox';
 import { isPdfFile, readSource, type RateConSource } from '../../ratecon/files';
 import RateConReview from './RateConReview';
 import './RateCon.scss';
 
-export type RateConImportState = { stage: 'pick' } | { stage: 'review'; source: RateConSource } | null;
+export type RateConDialogState =
+  | { stage: 'pick' }
+  | { stage: 'review'; item: InboxLoad; pdf: ArrayBuffer | null }
+  | null;
 
 const SAMPLES = [
-  { file: 'ratecon-crestline.pdf', broker: 'Crestline Freight', detail: "Dry van · Louisville, KY → Memphis, TN" },
-  { file: 'ratecon-northbound.pdf', broker: 'Northbound Logistics', detail: 'Reefer · Dayton, OH → Charlotte, NC' },
-  { file: 'ratecon-prairie-route.pdf', broker: 'Prairie Route', detail: 'Flatbed · Lafayette, IN → St. Louis, MO' },
+  { file: 'ratecon-crestline.pdf', broker: 'Crestline Freight', detail: t.rateCon.samples.crestline },
+  { file: 'ratecon-northbound.pdf', broker: 'Northbound Logistics', detail: t.rateCon.samples.northbound },
+  { file: 'ratecon-prairie-route.pdf', broker: 'Prairie Route', detail: t.rateCon.samples.prairie },
 ];
 
+/**
+ * Окно работы с подтверждением ставки:
+ * «pick» — выбрать PDF, «review» — проверить груз из очереди и назначить его.
+ */
 function RateConImport({
   state,
-  onChange,
+  onPick,
+  onClose,
 }: {
-  state: RateConImportState;
-  onChange: (state: RateConImportState) => void;
+  state: RateConDialogState;
+  onPick: (source: RateConSource) => void;
+  onClose: () => void;
 }) {
   const inputRef = useRef<HTMLInputElement>(null);
   const [error, setError] = useState('');
@@ -26,38 +37,38 @@ function RateConImport({
 
   const close = () => {
     setError('');
-    onChange(null);
+    onClose();
   };
 
   useEffect(() => {
     if (!state) return;
     const onKey = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') onChange(null);
+      if (event.key === 'Escape') onClose();
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, [state, onChange]);
+  }, [state, onClose]);
 
   if (!state) return null;
 
   const takeFile = async (file: File | undefined) => {
     if (!file) return;
     if (!isPdfFile(file)) {
-      setError(`${file.name} is not a PDF. Rate confirmations are usually PDF files.`);
+      setError(t.rateCon.notPdf(file.name));
       return;
     }
     setError('');
-    onChange({ stage: 'review', source: await readSource(file) });
+    onPick(await readSource(file));
   };
 
   const openSample = async (file: string) => {
     setLoadingSample(file);
     try {
-      const response = await fetch(`${import.meta.env.BASE_URL}samples/${file}`);
+      const response = await fetch(sampleUrl(file));
       if (!response.ok) throw new Error('missing');
-      onChange({ stage: 'review', source: { name: file, data: await response.arrayBuffer() } });
+      onPick({ name: file, data: await response.arrayBuffer() });
     } catch {
-      setError('Could not load the sample file.');
+      setError(t.rateCon.sampleFailed);
     } finally {
       setLoadingSample('');
     }
@@ -67,24 +78,41 @@ function RateConImport({
 
   // Rendered into <body> so the backdrop covers the sidebar too.
   return createPortal(
-    <div className="runs__modal-backdrop ratecon" role="dialog" aria-modal="true" aria-label="Import rate confirmation">
-      <div className={reviewing ? 'ratecon__dialog ratecon__dialog--review' : 'ratecon__dialog'}>
+    <div
+      className="runs__modal-backdrop ratecon"
+      role="dialog"
+      aria-modal="true"
+      aria-label={t.rateCon.importAria}
+      // Клик по затемнённому фону (не по окну) закрывает окно.
+      onMouseDown={(event) => {
+        if (event.target === event.currentTarget) close();
+      }}
+    >
+      <div
+        className={
+          reviewing
+            ? `ratecon__dialog ratecon__dialog--review${state.pdf ? '' : ' ratecon__dialog--form'}`
+            : 'ratecon__dialog'
+        }
+      >
         <header className="ratecon__head">
           <div>
-            <h2 className="runs__subtitle">{reviewing ? 'Review rate con' : 'Import rate confirmation'}</h2>
+            <h2 className="runs__subtitle">
+              {reviewing ? t.inbox.reviewTitle : t.rateCon.importTitle}
+            </h2>
             <p className="ratecon__sub">
               {reviewing
-                ? state.source.name
-                : 'Drop the PDF the broker sent. LogiTrack reads it and books the load.'}
+                ? (state.item.fileName ?? t.inbox.source.manual)
+                : t.rateCon.importSub}
             </p>
           </div>
-          <button type="button" className="ratecon__close" aria-label="Close" onClick={close}>
+          <button type="button" className="ratecon__close" aria-label={t.rateCon.closeAria} onClick={close}>
             ×
           </button>
         </header>
 
         {reviewing ? (
-          <RateConReview key={state.source.name + state.source.data.byteLength} source={state.source} onClose={close} />
+          <RateConReview key={state.item.id} item={state.item} pdf={state.pdf} onClose={close} />
         ) : (
           <div className="ratecon__pick">
             <button
@@ -107,8 +135,8 @@ function RateConImport({
                 <path d="M14 3H6a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinejoin="round" />
                 <path d="M14 3v6h6M12 18v-6m-3 3 3-3 3 3" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
               </svg>
-              <strong>Drop rate con PDF here</strong>
-              <span>or click to browse</span>
+              <strong>{t.rateCon.dropTitle}</strong>
+              <span>{t.rateCon.dropSub}</span>
             </button>
             <input
               ref={inputRef}
@@ -123,7 +151,7 @@ function RateConImport({
             {error && <p className="ratecon__warning">{error}</p>}
 
             <div className="ratecon__samples">
-              <span className="ratecon__label">No rate con handy? Try a sample</span>
+              <span className="ratecon__label">{t.rateCon.samplesTitle}</span>
               <div className="ratecon__sample-list">
                 {SAMPLES.map((sample) => (
                   <div key={sample.file} className="ratecon__sample">
@@ -134,14 +162,10 @@ function RateConImport({
                       onClick={() => void openSample(sample.file)}
                     >
                       <strong>{sample.broker}</strong>
-                      <span>{loadingSample === sample.file ? 'Opening…' : sample.detail}</span>
+                      <span>{loadingSample === sample.file ? t.rateCon.opening : sample.detail}</span>
                     </button>
-                    <a
-                      className="ratecon__sample-download"
-                      href={`${import.meta.env.BASE_URL}samples/${sample.file}`}
-                      download
-                    >
-                      Download PDF
+                    <a className="ratecon__sample-download" href={sampleUrl(sample.file)} download>
+                      {t.rateCon.downloadPdf}
                     </a>
                   </div>
                 ))}

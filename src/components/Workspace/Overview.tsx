@@ -1,9 +1,15 @@
+import { buildDriverRows, docNote, driverAlerts, seedDrivers } from '../../drivers/drivers';
+import { t } from '../../i18n';
+import { dueReminders } from '../../planning/planning';
 import { formatHours, formatMiles, formatMoney } from '../../runs/demo';
 import { useAppDispatch, useAppSelector } from '../../store/hooks';
 import {
   selectEnrichedRuns,
   selectFleetKpis,
 } from '../../store/selectors/runsSelectors';
+import { selectMonthResult } from '../../store/selectors/financeSelectors';
+import { selectPermissions } from '../../store/slices/authSlice';
+import { selectWaitingInboxCount } from '../../store/slices/inboxSlice';
 import { openRun } from '../../store/slices/runsSlice';
 import { carrierProfile, setActiveSection } from '../../store/slices/uiSlice';
 import FleetRouteMap from './FleetRouteMap';
@@ -15,6 +21,18 @@ function Overview() {
   const enrichedRuns = useAppSelector(selectEnrichedRuns);
   const targetRate = useAppSelector((state) => state.ui.targetRatePerMile);
   const maxEmptyPercent = useAppSelector((state) => state.ui.maxEmptyPercent);
+  const waitingLoads = useAppSelector(selectWaitingInboxCount);
+  const dueCount = useAppSelector((state) => dueReminders(state.planner.reminders));
+  const month = useAppSelector(selectMonthResult);
+  const canViewFinance = useAppSelector(selectPermissions).canViewFinance;
+  const payPerMile = useAppSelector((state) => state.ui.driverPayPerMile);
+  const idleDaysAlert = useAppSelector((state) => state.ui.idleDaysAlert);
+  const paidThisWeek = useAppSelector((state) => state.drivers.paidThisWeek);
+  const drivers = driverAlerts(
+    buildDriverRows(seedDrivers, enrichedRuns, payPerMile, paidThisWeek),
+    idleDaysAlert,
+  );
+  const hasDriverAlerts = drivers.idle.length > 0 || drivers.docs.length > 0 || drivers.toPay > 0;
 
   const rateIsGood = kpis.averageDollarsPerMile >= targetRate;
   const deadheadIsHigh = kpis.deadheadPercent > maxEmptyPercent;
@@ -28,80 +46,160 @@ function Overview() {
     <div className="runs">
       <header className="runs__heading">
         <div>
-          <h1 className="workspace__title">Overview</h1>
+          <h1 className="workspace__title">{t.overview.title}</h1>
           <p className="runs__meta">
-            {carrierProfile.carrierName} · Home yard {carrierProfile.homeYard} ·{' '}
-            {kpis.totalLoadsCount} total loads
+            {t.overview.meta(
+              carrierProfile.carrierName,
+              carrierProfile.homeYard,
+              kpis.totalLoadsCount,
+            )}
           </p>
         </div>
       </header>
 
-      <dl className="runs__stats" aria-label="Fleet KPIs">
+      <dl className="runs__stats" aria-label={t.overview.kpiAria}>
         <div className="runs__stat">
-          <dt>Fleet revenue</dt>
+          <dt>{t.overview.revenue}</dt>
           <dd>{formatMoney(kpis.totalRevenue, 0)}</dd>
           <span className="runs__meta">
-            Net profit {formatMoney(kpis.totalNetProfit, 0)} · Paid{' '}
-            {formatMiles(kpis.totalPaidMiles)}
+            {t.overview.revenueMeta(
+              formatMoney(kpis.totalNetProfit, 0),
+              formatMiles(kpis.totalPaidMiles),
+            )}
           </span>
         </div>
 
-        <div
-          className="runs__stat"
-          title="Revenue ÷ total miles (paid + empty)"
-        >
-          <dt>All-in $/mi</dt>
+        <div className="runs__stat" title={t.common.allInTooltip}>
+          <dt>{t.common.allInLabel}</dt>
           <dd>{formatMoney(kpis.averageDollarsPerMile, 2)}</dd>
           <div className="runs__inline-visual">
             <span className={`runs__badge runs__badge--${rateIsGood ? 'ok' : 'warn'}`}>
-              {rateIsGood ? '↑ Above target' : '↓ Below target'}
+              {rateIsGood ? t.overview.aboveTarget : t.overview.belowTarget}
             </span>
             <span className="runs__meta">
-              Target {formatMoney(targetRate, 2)} / mi
+              {t.overview.target(formatMoney(targetRate, 2))}
             </span>
           </div>
         </div>
 
         <div className="runs__stat">
-          <dt>Deadhead ratio</dt>
+          <dt>{t.overview.deadhead}</dt>
           <dd>{kpis.deadheadPercent}%</dd>
           <div className="runs__inline-visual">
             <span className={`runs__badge runs__badge--${deadheadIsHigh ? 'danger' : 'ok'}`}>
-              {deadheadIsHigh ? `↑ Above ${maxEmptyPercent}% limit` : '✓ Within target'}
+              {deadheadIsHigh
+                ? t.overview.aboveLimit(maxEmptyPercent)
+                : t.overview.withinTarget}
             </span>
             <span className="runs__meta">
-              Empty {formatMiles(kpis.totalEmptyMiles)}
+              {t.overview.emptyTotal(formatMiles(kpis.totalEmptyMiles))}
             </span>
           </div>
         </div>
 
         <div className="runs__stat">
-          <dt>Active trucks</dt>
+          <dt>{t.overview.activeTrucks}</dt>
           <dd>{kpis.activeRunsCount}</dd>
           <span className="runs__meta">
-            {kpis.completedRunsCount} completed
+            {t.overview.completed(kpis.completedRunsCount)}
           </span>
         </div>
       </dl>
 
       <div className="runs__overview-grid">
-        <section className="runs__block" aria-label="Dispatcher alerts">
-          <h2 className="runs__subtitle">Dispatcher alerts & backhaul queue</h2>
+        <section className="runs__block" aria-label={t.overview.alertsAria}>
+          <h2 className="runs__subtitle">{t.overview.alertsTitle}</h2>
+          {canViewFinance && (
+            <div className="runs__load runs__account runs__account--compact">
+              <p className="runs__truck">
+                {month.revenue < month.breakeven
+                  ? t.finance.overviewBreakeven(formatMoney(month.breakeven - month.revenue, 0))
+                  : t.finance.overviewProfit(formatMoney(month.profit, 0))}
+              </p>
+              <div className="runs__load-actions runs__account-actions">
+                <button
+                  type="button"
+                  className="runs__button runs__button--secondary runs__button--small"
+                  onClick={() => dispatch(setActiveSection('finance'))}
+                >
+                  {t.finance.overviewOpen}
+                </button>
+              </div>
+            </div>
+          )}
+          {dueCount > 0 && (
+            <div className="runs__load runs__load--new runs__account runs__account--compact">
+              <p className="runs__truck">{t.planning.overviewToday(dueCount)}</p>
+              <div className="runs__load-actions runs__account-actions">
+                <button
+                  type="button"
+                  className="runs__button runs__button--secondary runs__button--small"
+                  onClick={() => dispatch(setActiveSection('planning'))}
+                >
+                  {t.planning.overviewOpen}
+                </button>
+              </div>
+            </div>
+          )}
+          {waitingLoads > 0 && (
+            <div className="runs__load runs__load--new runs__account runs__account--compact">
+              <p className="runs__truck">{t.inbox.overviewAlert(waitingLoads)}</p>
+              <div className="runs__load-actions runs__account-actions">
+                <button
+                  type="button"
+                  className="runs__button runs__button--small"
+                  onClick={() => dispatch(setActiveSection('inbox'))}
+                >
+                  {t.inbox.overviewOpen}
+                </button>
+              </div>
+            </div>
+          )}
+          {hasDriverAlerts && (
+            <div className="runs__load runs__account">
+              <ul className="runs__account-info">
+                {drivers.idle.map((row) => (
+                  <li key={`idle-${row.driver.name}`} className="runs__meta runs__meta--warn">
+                    {t.drivers.overviewIdle(row.driver.truck, row.driver.name, row.idleDays ?? 0)}
+                  </li>
+                ))}
+                {drivers.docs.map((row) => {
+                  const note = docNote(row.driver);
+                  return (
+                    <li key={`doc-${row.driver.name}`} className={`runs__meta runs__meta--${note.tone || 'warn'}`}>
+                      {t.drivers.overviewDoc(row.driver.name, note.text)}
+                    </li>
+                  );
+                })}
+                {drivers.toPay > 0 && (
+                  <li className="runs__meta">{t.drivers.overviewPay(formatMoney(drivers.toPay, 0))}</li>
+                )}
+              </ul>
+              <div className="runs__load-actions runs__account-actions">
+                <button
+                  type="button"
+                  className="runs__button runs__button--secondary runs__button--small"
+                  onClick={() => dispatch(setActiveSection('drivers'))}
+                >
+                  {t.drivers.overviewOpen}
+                </button>
+              </div>
+            </div>
+          )}
           {kpis.runsNeedingBackhaul.length > 0 ? (
             <ul className="runs__loads">
               {kpis.runsNeedingBackhaul.map((item) => (
                 <li className="runs__load runs__load--alert" key={item.run.id}>
                   {item.run.id === '214' && (
                     <p className="runs__demo-hint">
-                      <strong>Start here:</strong> Truck 214 is returning empty → click Find
-                      backhaul → assign a load → watch All-in $/mi jump.
+                      <strong>{t.overview.startHere}</strong> {t.overview.startHereText}
                     </p>
                   )}
                   <div className="runs__load-head">
                     <div>
                       <span className="runs__badge runs__badge--warn">
                         <AlertTriangleIcon />
-                        High empty return · {item.deadheadPercent}% deadhead
+                        {t.overview.highEmpty(item.deadheadPercent ?? 0)}
                       </span>
                       <p className="runs__truck">
                         {item.run.truck} · {item.run.driver}
@@ -109,29 +207,31 @@ function Overview() {
                     </div>
                     <button
                       type="button"
-                      className="runs__button runs__button--small"
+                      className="runs__button runs__button--secondary runs__button--small"
                       onClick={() => jumpToRun(item.run.id, true)}
                     >
-                      Find backhaul
+                      {t.overview.findBackhaul}
                     </button>
                   </div>
                   <p className="runs__meta">
-                    Lane: {item.lane} · Empty{' '}
+                    {t.overview.lane} {item.lane} · {t.overview.emptyLabel}{' '}
                     {item.emptyMiles === null
-                      ? '—'
+                      ? t.units.dash
                       : formatMiles(item.emptyMiles)}{' '}
-                    · All-in $/mi:{' '}
-                    <span title="Revenue ÷ total miles (paid + empty)">
+                    · {t.overview.allInShort}{' '}
+                    <span title={t.common.allInTooltip}>
                       {item.dollarsPerMile === null
-                        ? '—'
-                        : `${formatMoney(item.dollarsPerMile, 2)} / mi`}
+                        ? t.units.dash
+                        : `${formatMoney(item.dollarsPerMile, 2)} ${t.units.perMile}`}
                     </span>
                   </p>
                   <div className="runs__inline-visual">
                     <MilesSplitBar paidMiles={item.paidMiles} emptyMiles={item.emptyMiles} />
                     <span className="runs__meta">
-                      Paid {formatMiles(item.paidMiles)} vs Empty{' '}
-                      {item.emptyMiles === null ? '—' : formatMiles(item.emptyMiles)}
+                      {t.overview.paidVsEmpty(
+                        formatMiles(item.paidMiles),
+                        item.emptyMiles === null ? t.units.dash : formatMiles(item.emptyMiles),
+                      )}
                     </span>
                   </div>
                 </li>
@@ -139,9 +239,10 @@ function Overview() {
             </ul>
           ) : (
             <p className="runs__note">
-              All active trucks are within the {maxEmptyPercent}% deadhead target.
-              Backhaul loads are assigned and fleet All-in $/mi is{' '}
-              {formatMoney(kpis.averageDollarsPerMile, 2)}.
+              {t.overview.allClear(
+                maxEmptyPercent,
+                formatMoney(kpis.averageDollarsPerMile, 2),
+              )}
             </p>
           )}
         </section>
@@ -149,18 +250,18 @@ function Overview() {
         <FleetRouteMap runs={enrichedRuns} onOpenRun={(runId) => jumpToRun(runId)} />
       </div>
 
-      <section className="runs__block" aria-label="Fleet status board">
+      <section className="runs__block" aria-label={t.overview.boardAria}>
         <div className="runs__form-head">
-          <h2 className="runs__subtitle">Fleet runs summary</h2>
+          <h2 className="runs__subtitle">{t.overview.summaryTitle}</h2>
           <button
             type="button"
-            className="runs__button runs__button--ghost runs__button--small"
+            className="runs__button runs__button--secondary runs__button--small"
             onClick={() => {
               dispatch(openRun(null));
               dispatch(setActiveSection('board'));
             }}
           >
-            View all runs
+            {t.overview.viewAll}
           </button>
         </div>
         <ul className="runs__list">
@@ -177,9 +278,7 @@ function Overview() {
                       {item.run.truck} · {item.run.driver}
                     </span>
                     <span className="runs__badge">
-                      {item.run.loads.length === 1
-                        ? '1 load'
-                        : `${item.run.loads.length} loads`}
+                      {t.common.loadsCount(item.run.loads.length)}
                     </span>
                   </span>
                   <span className="runs__meta">{item.lane}</span>
@@ -188,7 +287,7 @@ function Overview() {
                       <span className="runs__inline-visual">
                         <HosRing hoursLeft={item.run.drivingHoursLeft} />
                         <span className="runs__meta">
-                          HOS remaining: {formatHours(item.run.drivingHoursLeft)}
+                          {t.overview.hosRemaining(formatHours(item.run.drivingHoursLeft))}
                         </span>
                       </span>
                     )}
@@ -198,19 +297,16 @@ function Overview() {
                   <span className="runs__inline-visual">
                     <MilesSplitBar paidMiles={item.paidMiles} emptyMiles={item.emptyMiles} />
                     <span className="runs__meta">
-                      Paid {formatMiles(item.paidMiles)} · Empty{' '}
-                      {item.emptyMiles === null
-                        ? '—'
-                        : formatMiles(item.emptyMiles)}
+                      {t.common.paidMiles(formatMiles(item.paidMiles))} ·{' '}
+                      {t.common.emptyMiles(
+                        item.emptyMiles === null ? t.units.dash : formatMiles(item.emptyMiles),
+                      )}
                     </span>
                   </span>
-                  <span
-                    className="runs__meta"
-                    title="Revenue ÷ total miles (paid + empty)"
-                  >
+                  <span className="runs__meta" title={t.common.allInTooltip}>
                     {formatMoney(item.revenue, 0)}
                     {item.dollarsPerMile !== null
-                      ? ` · All-in ${formatMoney(item.dollarsPerMile, 2)} / mi`
+                      ? ` · ${t.common.allIn(formatMoney(item.dollarsPerMile, 2))}`
                       : ''}
                   </span>
                 </span>

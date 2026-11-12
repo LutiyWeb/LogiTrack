@@ -1,22 +1,15 @@
 import { useState } from 'react';
-import { formatHours, formatMiles, formatMoney, readNumber } from '../../runs/demo';
+import { filterLabel, t } from '../../i18n';
+import { formatHours, formatMiles, formatMoney } from '../../runs/demo';
 import { useAppDispatch, useAppSelector } from '../../store/hooks';
 import {
   selectFilteredRuns,
   selectOpenRun,
   type EnrichedRun,
 } from '../../store/selectors/runsSelectors';
-import { selectPermissions } from '../../store/slices/authSlice';
-import {
-  createRun,
-  openLoadModal,
-  openRun,
-} from '../../store/slices/runsSlice';
+import { openRun } from '../../store/slices/runsSlice';
 import { setStatusFilter, type StatusFilter } from '../../store/slices/uiSlice';
 import { resetAllDemoData } from '../../store/store';
-import { isPdfFile, readSource } from '../../ratecon/files';
-import RateConImport, { type RateConImportState } from '../RateCon/RateConImport';
-import AddLoadModal from './AddLoadForm';
 import RunDetail from './RunDetail';
 import { HosRing, MilesSplitBar, RunStatusBadge } from './RunVisuals';
 import './Workspace.scss';
@@ -53,62 +46,20 @@ function Runs() {
   const filteredRuns = useAppSelector(selectFilteredRuns);
   const currentOpenRun = useAppSelector(selectOpenRun);
   const statusFilter = useAppSelector((state) => state.ui.statusFilter);
-  const permissions = useAppSelector(selectPermissions);
 
   const [search, setSearch] = useState('');
-  const [showNewRun, setShowNewRun] = useState(false);
-  const [truck, setTruck] = useState('');
-  const [driver, setDriver] = useState('');
-  const [yardCity, setYardCity] = useState('Indianapolis');
-  const [yardState, setYardState] = useState('IN');
-  const [hours, setHours] = useState('11');
-  const [rateCon, setRateCon] = useState<RateConImportState>(null);
-  const [draggingFile, setDraggingFile] = useState(false);
 
   if (currentOpenRun) return <RunDetail />;
-
-  const acceptsDrop = permissions.canManageLoads && !rateCon;
-  const hasFiles = (event: React.DragEvent) =>
-    Array.from(event.dataTransfer.types).includes('Files');
 
   const query = search.trim().toLowerCase();
   const visibleRuns = filteredRuns.filter((item) => matchesSearch(item, query));
 
   return (
-    <div
-      className="runs runs--droppable"
-      onDragOver={(event) => {
-        if (!acceptsDrop || !hasFiles(event)) return;
-        event.preventDefault();
-        setDraggingFile(true);
-      }}
-      onDragLeave={(event) => {
-        if (event.currentTarget.contains(event.relatedTarget as Node | null)) return;
-        setDraggingFile(false);
-      }}
-      onDrop={(event) => {
-        if (!acceptsDrop) return;
-        event.preventDefault();
-        setDraggingFile(false);
-        const file = event.dataTransfer.files[0];
-        if (!file) return;
-        if (isPdfFile(file)) {
-          void readSource(file).then((source) => setRateCon({ stage: 'review', source }));
-        } else {
-          setRateCon({ stage: 'pick' });
-        }
-      }}
-    >
-      {draggingFile && (
-        <div className="runs__drop-overlay" aria-hidden="true">
-          <strong>Drop the rate con to book a load</strong>
-          <span>PDF from any broker</span>
-        </div>
-      )}
+    <div className="runs">
       <div className="runs__toolbar">
-        <h1 className="workspace__title">Runs</h1>
+        <h1 className="workspace__title">{t.runs.title}</h1>
         <div className="runs__toolbar-actions">
-          <div className="runs__filters" role="group" aria-label="Filter runs by status">
+          <div className="runs__filters" role="group" aria-label={t.runs.filterAria}>
             {filterOptions.map((option) => (
               <button
                 key={option}
@@ -116,104 +67,27 @@ function Runs() {
                 className={statusFilter === option ? 'runs__filter is-active' : 'runs__filter'}
                 onClick={() => dispatch(setStatusFilter(option))}
               >
-                {option}
+                {filterLabel(option)}
               </button>
             ))}
           </div>
-          {permissions.canManageLoads && (
-            <>
-              <button
-                type="button"
-                className="runs__button runs__button--small"
-                onClick={() => setRateCon({ stage: 'pick' })}
-              >
-                Upload rate con
-              </button>
-              <button
-                type="button"
-                className="runs__button runs__button--ghost runs__button--small"
-                onClick={() => dispatch(openLoadModal('214'))}
-              >
-                New load
-              </button>
-              <button
-                type="button"
-                className="runs__button runs__button--ghost runs__button--small"
-                onClick={() => setShowNewRun((open) => !open)}
-              >
-                + New run
-              </button>
-            </>
-          )}
           <button
             type="button"
-            className="runs__button runs__button--ghost"
+            className="runs__button runs__button--tertiary runs__button--small"
             onClick={() => resetAllDemoData(dispatch)}
           >
-            Reset demo
+            {t.runs.resetDemo}
           </button>
         </div>
       </div>
 
       <input
         className="runs__input"
-        placeholder="Search truck, driver, city, customer or BOL..."
-        aria-label="Search runs"
+        placeholder={t.runs.searchPlaceholder}
+        aria-label={t.runs.searchAria}
         value={search}
         onChange={(e) => setSearch(e.target.value)}
       />
-
-      {showNewRun && permissions.canManageLoads && (
-        <form
-          className="runs__form"
-          aria-label="New run"
-          onSubmit={(e) => {
-            e.preventDefault();
-            if (!truck.trim() || !driver.trim()) return;
-            dispatch(
-              createRun({
-                truck,
-                driver,
-                yardCity,
-                yardState,
-                drivingHoursLeft: readNumber(hours),
-              }),
-            );
-            setShowNewRun(false);
-            setTruck('');
-            setDriver('');
-          }}
-        >
-          <div className="runs__form-head">
-            <h2 className="runs__subtitle">Dispatch a new truck run</h2>
-          </div>
-          <label className="runs__field">
-            <span className="runs__label">Truck</span>
-            <input className="runs__input" placeholder="Truck 412" value={truck} onChange={(e) => setTruck(e.target.value)} />
-          </label>
-          <label className="runs__field">
-            <span className="runs__label">Driver</span>
-            <input className="runs__input" placeholder="Sam Carter" value={driver} onChange={(e) => setDriver(e.target.value)} />
-          </label>
-          <label className="runs__field">
-            <span className="runs__label">Yard city</span>
-            <input className="runs__input" value={yardCity} onChange={(e) => setYardCity(e.target.value)} />
-          </label>
-          <label className="runs__field">
-            <span className="runs__label">Yard state</span>
-            <input className="runs__input" maxLength={2} value={yardState} onChange={(e) => setYardState(e.target.value.toUpperCase())} />
-          </label>
-          <label className="runs__field">
-            <span className="runs__label">Shift hours left</span>
-            <input className="runs__input" type="number" min="0" step="0.5" value={hours} onChange={(e) => setHours(e.target.value)} />
-          </label>
-          <div className="runs__form-submit">
-            <button type="submit" className="runs__button" disabled={!truck.trim() || !driver.trim()}>
-              Create run
-            </button>
-          </div>
-        </form>
-      )}
 
       <ul className="runs__list">
         {visibleRuns.map((item) => {
@@ -240,14 +114,14 @@ function Runs() {
                     <span className="runs__truck">{run.truck}</span>
                     {needsBackhaul && (
                       <span className="runs__badge runs__badge--warn">
-                        Backhaul needed · {deadheadPercent}% empty
+                        {t.runs.backhaulNeeded(deadheadPercent ?? 0)}
                       </span>
                     )}
                     {!needsBackhaul &&
                       run.loads.length > 1 &&
                       run.status !== 'Completed' && (
                         <span className="runs__badge runs__badge--ok">
-                          Backhaul assigned
+                          {t.runs.backhaulAssigned}
                         </span>
                       )}
                   </span>
@@ -260,7 +134,7 @@ function Runs() {
                         <span className="runs__inline-visual">
                           <HosRing hoursLeft={run.drivingHoursLeft} />
                           <span className="runs__meta">
-                            {formatHours(run.drivingHoursLeft)} HOS
+                            {t.runs.hosShort(formatHours(run.drivingHoursLeft))}
                           </span>
                         </span>
                       )}
@@ -271,24 +145,18 @@ function Runs() {
                   <RunStatusBadge status={run.status} />
                   <span className="runs__inline-visual">
                     <MilesSplitBar paidMiles={paidMiles} emptyMiles={empty} />
-                    <span
-                      className="runs__meta"
-                      title="Revenue ÷ total miles (paid + empty)"
-                    >
-                      Paid {formatMiles(paidMiles)} ·{' '}
+                    <span className="runs__meta" title={t.common.allInTooltip}>
+                      {t.common.paidMiles(formatMiles(paidMiles))} ·{' '}
                       {empty === null
-                        ? 'Empty miles needed'
-                        : `Empty ${formatMiles(empty)}`}
+                        ? t.runs.emptyNeeded
+                        : t.common.emptyMiles(formatMiles(empty))}
                       {perMile !== null && earned > 0
-                        ? ` · All-in ${formatMoney(perMile, 2)} / mi`
+                        ? ` · ${t.common.allIn(formatMoney(perMile, 2))}`
                         : ''}
                     </span>
                   </span>
                   <span className="runs__meta">
-                    {run.loads.length === 1
-                      ? '1 load'
-                      : `${run.loads.length} loads`}{' '}
-                    · {formatMoney(earned, 0)}
+                    {t.common.loadsCount(run.loads.length)} · {formatMoney(earned, 0)}
                   </span>
                 </span>
               </button>
@@ -296,11 +164,6 @@ function Runs() {
           );
         })}
       </ul>
-
-      {permissions.canManageLoads && <AddLoadModal defaultRunId="214" />}
-      {permissions.canManageLoads && (
-        <RateConImport state={rateCon} onChange={setRateCon} />
-      )}
     </div>
   );
 }
