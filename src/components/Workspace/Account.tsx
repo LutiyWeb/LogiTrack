@@ -1,5 +1,5 @@
 import { t } from '../../i18n';
-import { formatMoney, readNumber } from '../../runs/demo';
+import { formatMoney, readNumber } from '../../runs/seed';
 import { useAppDispatch, useAppSelector } from '../../store/hooks';
 import {
   logout,
@@ -10,7 +10,7 @@ import {
   carrierProfile,
   updateCarrierTargets,
 } from '../../store/slices/uiSlice';
-import { resetAllDemoData } from '../../store/store';
+import { resetAllData } from '../../store/store';
 
 function Account() {
   const dispatch = useAppDispatch();
@@ -189,18 +189,18 @@ function Account() {
         </label>
       </section>
 
-      <section className="runs__block" aria-label={t.account.demoAria}>
+      <section className="runs__block" aria-label={t.account.dataAria}>
         <div className="runs__load-head">
           <div>
-            <h2 className="runs__subtitle">{t.account.demoTitle}</h2>
-            <p className="runs__meta">{t.account.demoSub}</p>
+            <h2 className="runs__subtitle">{t.account.dataTitle}</h2>
+            <p className="runs__meta">{t.account.dataSub}</p>
           </div>
           <button
             type="button"
             className="runs__button runs__button--secondary"
-            onClick={() => resetAllDemoData(dispatch)}
+            onClick={() => resetAllData(dispatch)}
           >
-            {t.account.resetDemo}
+            {t.account.resetData}
           </button>
         </div>
       </section>

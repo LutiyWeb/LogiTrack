@@ -343,12 +343,27 @@
     border: 1px solid var(--color-line);
   }
 
-  &__load--alert {
-    border: 1px solid var(--color-danger-line);
-    background: #fff8f9;
+  &__driver-alerts {
+    gap: 6px;
   }
 
-  &__demo-hint {
+  // A status label and the text it describes form one tile.
+  // Text takes the free width on the left, the label sits in the top-right corner.
+  &__driver-alert {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: start;
+    gap: 12px;
+    padding: 8px 12px;
+    background: var(--color-bg);
+    border-radius: var(--radius-m);
+
+    .runs__badge {
+      white-space: nowrap;
+    }
+  }
+
+  &__hint {
     padding: 8px 12px;
     border: 1px solid var(--color-primary-line);
     font-size: 13px;
@@ -501,13 +516,37 @@
     border-radius: var(--radius-m);
   }
 
+  &__instructions {
+    display: grid;
+    gap: 4px;
+    padding: 10px 14px;
+    font-size: var(--font-size-s);
+    line-height: 1.45;
+    color: var(--color-text);
+    background: var(--color-tint-amber);
+    border-radius: var(--radius-m);
+
+    ul {
+      display: grid;
+      gap: 2px;
+      padding-left: 18px;
+    }
+  }
+
+  &__instructions-title {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-weight: 600;
+    color: var(--color-warn);
+  }
+
   // Ошибка формы: красная, со значком — её нельзя не заметить.
   &__note--error {
     grid-column: 1 / -1;
     display: flex;
     align-items: center;
     gap: 10px;
-    border-left: 4px solid var(--color-danger-fill);
     font-weight: 500;
     color: var(--color-danger);
     background: var(--color-tint-red);
@@ -552,6 +591,7 @@
   &__form-submit {
     display: flex;
     justify-content: flex-end;
+    gap: 8px;
   }
 
   &__field {
@@ -612,11 +652,6 @@
 
   &__filters--inline {
     align-self: flex-start;
-  }
-
-  // Новый груз в очереди — ждёт проверки.
-  &__load--new {
-    border-left: 3px solid var(--color-warn);
   }
 
   // Карточка клиента: статус сверху справа, действия снизу справа.
@@ -778,7 +813,7 @@
     }
 
     &:focus-visible {
-      outline: 2px solid var(--color-primary);
+      outline: 2px solid var(--color-text);
       outline-offset: 2px;
     }
 
@@ -797,6 +832,18 @@
     &:hover:not(:disabled) {
       border-color: var(--color-text);
       background: var(--color-hover);
+    }
+  }
+
+  // Active — the button's panel or form is open right now (set together with aria-pressed).
+  &__button.is-active {
+    border-color: var(--color-primary);
+    color: var(--color-primary);
+    background: var(--color-tint-primary);
+
+    &:hover:not(:disabled) {
+      border-color: var(--color-primary);
+      background: var(--color-tint-primary);
     }
   }
 
@@ -942,7 +989,6 @@
     color: var(--color-muted);
   }
 
-
   &__open {
     justify-self: start;
     margin-top: 4px;
@@ -981,5 +1027,451 @@
   span {
     font-size: 13px;
     color: var(--color-muted);
+  }
+}
+
+// Mobile: an outer group is just a heading — one card level only.
+@media (max-width: 767px) {
+  .runs__block--flat-mobile {
+    padding: 0;
+    background: transparent;
+  }
+}
+
+// Backhaul alert cards on mobile: badge, truck, details, then a full-width action.
+@media (max-width: 767px) {
+  .runs__load--alert {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .runs__alert-head,
+  .runs__alert-title {
+    display: contents;
+  }
+
+  .runs__load--alert .runs__badge {
+    align-self: flex-start;
+    white-space: nowrap;
+  }
+
+  .runs__load--alert .runs__miles-bar {
+    width: 100%;
+  }
+
+  .runs__alert-action {
+    order: 10;
+    align-self: flex-start;
+    white-space: nowrap;
+  }
+}
+
+// Alert card buttons share one width: full width up to 415px, at least 180px above.
+.runs__alerts .runs__button {
+  min-width: 180px;
+}
+
+@media (max-width: 415px) {
+  .runs__alerts .runs__button {
+    width: 100%;
+  }
+}
+
+// «Зведення рейсів» on mobile: each run is one tile.
+// Header: truck + driver left, status top-right; then route, driver hours, miles, money.
+@media (max-width: 767px) {
+  .runs__summary-head {
+    flex-direction: row;
+    justify-content: space-between;
+    align-items: center;
+  }
+
+  .runs__list--summary {
+    gap: 8px;
+
+    .runs__row {
+      display: grid;
+      grid-template-areas:
+        'truck status'
+        'lane lane'
+        'hos hos'
+        'bar bar'
+        'miles miles'
+        'money money'
+        'loads loads';
+      grid-template-columns: minmax(0, 1fr) auto;
+      align-items: start;
+      gap: 4px 12px;
+      padding: 12px;
+      border: 0;
+      background: var(--color-bg);
+
+      &:hover {
+        background: var(--color-bg);
+      }
+    }
+
+    .runs__row-main,
+    .runs__row-side,
+    .runs__row-title,
+    .runs__row-side > .runs__inline-visual {
+      display: contents;
+    }
+
+    .runs__truck {
+      grid-area: truck;
+    }
+
+    .runs__row-side > .runs__status {
+      grid-area: status;
+      white-space: nowrap;
+    }
+
+    .runs__row-main > .runs__meta {
+      grid-area: lane;
+    }
+
+    .runs__row-main > .runs__inline-visual {
+      grid-area: hos;
+      margin-top: 4px;
+    }
+
+    .runs__miles-bar {
+      grid-area: bar;
+      width: 100%;
+      margin-top: 8px;
+    }
+
+    .runs__row-side > .runs__inline-visual > .runs__meta {
+      grid-area: miles;
+    }
+
+    .runs__row-side > .runs__meta {
+      grid-area: money;
+    }
+
+    .runs__row-title > .runs__badge {
+      grid-area: loads;
+      justify-self: start;
+      margin-top: 4px;
+      white-space: nowrap;
+    }
+  }
+}
+
+// Overview KPI values use the primary colour on every width — they are data, not labels.
+.runs__stats--kpi dd {
+  color: var(--color-primary);
+}
+
+// Overview KPI cards on mobile: label + status on top, value right under the label,
+// details below in muted text.
+@media (max-width: 767px) {
+  .runs__stats--kpi {
+    .runs__stat {
+      display: grid;
+      grid-template-areas:
+        'label status'
+        'value value'
+        'meta meta';
+      grid-template-columns: minmax(0, 1fr) auto;
+      align-items: start;
+      gap: 4px 12px;
+    }
+
+    .runs__inline-visual {
+      display: contents;
+    }
+
+    dt {
+      grid-area: label;
+    }
+
+    dd {
+      grid-area: value;
+    }
+
+    .runs__badge {
+      grid-area: status;
+      white-space: nowrap;
+    }
+
+    .runs__meta {
+      grid-area: meta;
+      color: var(--color-muted);
+    }
+  }
+}
+
+// Mobile: switch tabs stay on one line and scroll sideways instead of wrapping.
+@media (max-width: 767px) {
+  .runs__filters--scroll {
+    flex-wrap: nowrap;
+    align-self: stretch;
+    max-width: 100%;
+    overflow-x: auto;
+    scrollbar-width: none;
+
+    &::-webkit-scrollbar {
+      display: none;
+    }
+
+    .runs__filter {
+      flex: 0 0 auto;
+      white-space: nowrap;
+    }
+  }
+}
+
+// Field validation message and the "nothing found" state.
+.runs__field-error {
+  font-size: 12px;
+  color: var(--color-danger);
+}
+
+.runs__empty {
+  display: grid;
+  justify-items: start;
+  gap: 8px;
+  padding: 16px;
+  font-size: var(--font-size-s);
+  background: var(--color-surface);
+  border-radius: var(--radius-m);
+
+  span {
+    color: var(--color-muted);
+  }
+}
+
+// Mobile: every tap target is at least 40px.
+@media (max-width: 767px) {
+  .runs__back {
+    display: inline-flex;
+    align-items: center;
+  }
+
+  .runs__map .maplibregl-ctrl-group button {
+    width: 40px;
+    height: 40px;
+  }
+
+  // The truck marker stays small; its tap area grows around it.
+  .truck-marker::after {
+    content: '';
+    position: absolute;
+    inset: -7px;
+  }
+}
+
+// Runs list card on mobile: truck + status on one line (status top-right),
+// then backhaul badge, driver, hours, route, miles bar, miles and money.
+@media (max-width: 767px) {
+  .runs__list--cards .runs__row {
+    display: grid;
+    grid-template-areas:
+      'truck status'
+      'badge badge'
+      'driver driver'
+      'hos hos'
+      'lane lane'
+      'bar bar'
+      'miles miles'
+      'money money';
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: start;
+    gap: 4px 12px;
+
+    .runs__row-main,
+    .runs__row-side,
+    .runs__row-title,
+    .runs__row-main > .runs__inline-visual,
+    .runs__row-side > .runs__inline-visual {
+      display: contents;
+    }
+
+    .runs__truck {
+      grid-area: truck;
+    }
+
+    .runs__row-title > .runs__badge {
+      grid-area: badge;
+      justify-self: start;
+      margin-top: 4px;
+    }
+
+    .runs__row-side > .runs__status {
+      grid-area: status;
+      white-space: nowrap;
+    }
+
+    .runs__row-main > .runs__inline-visual > .runs__meta {
+      grid-area: driver;
+    }
+
+    .runs__row-main > .runs__inline-visual > .runs__inline-visual {
+      grid-area: hos;
+      justify-self: start;
+    }
+
+    .runs__row-main > .runs__meta {
+      grid-area: lane;
+    }
+
+    .runs__row-side .runs__miles-bar {
+      grid-area: bar;
+      width: 100%;
+      margin-top: 8px;
+    }
+
+    .runs__row-side > .runs__inline-visual > .runs__meta {
+      grid-area: miles;
+    }
+
+    .runs__row-side > .runs__meta {
+      grid-area: money;
+    }
+  }
+}
+
+// Mobile: the toolbar may shrink to the screen so the scrolling filters stay inside it.
+@media (max-width: 767px) {
+  .runs__toolbar {
+    align-items: stretch;
+  }
+
+  .runs__toolbar-actions {
+    flex-wrap: wrap;
+    min-width: 0;
+    max-width: 100%;
+  }
+}
+
+// Open run header: the wrapper is invisible on desktop. On mobile the back link and the
+// status share the first row, the truck name is the second.
+.runs__run-head {
+  display: contents;
+}
+
+@media (max-width: 767px) {
+  .runs__run-head {
+    display: grid;
+    grid-template-areas:
+      'back status'
+      'title title';
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: center;
+    gap: 0 12px;
+
+    .runs__back {
+      grid-area: back;
+    }
+
+    .runs__heading,
+    .runs__heading-controls {
+      display: contents;
+    }
+
+    .workspace__title {
+      grid-area: title;
+    }
+
+    .runs__heading-controls > .runs__status {
+      grid-area: status;
+    }
+  }
+}
+
+// Load card: the figures are data (primary), the route and documents stay muted.
+.runs__meta--data {
+  color: var(--color-primary);
+  font-weight: 600;
+}
+
+// "Додати з черги" stays on the heading row on every width.
+.runs__form-head--row {
+  flex-direction: row;
+  align-items: center;
+  justify-content: space-between;
+}
+
+@media (max-width: 767px) {
+  // Load card head: row 1 customer + "More", row 2 status + broker, then billing.
+  .runs__load-head {
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px;
+
+    > .runs__truck {
+      flex: 1 1 0;
+      min-width: 0;
+      overflow-wrap: anywhere;
+    }
+
+    > .runs__load-actions {
+      display: contents;
+    }
+
+    .runs__load-actions > .action-menu {
+      order: 1;
+    }
+
+    &::after {
+      content: '';
+      order: 2;
+      flex: 0 0 100%;
+      height: 0;
+    }
+
+    .runs__load-status,
+    .runs__load-broker {
+      order: 3;
+      flex: 1 1 0;
+      min-width: 0;
+    }
+
+    .runs__load-status > * {
+      width: 100%;
+    }
+
+    .runs__load-status {
+      flex-grow: 1.4;
+    }
+
+    .runs__load-broker {
+      align-self: stretch;
+      justify-content: center;
+    }
+
+    .runs__load-actions > .runs__badge,
+    .runs__load-actions > .runs__button:not(.runs__load-broker) {
+      order: 4;
+      flex: 0 0 100%;
+      justify-content: center;
+      text-align: center;
+    }
+  }
+}
+
+// Inbox card with two actions on mobile: the main one is at least half the row and
+// grows with its text; "Reject" takes whatever is left.
+@media (max-width: 767px) {
+  .runs__account-actions {
+    flex-wrap: nowrap;
+
+    > .runs__button:not(:only-child) {
+      justify-content: center;
+      white-space: nowrap;
+    }
+
+    > .runs__button--tertiary:not(:only-child) {
+      flex: 1 1 0;
+      min-width: 0;
+    }
+
+    > .runs__button:not(.runs__button--tertiary):not(:only-child) {
+      flex: 0 0 auto;
+      min-width: calc(50% - 4px);
+    }
   }
 }

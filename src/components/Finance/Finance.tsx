@@ -5,7 +5,7 @@ import {
   type MonthResult,
 } from '../../finance/finance';
 import { t } from '../../i18n';
-import { formatMiles, formatMoney, readNumber } from '../../runs/demo';
+import { formatMiles, formatMoney, readNumber } from '../../runs/seed';
 import { useAppDispatch, useAppSelector } from '../../store/hooks';
 import { selectMonthResult } from '../../store/selectors/financeSelectors';
 import { setFixedCost, updateFinance } from '../../store/slices/financeSlice';

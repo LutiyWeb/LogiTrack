@@ -1,6 +1,6 @@
 import { createSlice, type PayloadAction } from '@reduxjs/toolkit';
 import { seedInbox, type InboxLoad, type InboxStatus } from '../../inbox/inbox';
-import type { LoadDraft } from '../../runs/demo';
+import type { LoadDraft } from '../../runs/seed';
 import { bookRateCon } from './runsSlice';
 
 export type InboxState = { items: InboxLoad[] };
@@ -46,9 +46,6 @@ const inboxSlice = createSlice({
 
 export const { addInboxLoad, saveInboxLoad, setInboxStatus, resetInboxState } =
   inboxSlice.actions;
-
-export const selectNewInboxCount = (state: { inbox: InboxState }) =>
-  state.inbox.items.filter((item) => item.status === 'New').length;
 
 export const selectWaitingInboxCount = (state: { inbox: InboxState }) =>
   state.inbox.items.filter((item) => item.status === 'New' || item.status === 'Ready').length;

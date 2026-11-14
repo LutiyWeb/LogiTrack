@@ -3,10 +3,10 @@ import userEvent from '@testing-library/user-event';
 import { describe, expect, it } from 'vitest';
 import App from '../../App';
 import { selectMonthResult } from '../../store/selectors/financeSelectors';
-import { loginAsDemoUser } from '../../store/slices/authSlice';
+import { loginAsUser } from '../../store/slices/authSlice';
 import { setFixedCost } from '../../store/slices/financeSlice';
 import { addLoad } from '../../store/slices/runsSlice';
-import { backhaulPreset } from '../../runs/demo';
+import { backhaulPreset } from '../../runs/seed';
 import { createAppStore } from '../../store/store';
 
 describe('Фінанси', () => {
@@ -29,7 +29,7 @@ describe('Фінанси', () => {
   it('is visible to the manager and hidden from the dispatcher', async () => {
     const user = userEvent.setup();
     const store = createAppStore();
-    store.dispatch(loginAsDemoUser('manager'));
+    store.dispatch(loginAsUser('manager'));
     const { unmount } = render(<App customStore={store} />);
 
     await user.click(screen.getByRole('button', { name: 'Фінанси' }));
@@ -37,7 +37,7 @@ describe('Фінанси', () => {
     unmount();
 
     const dispatcherStore = createAppStore();
-    dispatcherStore.dispatch(loginAsDemoUser('dispatcher'));
+    dispatcherStore.dispatch(loginAsUser('dispatcher'));
     render(<App customStore={dispatcherStore} />);
     expect(screen.queryByRole('button', { name: 'Фінанси' })).not.toBeInTheDocument();
   });

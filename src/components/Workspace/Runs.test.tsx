@@ -2,21 +2,25 @@ import { render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it } from 'vitest';
 import App from '../../App';
-import { loginAsDemoUser } from '../../store/slices/authSlice';
+import { loginAsUser } from '../../store/slices/authSlice';
 import { createAppStore } from '../../store/store';
 
-describe('LogiTrack CRM Demo UI flows', () => {
+describe('LogiTrack CRM UI flows', () => {
   it('completes the core Truck 214 backhaul scenario via the backhaul form (710 empty mi / $2.27 / Net $1,409 -> 215 empty mi / $3.77 / Net $3,516)', async () => {
     const user = userEvent.setup();
     const testStore = createAppStore();
-    testStore.dispatch(loginAsDemoUser('dispatcher'));
+    testStore.dispatch(loginAsUser('dispatcher'));
     render(<App customStore={testStore} />);
 
     expect(screen.getByRole('heading', { name: 'Рейси' })).toBeInTheDocument();
     expect(screen.getByText('Тягач 214')).toBeInTheDocument();
-    expect(screen.getAllByText('Повернення порожнім').length).toBeGreaterThan(0);
+    expect(screen.getAllByText('Повернення порожнім').length).toBeGreaterThan(
+      0,
+    );
     expect(
-      screen.getByText(/Під вантажем 700 миль · Порожніх 710 миль · Загалом \$2\.27 \/ милю/),
+      screen.getByText(
+        /Під вантажем 700 миль · Порожніх 710 миль · Загалом \$2\.27 \/ милю/,
+      ),
     ).toBeInTheDocument();
 
     await user.click(screen.getByRole('button', { name: /Тягач 214/i }));
@@ -30,7 +34,9 @@ describe('LogiTrack CRM Demo UI flows', () => {
     expect(screen.getAllByText('700 миль').length).toBeGreaterThan(0);
     expect(screen.getAllByText('710 миль').length).toBeGreaterThan(0);
     expect(screen.getAllByText('$3,200').length).toBeGreaterThan(0);
-    expect(screen.getByText('Чистий $1,409 · Витрати $1,791')).toBeInTheDocument();
+    expect(
+      screen.getByText('Чистий $1,409 · Витрати $1,791'),
+    ).toBeInTheDocument();
     expect(screen.getByText('$2.27')).toBeInTheDocument();
 
     const offersBoard = screen.getByRole('region', {
@@ -46,20 +52,28 @@ describe('LogiTrack CRM Demo UI flows', () => {
     );
 
     await user.click(
-      within(offersBoard).getAllByRole('button', { name: 'Заповнити форму' })[0],
+      within(offersBoard).getAllByRole('button', {
+        name: 'Заповнити форму',
+      })[0],
     );
     const modal = screen.getByRole('dialog', { name: 'Додати вантаж' });
     expect(within(modal).getByLabelText('Тягач / водій')).toBeInTheDocument();
 
     await user.click(
-      within(modal).getByRole('button', { name: 'Заповнити: Blue Ridge Logistics' }),
+      within(modal).getByRole('button', {
+        name: 'Заповнити: Blue Ridge Logistics',
+      }),
     );
-    await user.click(within(modal).getByRole('button', { name: 'Додати вантаж' }));
+    await user.click(
+      within(modal).getByRole('button', { name: 'Додати вантаж' }),
+    );
 
     expect(screen.getByText('1,190 миль')).toBeInTheDocument();
     expect(screen.getAllByText('215 миль').length).toBeGreaterThan(0);
     expect(screen.getByText('$5,300')).toBeInTheDocument();
-    expect(screen.getByText('Чистий $3,516 · Витрати $1,784')).toBeInTheDocument();
+    expect(
+      screen.getByText('Чистий $3,516 · Витрати $1,784'),
+    ).toBeInTheDocument();
     expect(screen.getByText('$3.77')).toBeInTheDocument();
     expect(
       screen.getByText(
@@ -74,7 +88,7 @@ describe('LogiTrack CRM Demo UI flows', () => {
   it('filters runs by BOL search, adds $150 Detention fee, and navigates to Customers & billing with Create invoice', async () => {
     const user = userEvent.setup();
     const testStore = createAppStore();
-    testStore.dispatch(loginAsDemoUser('dispatcher'));
+    testStore.dispatch(loginAsUser('dispatcher'));
     render(<App customStore={testStore} />);
 
     const searchInput = screen.getByLabelText('Пошук рейсів');
@@ -83,7 +97,10 @@ describe('LogiTrack CRM Demo UI flows', () => {
     expect(screen.queryByText('Тягач 118')).not.toBeInTheDocument();
 
     await user.click(screen.getByRole('button', { name: /Тягач 214/i }));
-    await user.click(screen.getByRole('button', { name: '+ $150 за простій' }));
+    await user.click(screen.getByRole('button', { name: 'Ще' }));
+    await user.click(
+      screen.getByRole('menuitem', { name: '+ $150 за простій' }),
+    );
     expect(screen.getByText('+$150 за простій')).toBeInTheDocument();
     expect(
       screen.getByText(/Додано \$150 за простій до Hart Freight/),
@@ -106,16 +123,14 @@ describe('LogiTrack CRM Demo UI flows', () => {
     ).not.toBeInTheDocument();
   });
 
-  it('navigates between Overview, Runs, and Account and supports Demo Reset', async () => {
+  it('navigates between Overview, Runs, and Account and supports data reset', async () => {
     const user = userEvent.setup();
     const testStore = createAppStore();
-    testStore.dispatch(loginAsDemoUser('dispatcher'));
+    testStore.dispatch(loginAsUser('dispatcher'));
     render(<App customStore={testStore} />);
 
     await user.click(screen.getByRole('button', { name: 'Огляд' }));
-    expect(
-      screen.getByRole('heading', { name: 'Огляд' }),
-    ).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'Огляд' })).toBeInTheDocument();
     expect(screen.getByText(/Чистий прибуток \$/)).toBeInTheDocument();
     expect(screen.getByText('$/милю загалом')).toBeInTheDocument();
 
@@ -131,24 +146,24 @@ describe('LogiTrack CRM Demo UI flows', () => {
     ).toBeInTheDocument();
 
     await user.click(
-      within(alertsSection).getAllByRole('button', { name: 'Знайти зворотний вантаж' })[0],
+      within(alertsSection).getAllByRole('button', {
+        name: 'Знайти зворотний вантаж',
+      })[0],
     );
     expect(
       screen.getByRole('heading', { name: 'Тягач 214' }),
     ).toBeInTheDocument();
 
     await user.click(screen.getByRole('button', { name: 'Акаунт' }));
-    expect(
-      screen.getByRole('heading', { name: 'Акаунт' }),
-    ).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'Акаунт' })).toBeInTheDocument();
     expect(screen.getByText('LogiTrack Freight LLC')).toBeInTheDocument();
 
-    await user.click(screen.getByRole('button', { name: 'Скинути демо-дані' }));
+    await user.click(screen.getByRole('button', { name: 'Скинути всі дані' }));
     await user.click(screen.getByRole('button', { name: 'Рейси' }));
     expect(screen.getByRole('heading', { name: 'Рейси' })).toBeInTheDocument();
   });
 
-  it('validates login credentials and supports one-click dev auto-login', async () => {
+  it('validates login credentials and supports one-click quick login', async () => {
     const user = userEvent.setup();
     const testStore = createAppStore();
     render(<App customStore={testStore} />);
@@ -157,7 +172,7 @@ describe('LogiTrack CRM Demo UI flows', () => {
       screen.getByRole('heading', { name: 'LogiTrack' }),
     ).toBeInTheDocument();
 
-    await user.type(screen.getByLabelText('Email'), 'alex@logitrack.demo');
+    await user.type(screen.getByLabelText('Email'), 'alex@logitrack.app');
     await user.type(screen.getByLabelText('Пароль'), 'wrongpass');
     await user.click(screen.getByRole('button', { name: 'Увійти' }));
 
@@ -165,9 +180,7 @@ describe('LogiTrack CRM Demo UI flows', () => {
       'Невірний email або пароль',
     );
 
-    await user.click(
-      screen.getByRole('button', { name: /Швидкий вхід для розробки/i }),
-    );
+    await user.click(screen.getByRole('button', { name: 'Вхід' }));
     expect(screen.getByRole('heading', { name: 'Рейси' })).toBeInTheDocument();
   });
 
@@ -196,7 +209,9 @@ describe('LogiTrack CRM Demo UI flows', () => {
       screen.getByLabelText('Статус вантажу Hart Freight'),
     ).toBeInTheDocument();
 
-    await user.click(screen.getByRole('button', { name: 'Підтвердити доставку' }));
+    await user.click(
+      screen.getByRole('button', { name: 'Підтвердити доставку' }),
+    );
     expect(screen.getByText('Доставку підтверджено')).toBeInTheDocument();
     expect(
       screen.queryByRole('button', { name: 'Виставити рахунок' }),

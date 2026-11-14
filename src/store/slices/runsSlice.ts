@@ -10,7 +10,7 @@ import {
   type LoadStatus,
   type Run,
   type RunStatus,
-} from '../../runs/demo';
+} from '../../runs/seed';
 import { t } from '../../i18n';
 import { carrierProfile } from './uiSlice';
 

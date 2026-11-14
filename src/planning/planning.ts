@@ -1,7 +1,7 @@
 import type { Driver } from '../drivers/drivers';
 import { t } from '../i18n';
 import type { InboxLoad } from '../inbox/inbox';
-import { DEMO_NOW, placeName, type Run } from '../runs/demo';
+import { SEED_NOW, placeName, type Run } from '../runs/seed';
 
 /** Напоминание. Может быть привязано к грузу из очереди. */
 export type Reminder = {
@@ -26,7 +26,7 @@ export type CalendarEvent = {
   runId?: string;
 };
 
-export const TODAY = DEMO_NOW.slice(0, 10);
+export const TODAY = SEED_NOW.slice(0, 10);
 
 export const seedReminders: Reminder[] = [
   { id: 'r1', date: '2026-10-28', inboxId: 'plan-texas', done: false, text: 'Переспитати Blue Ridge Logistics: чи підтверджено Dallas → Atlanta на 5 листопада.' },

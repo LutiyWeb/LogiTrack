@@ -1,7 +1,7 @@
 import { useState } from 'react';
-import { DEFAULT_DEV_USER, runDevAutoLogin } from '../../auth/devAutoAuth';
+import { DEFAULT_USER, quickLogin } from '../../auth/quickLogin';
 import { useAppDispatch, useAppSelector } from '../../store/hooks';
-import { demoUsers, loginWithCredentials } from '../../store/slices/authSlice';
+import { users, loginWithCredentials } from '../../store/slices/authSlice';
 import { t } from '../../i18n';
 import '../Workspace/Workspace.scss';
 
@@ -12,11 +12,11 @@ function LoginScreen() {
   const [password, setPassword] = useState('');
 
   function handleQuickLogin(roleOrId: string) {
-    runDevAutoLogin({
+    quickLogin({
       roleOrId,
-      onFillInputs: (devEmail, devPass) => {
-        setEmail(devEmail);
-        setPassword(devPass);
+      onFillInputs: (userEmail, userPassword) => {
+        setEmail(userEmail);
+        setPassword(userPassword);
       },
       dispatch,
     });
@@ -33,9 +33,9 @@ function LoginScreen() {
           <button
             type="button"
             className="runs__button runs__button--secondary runs__button--small"
-            onClick={() => handleQuickLogin(DEFAULT_DEV_USER.id)}
+            onClick={() => handleQuickLogin(DEFAULT_USER.id)}
           >
-            {t.login.devLogin(DEFAULT_DEV_USER.name)}
+            {t.login.quickLogin}
           </button>
         </header>
 
@@ -52,11 +52,11 @@ function LoginScreen() {
           </div>
           <label className="runs__field">
             <span className="runs__label">{t.login.email}</span>
-            <input className="runs__input" type="email" placeholder="alex@logitrack.demo" value={email} onChange={(e) => setEmail(e.target.value)} />
+            <input className="runs__input" type="email" placeholder="alex@logitrack.app" value={email} onChange={(e) => setEmail(e.target.value)} />
           </label>
           <label className="runs__field">
             <span className="runs__label">{t.login.password}</span>
-            <input className="runs__input" type="password" placeholder="demo123" value={password} onChange={(e) => setPassword(e.target.value)} />
+            <input className="runs__input" type="password" placeholder="logitrack2026" value={password} onChange={(e) => setPassword(e.target.value)} />
           </label>
           {loginError && (
             <p className="runs__note runs__note--error" role="alert">{loginError}</p>
@@ -66,10 +66,10 @@ function LoginScreen() {
           </div>
         </form>
 
-        <section className="runs__block" aria-label={t.login.demoAria}>
-          <h2 className="runs__subtitle">{t.login.demoTitle}</h2>
+        <section className="runs__block" aria-label={t.login.accountsAria}>
+          <h2 className="runs__subtitle">{t.login.accountsTitle}</h2>
           <ul className="runs__offers">
-            {demoUsers.map((user) => (
+            {users.map((user) => (
               <li key={user.id} className="runs__offer">
                 <div className="runs__load-head">
                   <div>

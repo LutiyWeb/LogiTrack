@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { filterLabel, t } from '../../i18n';
-import { formatHours, formatMiles, formatMoney } from '../../runs/demo';
+import { formatHours, formatMiles, formatMoney } from '../../runs/seed';
 import { useAppDispatch, useAppSelector } from '../../store/hooks';
 import {
   selectFilteredRuns,
@@ -9,7 +9,6 @@ import {
 } from '../../store/selectors/runsSelectors';
 import { openRun } from '../../store/slices/runsSlice';
 import { setStatusFilter, type StatusFilter } from '../../store/slices/uiSlice';
-import { resetAllDemoData } from '../../store/store';
 import RunDetail from './RunDetail';
 import { HosRing, MilesSplitBar, RunStatusBadge } from './RunVisuals';
 import './Workspace.scss';
@@ -59,25 +58,33 @@ function Runs() {
       <div className="runs__toolbar">
         <h1 className="workspace__title">{t.runs.title}</h1>
         <div className="runs__toolbar-actions">
-          <div className="runs__filters" role="group" aria-label={t.runs.filterAria}>
+          <div
+            className="runs__filters runs__filters--scroll"
+            role="group"
+            aria-label={t.runs.filterAria}
+          >
             {filterOptions.map((option) => (
               <button
                 key={option}
                 type="button"
-                className={statusFilter === option ? 'runs__filter is-active' : 'runs__filter'}
-                onClick={() => dispatch(setStatusFilter(option))}
+                className={
+                  statusFilter === option
+                    ? 'runs__filter is-active'
+                    : 'runs__filter'
+                }
+                onClick={(event) => {
+                  dispatch(setStatusFilter(option));
+                  event.currentTarget.scrollIntoView?.({
+                    block: 'nearest',
+                    inline: 'nearest',
+                    behavior: 'smooth',
+                  });
+                }}
               >
                 {filterLabel(option)}
               </button>
             ))}
           </div>
-          <button
-            type="button"
-            className="runs__button runs__button--tertiary runs__button--small"
-            onClick={() => resetAllDemoData(dispatch)}
-          >
-            {t.runs.resetDemo}
-          </button>
         </div>
       </div>
 
@@ -89,7 +96,25 @@ function Runs() {
         onChange={(e) => setSearch(e.target.value)}
       />
 
-      <ul className="runs__list">
+      {visibleRuns.length === 0 && (
+        <div className="runs__empty" role="status">
+          <strong>{t.runs.searchEmpty}</strong>
+          <span>
+            {query ? t.runs.searchEmptyFor(search.trim()) : t.runs.filterEmpty}
+          </span>
+          {query && (
+            <button
+              type="button"
+              className="runs__button runs__button--secondary runs__button--small"
+              onClick={() => setSearch('')}
+            >
+              {t.runs.clearSearch}
+            </button>
+          )}
+        </div>
+      )}
+
+      <ul className="runs__list runs__list--cards">
         {visibleRuns.map((item) => {
           const {
             run,
@@ -156,7 +181,8 @@ function Runs() {
                     </span>
                   </span>
                   <span className="runs__meta">
-                    {t.common.loadsCount(run.loads.length)} · {formatMoney(earned, 0)}
+                    {t.common.loadsCount(run.loads.length)} ·{' '}
+                    {formatMoney(earned, 0)}
                   </span>
                 </span>
               </button>

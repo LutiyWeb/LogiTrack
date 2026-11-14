@@ -2,19 +2,19 @@ import { render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it } from 'vitest';
 import App from '../../App';
-import { loginAsDemoUser } from '../../store/slices/authSlice';
+import { loginAsUser } from '../../store/slices/authSlice';
 import { createAppStore } from '../../store/store';
 
 describe('Вхідні вантажі', () => {
   it('shows the queue, assigns a checked load to a free truck and rejects another', async () => {
     const user = userEvent.setup();
     const store = createAppStore();
-    store.dispatch(loginAsDemoUser('dispatcher'));
+    store.dispatch(loginAsUser('dispatcher'));
     render(<App customStore={store} />);
 
-    // Счётчик новых грузов в меню.
+    // The menu badge counts the same loads as the «Очікують» tab.
     const navItem = screen.getByRole('button', { name: /Вхідні вантажі/ });
-    expect(within(navItem).getByText('2')).toBeInTheDocument();
+    expect(within(navItem).getByText('3')).toBeInTheDocument();
 
     await user.click(navItem);
     expect(screen.getByRole('heading', { name: 'Вхідні вантажі' })).toBeInTheDocument();
@@ -46,7 +46,7 @@ describe('Вхідні вантажі', () => {
 
   it('hides the queue from drivers', () => {
     const store = createAppStore();
-    store.dispatch(loginAsDemoUser('driver'));
+    store.dispatch(loginAsUser('driver'));
     render(<App customStore={store} />);
     expect(screen.queryByRole('button', { name: /Вхідні вантажі/ })).not.toBeInTheDocument();
   });

@@ -2,14 +2,14 @@ import { render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it } from 'vitest';
 import App from '../../App';
-import { loginAsDemoUser } from '../../store/slices/authSlice';
+import { loginAsUser } from '../../store/slices/authSlice';
 import { createAppStore } from '../../store/store';
 
 describe('Чати', () => {
   it('shows chats, sends a reply and puts the run messages into the run feed', async () => {
     const user = userEvent.setup();
     const store = createAppStore();
-    store.dispatch(loginAsDemoUser('dispatcher'));
+    store.dispatch(loginAsUser('dispatcher'));
     render(<App customStore={store} />);
 
     const navItem = screen.getByRole('button', { name: /Чати/ });

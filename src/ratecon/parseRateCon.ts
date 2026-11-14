@@ -1,5 +1,5 @@
 import { t } from '../i18n';
-import { emptyDraft, type LoadDraft } from '../runs/demo';
+import { emptyDraft, type LoadDraft } from '../runs/seed';
 import { carrierProfile } from '../store/slices/uiSlice';
 
 export type RateConField = Exclude<keyof LoadDraft, 'status' | 'driveHours'>;
@@ -18,7 +18,38 @@ const OWN_MC = carrierProfile.mcNumber.replace(/\D/g, '');
 const MONTHS = ['jan', 'feb', 'mar', 'apr', 'may', 'jun', 'jul', 'aug', 'sep', 'oct', 'nov', 'dec'];
 
 const ADDRESS =
-  /(\d+[^|,\n]*?),\s*([A-Za-z][A-Za-z .'-]*?),\s*([A-Z]{2})\b(?:\s*\|?\s*\d{5}(?:-\d{4})?)?/;
+  /(\d+[^|,\n]*?),\s*([A-Za-z][A-Za-z .'-]*?),\s*([A-Z]{2})\b(?:\s*\|?\s*(\d{5}(?:-\d{4})?))?/;
+
+// Sentences addressed to the driver: equipment, securement, temperature, calls ahead.
+const INSTRUCTION =
+  /\b(driver must|must have|call \d+ hours?|call before|call ahead|straps?|tarps?|edge protectors?|chains?|load locks?|keep at|temperature|pulp|seal|appointment required|no touch|lumper|ppe|hard hat|safety vest|steel[- ]toe)\b/i;
+
+// Standard terms every rate con repeats; not instructions for this load.
+const BOILERPLATE = /carrier agrees|detention is paid|double brokering|pod must|bol\/pod|sample document|questions\?/i;
+
+const INSTRUCTION_LABEL = /^(special instructions|instructions|notes?|temperature|temp)\s*[|:]\s*(.+)$/i;
+
+function readInstructions(lines: string[]): string {
+  const found: string[] = [];
+  const add = (text: string) => {
+    const value = text.replace(/\s*\|\s*/g, ' ').replace(/\s+/g, ' ').trim().replace(/\.$/, '');
+    if (value && !found.some((item) => item.toLowerCase() === value.toLowerCase())) found.push(value);
+  };
+
+  lines.forEach((line) => {
+    const labelled = line.match(INSTRUCTION_LABEL);
+    if (labelled) add(`${labelled[1][0].toUpperCase()}${labelled[1].slice(1)}: ${labelled[2]}`);
+  });
+
+  lines
+    .join(' ')
+    .split(/(?<=[.!])\s+(?=[A-Z])/)
+    .filter((sentence) => INSTRUCTION.test(sentence) && !BOILERPLATE.test(sentence))
+    .filter((sentence) => !INSTRUCTION_LABEL.test(sentence) && !/\|/.test(sentence))
+    .forEach(add);
+
+  return found.join('; ');
+}
 
 const STOP_START = /\b(pick ?up|shipper|origin)\b/i;
 
@@ -92,7 +123,7 @@ function cleanFacility(value: string) {
     .trim();
 }
 
-type Stop = { place: string; city: string; state: string; at: string };
+type Stop = { place: string; address: string; city: string; state: string; zip: string; at: string };
 
 function readStop(lines: string[], lineIndex: number, match: RegExpMatchArray, nextStopLine: number): Stop {
   const line = lines[lineIndex];
@@ -121,10 +152,15 @@ function readStop(lines: string[], lineIndex: number, match: RegExpMatchArray, n
     at = findDateTime(lines[next]);
   }
 
+  // A ZIP that wrapped to the next line in a table cell.
+  const zip = match[4] ?? lines[lineIndex + 1]?.match(/^(\d{5}(?:-\d{4})?)$/)?.[1] ?? '';
+
   return {
     place,
+    address: match[1].trim(),
     city: match[2].trim(),
     state: match[3],
+    zip,
     at: at ?? '',
   };
 }
@@ -205,12 +241,16 @@ export function parseRateCon(lines: string[]): ParsedRateCon {
     const pickup = readStop(clean, first.lineIndex, first.match, stops[1].lineIndex);
     const delivery = readStop(clean, last.lineIndex, last.match, clean.length);
     draft.pickupPlace = pickup.place;
+    draft.pickupAddress = pickup.address;
     draft.pickupCity = pickup.city;
     draft.pickupState = pickup.state;
+    draft.pickupZip = pickup.zip;
     draft.pickupAt = pickup.at;
     draft.deliveryPlace = delivery.place;
+    draft.deliveryAddress = delivery.address;
     draft.deliveryCity = delivery.city;
     draft.deliveryState = delivery.state;
+    draft.deliveryZip = delivery.zip;
     draft.deliveryAt = delivery.at;
     if (stops.length > 2) {
       warnings.push(
@@ -221,7 +261,9 @@ export function parseRateCon(lines: string[]): ParsedRateCon {
     warnings.push(t.rateCon.warnings.oneStop);
   }
 
-  const found = (Object.keys(draft) as (keyof LoadDraft)[]).filter(
+  draft.specialInstructions = readInstructions(clean);
+
+  const found =(Object.keys(draft) as (keyof LoadDraft)[]).filter(
     (key): key is RateConField => key !== 'status' && key !== 'driveHours' && draft[key] !== '',
   );
 

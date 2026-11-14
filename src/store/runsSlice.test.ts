@@ -1,14 +1,15 @@
 import { describe, expect, it } from 'vitest';
-import { backhaulPreset, emptyDraft } from '../runs/demo';
+import { backhaulPreset, emptyDraft } from '../runs/seed';
 import {
   selectBrokerSummaries,
   selectEnrichedRuns,
   selectFilteredRuns,
   selectFleetKpis,
   selectOpenRun,
+  selectOverviewRuns,
 } from './selectors/runsSelectors';
 import {
-  loginAsDemoUser,
+  loginAsUser,
   loginWithCredentials,
   logout,
   selectCurrentUser,
@@ -29,7 +30,7 @@ import {
   updateRunStatus,
 } from './slices/runsSlice';
 import { setActiveSection, setStatusFilter } from './slices/uiSlice';
-import { createAppStore, resetAllDemoData } from './store';
+import { createAppStore, resetAllData } from './store';
 
 describe('Redux store (runsSlice, uiSlice, authSlice, and selectors)', () => {
   it('initializes with 4 seeded runs and computes initial fleet KPIs and Net Profit', () => {
@@ -178,7 +179,7 @@ describe('Redux store (runsSlice, uiSlice, authSlice, and selectors)', () => {
     expect(billedHart.pendingRevenue).toBe(0);
   });
 
-  it('switches UI tabs, clears draft on run change, and resets all demo state cleanly', () => {
+  it('switches UI tabs, clears draft on run change, and resets all state cleanly', () => {
     const store = createAppStore();
     store.dispatch(setActiveSection('overview'));
     store.dispatch(setStatusFilter('Completed'));
@@ -186,7 +187,7 @@ describe('Redux store (runsSlice, uiSlice, authSlice, and selectors)', () => {
     store.dispatch(openRun('214'));
     expect(store.getState().runs.draft.customer).toBe('');
 
-    resetAllDemoData(store.dispatch);
+    resetAllData(store.dispatch);
 
     const state = store.getState();
     expect(state.ui.activeSectionId).toBe('board');
@@ -199,14 +200,14 @@ describe('Redux store (runsSlice, uiSlice, authSlice, and selectors)', () => {
     expect(selectCurrentUser(store.getState())).toBeNull();
 
     store.dispatch(
-      loginWithCredentials({ email: 'alex@logitrack.demo', password: 'wrong' }),
+      loginWithCredentials({ email: 'alex@logitrack.app', password: 'wrong' }),
     );
     expect(store.getState().auth.loginError).toBe('Невірний email або пароль');
 
     store.dispatch(
       loginWithCredentials({
-        email: '  ALEX@logitrack.demo ',
-        password: 'demo123',
+        email: '  ALEX@logitrack.app ',
+        password: 'logitrack2026',
       }),
     );
     expect(selectCurrentUser(store.getState())?.role).toBe('dispatcher');
@@ -220,10 +221,10 @@ describe('Redux store (runsSlice, uiSlice, authSlice, and selectors)', () => {
       canViewFinance: false,
     });
 
-    store.dispatch(loginAsDemoUser('manager'));
+    store.dispatch(loginAsUser('manager'));
     expect(selectPermissions(store.getState()).canEditTargets).toBe(true);
 
-    store.dispatch(loginAsDemoUser('driver'));
+    store.dispatch(loginAsUser('driver'));
     expect(selectPermissions(store.getState()).canViewOverview).toBe(false);
     expect(selectPermissions(store.getState()).canManageLoads).toBe(false);
     expect(
@@ -267,7 +268,7 @@ describe('Redux store (runsSlice, uiSlice, authSlice, and selectors)', () => {
       weightLbs: 38500,
       rateConFile: 'ratecon-crestline.pdf',
     });
-    // Indianapolis → Louisville comes from the demo table (115), the return leg from routing.
+    // Indianapolis → Louisville comes from the bundled table (115), the return leg from routing.
     expect(opened.emptyMiles).toBe(115 + 464);
     expect(opened.run.notes?.at(-1)?.text).toContain('Створено вантаж CFB-240917');
     expect(opened.run.notes?.at(-1)?.text).toContain('$1,850');
@@ -289,5 +290,24 @@ describe('Redux store (runsSlice, uiSlice, authSlice, and selectors)', () => {
     expect(opened.run.id).toBe('118');
     expect(opened.run.loads).toHaveLength(2);
     expect(opened.emptyMiles).toBe(125 + 71 + 568);
+  });
+
+  it('lists overview runs by urgency, without completed ones, at most five', () => {
+    const store = createAppStore();
+    // 214 empty return (3.5 h), 305 too many empty miles (5.5 h), 118 too many empty miles (8 h); 107 completed.
+    expect(selectOverviewRuns(store.getState()).map((item) => item.run.id)).toEqual(['214', '305', '118']);
+
+    for (let index = 0; index < 4; index += 1) {
+      store.dispatch(
+        bookRateCon({
+          target: { kind: 'new', runId: `run-${index}`, truck: `Тягач ${900 + index}`, driver: 'Test Driver', drivingHoursLeft: 11 },
+          draft: { ...emptyDraft, customer: 'Test', rate: '1000', pickupCity: 'Dayton', pickupState: 'OH', deliveryCity: 'Columbus', deliveryState: 'OH', miles: '70' },
+          legMiles: {},
+          author: 'Alex Mercer',
+          roleTitle: 'Dispatcher',
+        }),
+      );
+    }
+    expect(selectOverviewRuns(store.getState())).toHaveLength(5);
   });
 });

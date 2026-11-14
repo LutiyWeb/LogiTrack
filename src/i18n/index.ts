@@ -1,4 +1,4 @@
-import type { BillingStatus, LoadStatus, RunStatus } from '../runs/demo';
+import type { BillingStatus, LoadStatus, RunStatus } from '../runs/seed';
 import type { StatusFilter } from '../store/slices/uiSlice';
 import { uk } from './uk';
 

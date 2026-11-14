@@ -126,3 +126,9 @@ input[type='search']::-webkit-search-results-decoration {
 [hidden] {
   display: none !important;
 }
+
+// One focus ring for every keyboard-focusable control; components may only match it.
+:where(button, a, select, [tabindex]):focus-visible {
+  outline: 2px solid var(--color-text);
+  outline-offset: 2px;
+}

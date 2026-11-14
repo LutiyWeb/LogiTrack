@@ -1,27 +1,27 @@
 import {
-  demoUsers,
+  users,
   loginWithCredentials,
-  type DemoUser,
+  type User,
   type UserRole,
 } from '../store/slices/authSlice';
 import { openRun } from '../store/slices/runsSlice';
-import { setActiveSection, updateCarrierTargets } from '../store/slices/uiSlice';
+import {
+  setActiveSection,
+  updateCarrierTargets,
+} from '../store/slices/uiSlice';
 import type { AppDispatch } from '../store/store';
 
-export const DEFAULT_DEV_USER: DemoUser = demoUsers[0]; // Sarah Jenkins (Fleet Manager · Full access)
+export const DEFAULT_USER: User = users[0]; // Sarah Jenkins (Fleet Manager · Full access)
 
-export function getDevUserByRole(roleOrId: UserRole | string = 'manager'): DemoUser {
+export function getUserByRole(
+  roleOrId: UserRole | string = 'manager',
+): User {
   return (
-    demoUsers.find((u) => u.id === roleOrId || u.role === roleOrId) ??
-    DEFAULT_DEV_USER
+    users.find((u) => u.id === roleOrId || u.role === roleOrId) ??
+    DEFAULT_USER
   );
 }
-
-/**
- * Dev helper script: populates the login form inputs with valid dev credentials
- * and immediately dispatches authentication into the Redux store.
- */
-export function runDevAutoLogin({
+export function quickLogin({
   roleOrId = 'manager',
   onFillInputs,
   dispatch,
@@ -30,7 +30,7 @@ export function runDevAutoLogin({
   onFillInputs?: (email: string, password: string) => void;
   dispatch: AppDispatch;
 }) {
-  const user = getDevUserByRole(roleOrId);
+  const user = getUserByRole(roleOrId);
   onFillInputs?.(user.email, user.password);
   dispatch(
     loginWithCredentials({

@@ -1,5 +1,5 @@
 import { t } from '../i18n';
-import { DEMO_NOW, fleetRoster } from '../runs/demo';
+import { SEED_NOW, fleetRoster } from '../runs/seed';
 import type { EnrichedRun } from '../store/selectors/runsSelectors';
 
 export type Driver = {
@@ -24,7 +24,7 @@ export type PayoutRecord = {
   amount: number;
 };
 
-/** Текущая неделя выплат в демо. */
+/** Текущая неделя выплат. */
 export const CURRENT_WEEK = '26 жовт. – 1 лист.';
 
 export const seedDrivers: Driver[] = [
@@ -50,14 +50,14 @@ export const payoutHistory: PayoutRecord[] = [
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 
-/** Сколько полных дней от DEMO_NOW до даты (отрицательно — срок уже прошёл). */
+/** Сколько полных дней от SEED_NOW до даты (отрицательно — срок уже прошёл). */
 export function daysUntil(date: string) {
-  return Math.floor((new Date(date).getTime() - new Date(DEMO_NOW).getTime()) / DAY_MS);
+  return Math.floor((new Date(date).getTime() - new Date(SEED_NOW).getTime()) / DAY_MS);
 }
 
-/** Сколько полных дней прошло с даты до DEMO_NOW. */
+/** Сколько полных дней прошло с даты до SEED_NOW. */
 function daysSince(date: string) {
-  return Math.floor((new Date(DEMO_NOW).getTime() - new Date(date).getTime()) / DAY_MS);
+  return Math.floor((new Date(SEED_NOW).getTime() - new Date(date).getTime()) / DAY_MS);
 }
 
 export type DriverRow = {

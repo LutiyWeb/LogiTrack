@@ -33,7 +33,7 @@ describe('parseRateCon', () => {
       poNumber: 'PU-55821',
       brokerContact: 'Jenna Collins',
       brokerPhone: '(615) 555-0142',
-      brokerEmail: 'jenna.collins@crestline-demo.example',
+      brokerEmail: 'jenna.collins@crestline.example',
     });
   });
 
@@ -124,6 +124,40 @@ describe('parseRateCon', () => {
     expect(result.draft.pickupCity).toBe('');
     expect(result.draft.customer).toBe('');
     expect(result.found).toEqual([]);
+  });
+
+  it('keeps street and ZIP of both stops, including a ZIP wrapped to the next line', () => {
+    expect(parseRateCon(crestlineLines).draft).toMatchObject({
+      pickupAddress: '4100 Bells Ln',
+      pickupZip: '40211',
+      deliveryAddress: '3050 Democrat Rd',
+      deliveryZip: '38118',
+    });
+    expect(parseRateCon(northboundLines).draft).toMatchObject({
+      pickupAddress: '400 Webster St',
+      deliveryAddress: '8800 Statesville Rd',
+      deliveryZip: '28269',
+    });
+    expect(parseRateCon(prairieRouteLines).draft).toMatchObject({
+      pickupAddress: '2800 Concord Rd',
+      pickupZip: '47909',
+      deliveryAddress: '1500 N Broadway',
+      deliveryZip: '63102',
+    });
+  });
+
+  it('collects driver instructions and skips the standard terms', () => {
+    const prairie = parseRateCon(prairieRouteLines);
+    expect(prairie.draft.specialInstructions).toContain('Driver must have 8 straps and edge protectors');
+    expect(prairie.draft.specialInstructions).toContain('Call 2 hours before arrival');
+    expect(prairie.draft.specialInstructions).not.toMatch(/Detention|double brokering/i);
+    expect(prairie.found).toContain('specialInstructions');
+
+    expect(parseRateCon(northboundLines).draft.specialInstructions).toBe('Temperature: -10F continuous');
+
+    const crestline = parseRateCon(crestlineLines);
+    expect(crestline.draft.specialInstructions).toBe('');
+    expect(crestline.found).not.toContain('specialInstructions');
   });
 });
 

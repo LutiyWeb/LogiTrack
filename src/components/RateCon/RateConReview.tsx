@@ -11,6 +11,7 @@ import {
   emptyMilesTotal,
   fleetRoster,
   formatMiles,
+  formatWhen,
   formatMoney,
   isKnownEmptyLeg,
   placeName,
@@ -19,13 +20,14 @@ import {
   shiftNote,
   type LoadDraft,
   type Run,
-} from '../../runs/demo';
+} from '../../runs/seed';
 import { useAppDispatch, useAppSelector } from '../../store/hooks';
 import { selectCurrentUser } from '../../store/slices/authSlice';
 import { addInboxLoad, saveInboxLoad } from '../../store/slices/inboxSlice';
 import { showToast } from '../../store/slices/toastsSlice';
 import { bookRateCon, openRun } from '../../store/slices/runsSlice';
 import { carrierProfile, setActiveSection } from '../../store/slices/uiSlice';
+import DateField from '../DateField/DateField';
 import PdfPreview from './PdfPreview';
 
 
@@ -96,6 +98,14 @@ function RateConReview({
   const isBlocked = (item: (typeof fleetRoster)[number]) =>
     busyTrucks.has(item.truck) || expiredDrivers.has(item.driver);
   const firstFreeTruck = fleetRoster.find((item) => !isBlocked(item));
+  // A busy truck frees up when the last load on its active run is delivered.
+  const soonestFree = activeRuns
+    .flatMap((run) => {
+      const last = run.loads.at(-1);
+      if (!last?.delivery.at || expiredDrivers.has(run.driver)) return [];
+      return [{ run, at: last.delivery.at, place: placeName(last.delivery.city, last.delivery.state) }];
+    })
+    .sort((a, b) => a.at.localeCompare(b.at))[0];
   const [target, setTarget] = useState<Target>(
     firstFreeTruck
       ? { kind: 'new', truck: firstFreeTruck.truck }
@@ -299,16 +309,20 @@ function RateConReview({
 
           <RcSection title={t.rateCon.sections.pickup}>
             {field('pickupPlace', f.place, { wide: true })}
+            {field('pickupAddress', f.address, { wide: true })}
             {field('pickupCity', f.city)}
             {field('pickupState', f.state, { placeholder: 'IN' })}
-            {field('pickupAt', f.appointment, { type: 'datetime-local', wide: true })}
+            {field('pickupZip', f.zip)}
+            {field('pickupAt', f.appointment, { type: 'datetime-local' })}
           </RcSection>
 
           <RcSection title={t.rateCon.sections.delivery}>
             {field('deliveryPlace', f.place, { wide: true })}
+            {field('deliveryAddress', f.address, { wide: true })}
             {field('deliveryCity', f.city)}
             {field('deliveryState', f.state, { placeholder: 'GA' })}
-            {field('deliveryAt', f.appointment, { type: 'datetime-local', wide: true })}
+            {field('deliveryZip', f.zip)}
+            {field('deliveryAt', f.appointment, { type: 'datetime-local' })}
           </RcSection>
 
           <RcSection title={t.rateCon.sections.freight}>
@@ -322,16 +336,22 @@ function RateConReview({
             {field('driveHours', f.driveHours, { type: 'number' })}
           </RcSection>
 
+          <RcSection title={t.rateCon.sections.instructions}>
+            {field('specialInstructions', f.specialInstructions, { type: 'textarea', wide: true })}
+          </RcSection>
+
           <RcSection title={t.rateCon.sections.assign}>
             <div className="ratecon__segmented ratecon__wide" role="group" aria-label={t.rateCon.assignAria}>
-              <button
-                type="button"
-                className={target.kind === 'new' ? 'is-active' : ''}
-                disabled={!firstFreeTruck}
-                onClick={() => firstFreeTruck && setTarget({ kind: 'new', truck: firstFreeTruck.truck })}
-              >
-                {t.rateCon.newRun}
-              </button>
+              <span className="ratecon__segment" title={firstFreeTruck ? undefined : t.rateCon.allBusy}>
+                <button
+                  type="button"
+                  className={target.kind === 'new' ? 'is-active' : ''}
+                  disabled={!firstFreeTruck}
+                  onClick={() => firstFreeTruck && setTarget({ kind: 'new', truck: firstFreeTruck.truck })}
+                >
+                  {t.rateCon.newRun}
+                </button>
+              </span>
               <button
                 type="button"
                 className={target.kind === 'existing' ? 'is-active' : ''}
@@ -341,6 +361,35 @@ function RateConReview({
                 {t.rateCon.existingRun}
               </button>
             </div>
+            {!firstFreeTruck && (
+              <div className="ratecon__note ratecon__wide" role="status">
+                <p>{t.rateCon.allBusy}</p>
+                {soonestFree && (
+                  <>
+                    <p>
+                      {t.rateCon.soonestFree(
+                        soonestFree.run.truck,
+                        soonestFree.run.driver,
+                        formatWhen(soonestFree.at),
+                        soonestFree.place,
+                      )}{' '}
+                      {draft.pickupAt && soonestFree.at <= draft.pickupAt
+                        ? t.rateCon.makesPickup
+                        : t.rateCon.missesPickup}
+                    </p>
+                    {draft.pickupAt && soonestFree.at <= draft.pickupAt && (
+                      <button
+                        type="button"
+                        className="runs__button runs__button--secondary runs__button--small"
+                        onClick={() => setTarget({ kind: 'existing', runId: soonestFree.run.id })}
+                      >
+                        {t.rateCon.planOn(soonestFree.run.truck)}
+                      </button>
+                    )}
+                  </>
+                )}
+              </div>
+            )}
             {target.kind === 'new' ? (
               <label className="ratecon__field ratecon__wide">
                 <span className="ratecon__label">{t.rateCon.truckDriver}</span>
@@ -498,15 +547,27 @@ function RcField({
         {label}
         {chip && <span className={`ratecon__chip ratecon__chip--${state}`}>{chip}</span>}
       </span>
-      <input
-        className="runs__input"
-        type={type}
-        value={value}
-        placeholder={placeholder}
-        min={type === 'number' ? 0 : undefined}
-        step={type === 'number' ? 'any' : undefined}
-        onChange={(event) => onChange(event.target.value)}
-      />
+      {type === 'datetime-local' ? (
+        <DateField type="datetime-local" value={value} placeholder={placeholder} onValue={onChange} />
+      ) : type === 'textarea' ? (
+        <textarea
+          className="runs__input ratecon__textarea"
+          rows={3}
+          value={value}
+          placeholder={placeholder}
+          onChange={(event) => onChange(event.target.value)}
+        />
+      ) : (
+        <input
+          className="runs__input"
+          type={type}
+          value={value}
+          placeholder={placeholder}
+          min={type === 'number' ? 0 : undefined}
+          step={type === 'number' ? 'any' : undefined}
+          onChange={(event) => onChange(event.target.value)}
+        />
+      )}
     </label>
   );
 }

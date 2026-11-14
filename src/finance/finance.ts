@@ -26,7 +26,7 @@ export const defaultFinanceSettings: FinanceSettings = {
 
 export const MONTH_LABEL = 'жовтень 2026';
 
-/** Прошедшие недели месяца (демо). Текущая неделя считается из рейсов. */
+/** Прошедшие недели месяца (стартовые данные). Текущая неделя считается из рейсов. */
 export const pastWeeks = [
   { label: '1–5 жовт.', revenue: 9200, miles: 3000 },
   { label: '6–12 жовт.', revenue: 10400, miles: 3350 },

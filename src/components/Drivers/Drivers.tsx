@@ -11,7 +11,7 @@ import {
   type DriverStatus,
 } from '../../drivers/drivers';
 import { runStatusLabel, t } from '../../i18n';
-import { formatHours, formatMiles, formatMoney } from '../../runs/demo';
+import { formatHours, formatMiles, formatMoney } from '../../runs/seed';
 import { useAppDispatch, useAppSelector } from '../../store/hooks';
 import { selectEnrichedRuns } from '../../store/selectors/runsSelectors';
 import { markDriverPaid } from '../../store/slices/driversSlice';

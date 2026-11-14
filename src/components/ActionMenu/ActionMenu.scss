@@ -1,0 +1,39 @@
+.action-menu {
+  position: relative;
+
+  &__list {
+    position: absolute;
+    top: calc(100% + 4px);
+    right: 0;
+    z-index: 20;
+    display: grid;
+    min-width: 200px;
+    padding: 4px;
+    list-style: none;
+    background: var(--color-surface);
+    border: 1px solid var(--color-line);
+    border-radius: var(--radius-m);
+    box-shadow: 0 8px 24px rgb(15 23 42 / 14%);
+  }
+
+  &__item {
+    width: 100%;
+    min-height: 40px;
+    padding: 0 12px;
+    font-size: var(--font-size-s);
+    text-align: left;
+    color: var(--color-text);
+    cursor: pointer;
+    background: none;
+    border: 0;
+    border-radius: var(--radius-s, 6px);
+
+    &:hover {
+      background: var(--color-bg);
+    }
+
+    &--danger {
+      color: var(--color-danger);
+    }
+  }
+}

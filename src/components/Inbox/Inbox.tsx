@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useMediaQuery } from '../../hooks/useMediaQuery';
 import { t } from '../../i18n';
 import {
   emptyManualLoad,
@@ -10,18 +11,31 @@ import {
   type InboxLoad,
 } from '../../inbox/inbox';
 import { isPdfFile, readSource, type RateConSource } from '../../ratecon/files';
-import { formatMiles, formatMoney, formatWhen, placeName, readNumber } from '../../runs/demo';
+import {
+  formatMiles,
+  formatMoney,
+  formatWhen,
+  placeName,
+  readNumber,
+} from '../../runs/seed';
 import { useAppDispatch, useAppSelector } from '../../store/hooks';
 import { addInboxLoad, setInboxStatus } from '../../store/slices/inboxSlice';
 import { showToast } from '../../store/slices/toastsSlice';
 import { openRun } from '../../store/slices/runsSlice';
 import { setActiveSection } from '../../store/slices/uiSlice';
-import RateConImport, { type RateConDialogState } from '../RateCon/RateConImport';
+import ActionFab from '../ActionFab/ActionFab';
+import RateConImport, {
+  type RateConDialogState,
+} from '../RateCon/RateConImport';
 import '../Workspace/Workspace.scss';
 
 type Filter = 'waiting' | 'tentative' | 'assigned' | 'rejected';
 
-const filterStatus = { tentative: 'Tentative', assigned: 'Assigned', rejected: 'Rejected' } as const;
+const filterStatus = {
+  tentative: 'Tentative',
+  assigned: 'Assigned',
+  rejected: 'Rejected',
+} as const;
 
 const REQUIRED: (keyof InboxLoad['draft'])[] = [
   'customer',
@@ -48,9 +62,12 @@ function Inbox() {
   const [dialog, setDialog] = useState<RateConDialogState>(null);
   const [emailCount, setEmailCount] = useState(0);
   const [receiving, setReceiving] = useState(false);
+  const isMobile = useMediaQuery('(max-width: 767px)');
   const [draggingFile, setDraggingFile] = useState(false);
 
-  const waiting = items.filter((item) => item.status === 'New' || item.status === 'Ready');
+  const waiting = items.filter(
+    (item) => item.status === 'New' || item.status === 'Ready',
+  );
   const visible =
     filter === 'waiting'
       ? waiting
@@ -77,7 +94,11 @@ function Inbox() {
       if (!response.ok) return;
       await addPdf(
         { name: sample.file, data: await response.arrayBuffer() },
-        { source: 'email', emailFrom: sample.from, fileUrl: sampleUrl(sample.file) },
+        {
+          source: 'email',
+          emailFrom: sample.from,
+          fileUrl: sampleUrl(sample.file),
+        },
       );
       setEmailCount((count) => count + 1);
     } finally {
@@ -93,12 +114,14 @@ function Inbox() {
     <div
       className="runs runs--droppable"
       onDragOver={(event) => {
-        if (dialog || !Array.from(event.dataTransfer.types).includes('Files')) return;
+        if (dialog || !Array.from(event.dataTransfer.types).includes('Files'))
+          return;
         event.preventDefault();
         setDraggingFile(true);
       }}
       onDragLeave={(event) => {
-        if (event.currentTarget.contains(event.relatedTarget as Node | null)) return;
+        if (event.currentTarget.contains(event.relatedTarget as Node | null))
+          return;
         setDraggingFile(false);
       }}
       onDrop={(event) => {
@@ -129,43 +152,96 @@ function Inbox() {
           <h1 className="workspace__title">{t.inbox.title}</h1>
           <p className="runs__meta">{t.inbox.subtitle}</p>
         </div>
-        <div className="runs__toolbar-actions">
-          <button
-            type="button"
-            className="runs__button runs__button--secondary runs__button--small"
-            disabled={receiving}
-            onClick={() => void simulateEmail()}
-          >
-            {receiving ? t.inbox.receivingEmail : t.inbox.simulateEmail}
-          </button>
-          <button
-            type="button"
-            className="runs__button runs__button--secondary runs__button--small"
-            onClick={() => setDialog({ stage: 'review', item: emptyManualLoad(), pdf: null })}
-          >
-            {t.inbox.addManual}
-          </button>
-          <button
-            type="button"
-            className="runs__button runs__button--small"
-            onClick={() => setDialog({ stage: 'pick' })}
-          >
-            {t.inbox.uploadPdf}
-          </button>
-        </div>
+        {!isMobile && (
+          <div className="runs__toolbar-actions">
+            <button
+              type="button"
+              className="runs__button runs__button--secondary runs__button--small"
+              disabled={receiving}
+              onClick={() => void simulateEmail()}
+            >
+              {receiving ? t.inbox.receivingEmail : t.inbox.simulateEmail}
+            </button>
+            <button
+              type="button"
+              className="runs__button runs__button--secondary runs__button--small"
+              onClick={() =>
+                setDialog({
+                  stage: 'review',
+                  item: emptyManualLoad(),
+                  pdf: null,
+                })
+              }
+            >
+              {t.inbox.addManual}
+            </button>
+            <button
+              type="button"
+              className="runs__button runs__button--small"
+              onClick={() => setDialog({ stage: 'pick' })}
+            >
+              {t.inbox.uploadPdf}
+            </button>
+          </div>
+        )}
       </header>
+      {isMobile && (
+        <ActionFab
+          label={t.inbox.addLoad}
+          actions={[
+            {
+              id: 'pdf',
+              label: t.inbox.uploadPdf,
+              onSelect: () => setDialog({ stage: 'pick' }),
+            },
+            {
+              id: 'manual',
+              label: t.inbox.addManual,
+              onSelect: () =>
+                setDialog({
+                  stage: 'review',
+                  item: emptyManualLoad(),
+                  pdf: null,
+                }),
+            },
+            {
+              id: 'email',
+              label: t.inbox.simulateEmailDemo,
+              disabled: receiving,
+              onSelect: () => void simulateEmail(),
+            },
+          ]}
+        />
+      )}
 
-      <div className="runs__filters runs__filters--inline" role="group" aria-label={t.inbox.filterAria}>
-        {(['waiting', 'tentative', 'assigned', 'rejected'] as const).map((option) => (
-          <button
-            key={option}
-            type="button"
-            className={filter === option ? 'runs__filter is-active' : 'runs__filter'}
-            onClick={() => setFilter(option)}
-          >
-            {option === 'waiting' ? t.inbox.filters.waiting(waiting.length) : t.inbox.filters[option]}
-          </button>
-        ))}
+      <div
+        className="runs__filters runs__filters--inline runs__filters--scroll"
+        role="group"
+        aria-label={t.inbox.filterAria}
+      >
+        {(['waiting', 'tentative', 'assigned', 'rejected'] as const).map(
+          (option) => (
+            <button
+              key={option}
+              type="button"
+              className={
+                filter === option ? 'runs__filter is-active' : 'runs__filter'
+              }
+              onClick={(event) => {
+                setFilter(option);
+                event.currentTarget.scrollIntoView?.({
+                  block: 'nearest',
+                  inline: 'nearest',
+                  behavior: 'smooth',
+                });
+              }}
+            >
+              {option === 'waiting'
+                ? t.inbox.filters.waiting(waiting.length)
+                : t.inbox.filters[option]}
+            </button>
+          ),
+        )}
       </div>
 
       {visible.length === 0 ? (
@@ -179,12 +255,26 @@ function Inbox() {
               onReview={() => void openReview(item)}
               onReject={() => {
                 dispatch(setInboxStatus({ id: item.id, status: 'Rejected' }));
-                dispatch(showToast('warning', t.notify.rejected(item.draft.customer || t.inbox.noCustomer)));
+                dispatch(
+                  showToast(
+                    'warning',
+                    t.notify.rejected(
+                      item.draft.customer || t.inbox.noCustomer,
+                    ),
+                  ),
+                );
               }}
-              onRestore={() => dispatch(setInboxStatus({ id: item.id, status: 'New' }))}
+              onRestore={() =>
+                dispatch(setInboxStatus({ id: item.id, status: 'New' }))
+              }
               onConfirm={() => {
                 dispatch(setInboxStatus({ id: item.id, status: 'New' }));
-                dispatch(showToast('success', t.planning.confirmed(item.draft.customer)));
+                dispatch(
+                  showToast(
+                    'success',
+                    t.planning.confirmed(item.draft.customer),
+                  ),
+                );
               }}
               onOpenRun={() => {
                 if (!item.runId) return;
@@ -200,7 +290,9 @@ function Inbox() {
         state={dialog}
         onClose={() => setDialog(null)}
         onPick={(source) => {
-          void addPdf(source).then((item) => setDialog({ stage: 'review', item, pdf: source.data }));
+          void addPdf(source).then((item) =>
+            setDialog({ stage: 'review', item, pdf: source.data }),
+          );
         }}
       />
     </div>
@@ -223,14 +315,16 @@ function InboxCard({
   onOpenRun: () => void;
 }) {
   const { draft } = item;
-  const missing = REQUIRED.filter((key) => !String(draft[key] ?? '').trim()).map(
-    (key) => t.rateCon.missingLabels[key] ?? key,
-  );
+  const missing = REQUIRED.filter(
+    (key) => !String(draft[key] ?? '').trim(),
+  ).map((key) => t.rateCon.missingLabels[key] ?? key);
   const route =
     draft.pickupCity || draft.deliveryCity
       ? `${placeName(draft.pickupCity, draft.pickupState)} → ${placeName(draft.deliveryCity, draft.deliveryState)}`
       : '';
-  const dates = [formatWhen(draft.pickupAt), formatWhen(draft.deliveryAt)].filter(Boolean).join(' → ');
+  const dates = [formatWhen(draft.pickupAt), formatWhen(draft.deliveryAt)]
+    .filter(Boolean)
+    .join(' → ');
   const facts = [
     readNumber(draft.rate) > 0 ? formatMoney(readNumber(draft.rate), 0) : '',
     readNumber(draft.miles) > 0 ? formatMiles(readNumber(draft.miles)) : '',
@@ -247,7 +341,7 @@ function InboxCard({
   const isWaiting = item.status === 'New' || item.status === 'Ready';
 
   return (
-    <li className={item.status === 'New' ? 'runs__load runs__account runs__load--new' : 'runs__load runs__account'}>
+    <li className="runs__load runs__account">
       <div className="runs__account-info">
         <span className="runs__meta">
           {source} · {t.inbox.received(formatWhen(item.receivedAt))}
@@ -257,40 +351,68 @@ function InboxCard({
         {dates && <p className="runs__meta">{dates}</p>}
         {facts.length > 0 && <p className="runs__meta">{facts.join(' · ')}</p>}
         {isWaiting && missing.length > 0 && (
-          <p className="runs__meta runs__meta--warn">{t.inbox.missing(missing.join(', '))}</p>
+          <p className="runs__meta runs__meta--warn">
+            {t.inbox.missing(missing.join(', '))}
+          </p>
         )}
       </div>
-      <span className={`runs__badge runs__account-status${tone ? ` runs__badge--${tone}` : ''}`}>
+      <span
+        className={`runs__badge runs__account-status${tone ? ` runs__badge--${tone}` : ''}`}
+      >
         {t.inbox.status[item.status]}
       </span>
       <div className="runs__load-actions runs__account-actions">
         {isWaiting && (
           <>
-            <button type="button" className="runs__button runs__button--tertiary runs__button--small" onClick={onReject}>
+            <button
+              type="button"
+              className="runs__button runs__button--tertiary runs__button--small"
+              onClick={onReject}
+            >
               {t.inbox.reject}
             </button>
-            <button type="button" className="runs__button runs__button--small" onClick={onReview}>
+            <button
+              type="button"
+              className="runs__button runs__button--small"
+              onClick={onReview}
+            >
               {t.inbox.review}
             </button>
           </>
         )}
         {item.status === 'Tentative' && (
           <>
-            <button type="button" className="runs__button runs__button--tertiary runs__button--small" onClick={onReject}>
+            <button
+              type="button"
+              className="runs__button runs__button--tertiary runs__button--small"
+              onClick={onReject}
+            >
               {t.inbox.reject}
             </button>
-            <button type="button" className="runs__button runs__button--small" onClick={onConfirm}>
+            <button
+              type="button"
+              className="runs__button runs__button--small"
+              onClick={onConfirm}
+            >
               {t.inbox.confirm}
             </button>
           </>
         )}
         {item.status === 'Assigned' && (
-          <button type="button" className="runs__button runs__button--secondary runs__button--small" onClick={onOpenRun}>
+          <button
+            type="button"
+            className="runs__button runs__button--secondary runs__button--small"
+            onClick={onOpenRun}
+          >
             {t.inbox.openRun}
           </button>
         )}
         {item.status === 'Rejected' && (
-          <button type="button" className="runs__button runs__button--tertiary runs__button--small" onClick={onRestore}>
+          <button
+            type="button"
+            className="runs__button runs__button--tertiary runs__button--small"
+            onClick={onRestore}
+          >
             {t.inbox.restore}
           </button>
         )}

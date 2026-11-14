@@ -3,7 +3,7 @@
 
 export const crestlineLines: string[] = [
   "Crestline Freight Brokerage",
-  "1200 Commerce Pkwy, Suite 400, Nashville, TN 37203 | MC# 718244 | ops@crestline-demo.example",
+  "1200 Commerce Pkwy, Suite 400, Nashville, TN 37203 | MC# 718244 | ops@crestline.example",
   "RATE CONFIRMATION Load # CFB-240917 Date: 10/28/2026",
   "CARRIER",
   "Carrier | LogiTrack Freight LLC",
@@ -27,10 +27,9 @@ export const crestlineLines: string[] = [
   "RATE",
   "Linehaul | $1,850.00 flat",
   "Total Carrier Pay | $1,850.00",
-  "Broker contact | Jenna Collins (615) 555-0142 jenna.collins@crestline-demo.example",
+  "Broker contact | Jenna Collins (615) 555-0142 jenna.collins@crestline.example",
   "Carrier agrees to haul the load described above at the agreed rate. Detention is paid after 2 free hours at $50/hr with in/out",
-  "times on the BOL. Signed BOL/POD must be sent within 24 hours of delivery to get paid. No double brokering. Sample",
-  "document for LogiTrack demo only."
+  "times on the BOL. Signed BOL/POD must be sent within 24 hours of delivery to get paid. No double brokering."
 ];
 
 export const northboundLines: string[] = [
@@ -54,10 +53,9 @@ export const northboundLines: string[] = [
   "Fuel Surcharge | $250.00",
   "Total Carrier Pay | $2,450.00",
   "Carrier | LogiTrack Freight LLC (MC-849201)",
-  "Your rep | Marco Diaz \u00b7 216-555-0187 \u00b7 mdiaz@northbound-demo.example",
+  "Your rep | Marco Diaz \u00b7 216-555-0187 \u00b7 mdiaz@northbound.example",
   "Carrier agrees to haul the load described above at the agreed rate. Detention is paid after 2 free hours at $50/hr with in/out",
-  "times on the BOL. Signed BOL/POD must be sent within 24 hours of delivery to get paid. No double brokering. Sample",
-  "document for LogiTrack demo only."
+  "times on the BOL. Signed BOL/POD must be sent within 24 hours of delivery to get paid. No double brokering."
 ];
 
 export const prairieRouteLines: string[] = [
@@ -71,8 +69,7 @@ export const prairieRouteLines: string[] = [
   "number 7781-WS. Driver must have 8 straps and edge protectors.",
   "Deliver to Gateway Fabrication, 1500 N Broadway, St. Louis, MO 63102 on 10/31/2026 at 15:00. BOL 22907.",
   "Call 2 hours before arrival.",
-  "Questions? Contact Ruth Ann Baker at (309) 555-0136 or rbaker@prairieroute-demo.example.",
+  "Questions? Contact Ruth Ann Baker at (309) 555-0136 or rbaker@prairieroute.example.",
   "Carrier agrees to haul the load described above at the agreed rate. Detention is paid after 2 free hours at $50/hr with in/out",
-  "times on the BOL. Signed BOL/POD must be sent within 24 hours of delivery to get paid. No double brokering. Sample",
-  "document for LogiTrack demo only."
+  "times on the BOL. Signed BOL/POD must be sent within 24 hours of delivery to get paid. No double brokering."
 ];

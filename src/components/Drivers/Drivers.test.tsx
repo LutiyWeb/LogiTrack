@@ -4,7 +4,7 @@ import { describe, expect, it } from 'vitest';
 import App from '../../App';
 import { buildDriverRows, seedDrivers } from '../../drivers/drivers';
 import { selectEnrichedRuns } from '../../store/selectors/runsSelectors';
-import { loginAsDemoUser } from '../../store/slices/authSlice';
+import { loginAsUser } from '../../store/slices/authSlice';
 import { createAppStore } from '../../store/store';
 
 describe('Водії', () => {
@@ -25,7 +25,7 @@ describe('Водії', () => {
   it('shows drivers, opens a driver card and marks a payout as paid', async () => {
     const user = userEvent.setup();
     const store = createAppStore();
-    store.dispatch(loginAsDemoUser('manager'));
+    store.dispatch(loginAsUser('manager'));
     render(<App customStore={store} />);
 
     await user.click(screen.getByRole('button', { name: 'Водії' }));
@@ -46,7 +46,7 @@ describe('Водії', () => {
   it('shows driver alerts on the overview', async () => {
     const user = userEvent.setup();
     const store = createAppStore();
-    store.dispatch(loginAsDemoUser('manager'));
+    store.dispatch(loginAsUser('manager'));
     render(<App customStore={store} />);
 
     await user.click(screen.getByRole('button', { name: 'Огляд' }));

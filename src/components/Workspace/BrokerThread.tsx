@@ -1,16 +1,16 @@
 import { useEffect, useState } from 'react';
-import { demoReplies, type BrokerTemplate } from '../../broker/broker';
+import { autoReplies, type BrokerTemplate } from '../../broker/broker';
 import { messageTime } from '../../chats/chats';
 import { t } from '../../i18n';
-import type { Load } from '../../runs/demo';
+import type { Load } from '../../runs/seed';
 import { useAppDispatch, useAppSelector } from '../../store/hooks';
 import { selectCurrentUser } from '../../store/slices/authSlice';
 import { addBrokerMessage, markBrokerRead } from '../../store/slices/brokerSlice';
 import { showToast } from '../../store/slices/toastsSlice';
 import '../Chats/Chats.scss';
 
-/** Задержка «ответа брокера» в демо. */
-const DEMO_REPLY_MS = 3000;
+/** Задержка автоответа брокера. */
+const AUTO_REPLY_MS = 3000;
 
 const templateKeys = Object.keys(t.broker.templates) as BrokerTemplate[];
 
@@ -42,11 +42,11 @@ function BrokerThread({ load }: { load: Load }) {
     }
     dispatch(addBrokerMessage({ loadId: load.id, message: { kind: 'us', author, text: text.trim() } }));
     dispatch(showToast('success', t.broker.sent(load.customer)));
-    const reply = demoReplies[template];
+    const reply = autoReplies[template];
     setTimeout(() => {
       dispatch(addBrokerMessage({ loadId: load.id, message: { kind: 'broker', author: load.customer, text: reply } }));
       dispatch(showToast('info', t.broker.reply(load.customer)));
-    }, DEMO_REPLY_MS);
+    }, AUTO_REPLY_MS);
     setText('');
     setTemplate('other');
   }

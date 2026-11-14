@@ -1,4 +1,4 @@
-import demoRoutes from './demoRoutes.json';
+import bundledRoutes from './routes.json';
 
 export type LngLat = [number, number];
 
@@ -13,7 +13,7 @@ type RouteData = {
   legs: Record<string, LegRoute>;
 };
 
-const data = demoRoutes as unknown as RouteData;
+const data = bundledRoutes as unknown as RouteData;
 const OSRM_URL = 'https://router.project-osrm.org/route/v1/driving';
 
 const cityCache = new Map<string, LngLat>(Object.entries(data.cities));
@@ -32,7 +32,7 @@ export function registerCity(name: string, coords: LngLat) {
   cityCache.set(name, coords);
 }
 
-/** Road geometry for a leg, from the bundled demo routes or the runtime cache. */
+/** Road geometry for a leg, from the bundled routes or the runtime cache. */
 export function cachedLegRoute(from: string, to: string): LegRoute | null {
   const direct = legCache.get(key(from, to));
   if (direct) return direct;

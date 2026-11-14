@@ -14,9 +14,9 @@ import {
   runLegs,
   runs,
   shiftNote,
-} from './demo';
+} from './seed';
 
-describe('demo domain calculations', () => {
+describe('seed domain calculations', () => {
   const truck214 = runs.find((run) => run.id === '214')!;
   const truck305 = runs.find((run) => run.id === '305')!;
 

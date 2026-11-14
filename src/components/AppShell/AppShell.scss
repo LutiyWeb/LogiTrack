@@ -291,3 +291,20 @@
     letter-spacing: -0.02em;
   }
 }
+
+// Below 768px navigation moves to the fixed top bar and bottom tabs (MobileNav).
+@media (max-width: 767px) {
+  .shell,
+  .shell.is-collapsed {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .sidebar {
+    display: none;
+  }
+
+  .workspace {
+    padding: calc(var(--mobile-bar-height) + 16px) 16px
+      calc(var(--mobile-tabs-height) + env(safe-area-inset-bottom) + 16px);
+  }
+}

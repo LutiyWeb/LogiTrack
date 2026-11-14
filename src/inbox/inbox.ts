@@ -1,6 +1,6 @@
 import { extractPdfLines } from '../ratecon/pdfText';
 import { parseRateCon, type RateConField } from '../ratecon/parseRateCon';
-import { DEMO_NOW, emptyDraft, type LoadDraft } from '../runs/demo';
+import { SEED_NOW, emptyDraft, type LoadDraft } from '../runs/seed';
 
 export type InboxSource = 'email' | 'pdf' | 'manual';
 
@@ -19,17 +19,17 @@ export type InboxLoad = {
   warnings: string[];
   unrecognized: boolean;
   fileName?: string;
-  /** Путь к PDF-образцу в public/ (для демо-писем). */
+  /** Путь к PDF-образцу в public/ (для стартовых писем). */
   fileUrl?: string;
   emailFrom?: string;
   runId?: string;
 };
 
-/** PDF-образцы в public/samples — их «присылают» демо-письма. Первым — тот, которого нет в очереди. */
+/** PDF-образцы в public/samples — их «присылают» стартовые письма. Первым — тот, которого нет в очереди. */
 export const sampleFiles = [
-  { file: 'ratecon-prairie-route.pdf', from: 'rbaker@prairieroute-demo.example' },
-  { file: 'ratecon-crestline.pdf', from: 'jenna.collins@crestline-demo.example' },
-  { file: 'ratecon-northbound.pdf', from: 'mdiaz@northbound-demo.example' },
+  { file: 'ratecon-prairie-route.pdf', from: 'rbaker@prairieroute.example' },
+  { file: 'ratecon-crestline.pdf', from: 'jenna.collins@crestline.example' },
+  { file: 'ratecon-northbound.pdf', from: 'mdiaz@northbound.example' },
 ];
 
 export function sampleUrl(file: string) {
@@ -65,7 +65,7 @@ export async function intakePdf(
   return {
     id: crypto.randomUUID(),
     status: 'New',
-    receivedAt: DEMO_NOW,
+    receivedAt: SEED_NOW,
     draft: result.draft,
     found: result.found,
     warnings: result.warnings,
@@ -79,7 +79,7 @@ export function emptyManualLoad(): InboxLoad {
     id: crypto.randomUUID(),
     source: 'manual',
     status: 'New',
-    receivedAt: DEMO_NOW,
+    receivedAt: SEED_NOW,
     draft: { ...emptyDraft },
     found: [],
     warnings: [],
@@ -92,9 +92,10 @@ const crestlineFound: RateConField[] = [
   'deliveryPlace', 'deliveryCity', 'deliveryState', 'deliveryAt', 'miles', 'bol',
   'commodity', 'loadNumber', 'poNumber', 'equipment', 'weight', 'brokerMc',
   'brokerContact', 'brokerPhone', 'brokerEmail',
+  'pickupAddress', 'pickupZip', 'deliveryAddress', 'deliveryZip',
 ];
 
-/** Стартовое состояние очереди для демо. */
+/** Стартовое состояние очереди. */
 export const seedInbox: InboxLoad[] = [
   {
     id: 'inbox-crestline',
@@ -103,7 +104,7 @@ export const seedInbox: InboxLoad[] = [
     receivedAt: '2026-10-28T13:42',
     fileName: 'ratecon-crestline.pdf',
     fileUrl: sampleUrl('ratecon-crestline.pdf'),
-    emailFrom: 'jenna.collins@crestline-demo.example',
+    emailFrom: 'jenna.collins@crestline.example',
     found: crestlineFound,
     warnings: [],
     unrecognized: false,
@@ -112,12 +113,16 @@ export const seedInbox: InboxLoad[] = [
       customer: 'Crestline Freight Brokerage',
       rate: '1850',
       pickupPlace: 'Ohio Valley Paper Mill',
+      pickupAddress: '4100 Bells Ln',
       pickupCity: 'Louisville',
       pickupState: 'KY',
+      pickupZip: '40211',
       pickupAt: '2026-10-30T08:00',
       deliveryPlace: 'Delta Distribution Center',
+      deliveryAddress: '3050 Democrat Rd',
       deliveryCity: 'Memphis',
       deliveryState: 'TN',
+      deliveryZip: '38118',
       deliveryAt: '2026-10-31T07:00',
       miles: '385',
       bol: 'OV-77310',
@@ -129,7 +134,7 @@ export const seedInbox: InboxLoad[] = [
       brokerMc: '718244',
       brokerContact: 'Jenna Collins',
       brokerPhone: '(615) 555-0142',
-      brokerEmail: 'jenna.collins@crestline-demo.example',
+      brokerEmail: 'jenna.collins@crestline.example',
     },
   },
   {
@@ -139,9 +144,12 @@ export const seedInbox: InboxLoad[] = [
     receivedAt: '2026-10-28T14:05',
     fileName: 'ratecon-northbound.pdf',
     fileUrl: sampleUrl('ratecon-northbound.pdf'),
-    emailFrom: 'mdiaz@northbound-demo.example',
+    emailFrom: 'mdiaz@northbound.example',
     // Миль и ТТН в этом PDF нет — их подсветит форма проверки.
-    found: crestlineFound.filter((key) => key !== 'miles' && key !== 'bol'),
+    found: [
+      ...crestlineFound.filter((key) => key !== 'miles' && key !== 'bol'),
+      'specialInstructions',
+    ],
     warnings: [],
     unrecognized: false,
     draft: {
@@ -149,14 +157,19 @@ export const seedInbox: InboxLoad[] = [
       customer: 'Northbound Logistics Group',
       rate: '2450',
       pickupPlace: 'Gem City Cold Storage',
+      pickupAddress: '400 Webster St',
       pickupCity: 'Dayton',
       pickupState: 'OH',
+      pickupZip: '45402',
       pickupAt: '2026-10-30T06:00',
       deliveryPlace: 'Queen City Grocers DC',
+      deliveryAddress: '8800 Statesville Rd',
       deliveryCity: 'Charlotte',
       deliveryState: 'NC',
+      deliveryZip: '28269',
       deliveryAt: '2026-10-31T09:00',
       commodity: 'Frozen bakery goods, keep at -10F',
+      specialInstructions: 'Temperature: -10F continuous',
       loadNumber: 'NLG-88214',
       poNumber: '4410-QC',
       equipment: "Reefer 53'",
@@ -164,7 +177,7 @@ export const seedInbox: InboxLoad[] = [
       brokerMc: '603917',
       brokerContact: 'Marco Diaz',
       brokerPhone: '216-555-0187',
-      brokerEmail: 'mdiaz@northbound-demo.example',
+      brokerEmail: 'mdiaz@northbound.example',
     },
   },
   // Предварительные грузы: брокеры предупредили заранее.

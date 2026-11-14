@@ -1,5 +1,5 @@
 import { t } from '../i18n';
-import { DEMO_NOW } from '../runs/demo';
+import { SEED_NOW } from '../runs/seed';
 
 export type ChatChannel = 'whatsapp' | 'sms';
 
@@ -23,9 +23,9 @@ export type Chat = {
 
 const timeFormat = new Intl.DateTimeFormat('uk-UA', { hour: '2-digit', minute: '2-digit' });
 
-/** Время сообщения: всё, что новее «сейчас» демо, — «Щойно». */
+/** Время сообщения: всё, что новее SEED_NOW, — «Щойно». */
 export function messageTime(at: string) {
-  return at > DEMO_NOW ? t.common.justNow : timeFormat.format(new Date(at));
+  return at > SEED_NOW ? t.common.justNow : timeFormat.format(new Date(at));
 }
 
 export const seedChats: Chat[] = [

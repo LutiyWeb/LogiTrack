@@ -1,5 +1,5 @@
 import { customerKindLabel, t } from '../../i18n';
-import { formatMoney } from '../../runs/demo';
+import { formatMoney } from '../../runs/seed';
 import { useAppDispatch, useAppSelector } from '../../store/hooks';
 import { selectBrokerSummaries } from '../../store/selectors/runsSelectors';
 import {

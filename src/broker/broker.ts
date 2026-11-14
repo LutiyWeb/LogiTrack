@@ -12,8 +12,8 @@ export type BrokerMessage = {
 
 export type BrokerTemplate = keyof typeof t.broker.templates;
 
-/** Что брокер «ответит» в демо на каждый шаблон. */
-export const demoReplies: Record<BrokerTemplate | 'other', string> = {
+/** Автоответ брокера на каждый шаблон. */
+export const autoReplies: Record<BrokerTemplate | 'other', string> = {
   delay: 'Дякую, що попередили. Передали отримувачу, нове вікно доставки погоджено.',
   detention: 'Простій зафіксовано. Вкажіть час прибуття і виїзду в рахунку — компенсуємо.',
   breakdown: 'Тримайте в курсі. Якщо ремонт довше 4 годин — шукатимемо заміну.',

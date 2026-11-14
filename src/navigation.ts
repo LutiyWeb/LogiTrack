@@ -28,3 +28,6 @@ export const menuItems: MenuItem[] = [
   { id: 'finance', label: t.nav.finance, permission: 'canViewFinance' },
   { id: 'account', label: t.nav.account },
 ];
+
+/** Sections in the mobile bottom bar, in display order; the rest go to the ☰ menu. */
+export const primaryMenuIds: MenuItem['id'][] = ['overview', 'inbox', 'board', 'chats', 'planning'];

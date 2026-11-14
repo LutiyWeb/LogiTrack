@@ -2,7 +2,7 @@ import { act, render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import App from '../../App';
-import { loginAsDemoUser } from '../../store/slices/authSlice';
+import { loginAsUser } from '../../store/slices/authSlice';
 import { openRun } from '../../store/slices/runsSlice';
 import { createAppStore } from '../../store/store';
 
@@ -11,16 +11,16 @@ describe('Переписка з брокером', () => {
     vi.useRealTimers();
   });
 
-  it('sends a template to the broker, shows toasts and receives a demo reply', async () => {
+  it('sends a template to the broker, shows toasts and receives an auto reply', async () => {
     vi.useFakeTimers({ shouldAdvanceTime: true });
     const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime });
     const store = createAppStore();
-    store.dispatch(loginAsDemoUser('dispatcher'));
+    store.dispatch(loginAsUser('dispatcher'));
     store.dispatch(openRun('214'));
     render(<App customStore={store} />);
 
     await user.click(screen.getByRole('button', { name: 'Брокер' }));
-    expect(screen.getByText('Кому: dispatch@hartfreight-demo.example')).toBeInTheDocument();
+    expect(screen.getByText('Кому: dispatch@hartfreight.example')).toBeInTheDocument();
     expect(screen.getByText(/простій понад 2 год погодили/)).toBeInTheDocument();
 
     await user.click(screen.getByRole('button', { name: 'Затримка' }));

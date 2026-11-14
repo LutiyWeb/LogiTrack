@@ -3,7 +3,7 @@ import { monthResult } from '../../finance/finance';
 import type { RootState } from '../store';
 import { selectFleetKpis } from './runsSelectors';
 
-/** Итоги месяца: прошлые недели из демо + текущая неделя из рейсов. */
+/** Итоги месяца: прошлые недели из стартовых данных + текущая неделя из рейсов. */
 export const selectMonthResult = createSelector(
   [
     selectFleetKpis,

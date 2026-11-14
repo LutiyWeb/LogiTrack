@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { t } from '../../i18n';
-import type { Run } from '../../runs/demo';
+import type { Run } from '../../runs/seed';
 import { useAppDispatch, useAppSelector } from '../../store/hooks';
 import { selectCurrentUser } from '../../store/slices/authSlice';
 import { addRunNote } from '../../store/slices/runsSlice';
@@ -17,10 +17,18 @@ function DispatchLog({ run }: { run: Run }) {
   );
   // Лента рейса: записи журнала и сообщения водителя по этому рейсу, по времени.
   const feed = [
-    ...notes.map((note) => ({ kind: 'note' as const, key: note.iso ?? '', note })),
+    ...notes.map((note) => ({
+      kind: 'note' as const,
+      key: note.iso ?? '',
+      note,
+    })),
     ...(chat?.messages ?? [])
       .filter((message) => message.runId === run.id)
-      .map((message) => ({ kind: 'message' as const, key: message.at, message })),
+      .map((message) => ({
+        kind: 'message' as const,
+        key: message.at,
+        message,
+      })),
   ].sort((a, b) => a.key.localeCompare(b.key));
 
   function handleSubmit(e: React.FormEvent) {
@@ -50,15 +58,18 @@ function DispatchLog({ run }: { run: Run }) {
                 channel={chat ? t.chats.channel[chat.channel] : undefined}
               />
             ) : (
-              <li key={item.note.id} className="runs__load">
-                <div className="runs__load-head">
-                  <span className="runs__truck">{item.note.author}</span>
-                  <span className="runs__meta">
-                    {item.note.roleTitle} · {item.note.at}
-                  </span>
-                </div>
-                <p className="runs__meta">{item.note.text}</p>
-              </li>
+              <MessageBubble
+                key={item.note.id}
+                message={{
+                  id: item.note.id,
+                  from:
+                    item.note.author === run.driver ? 'driver' : 'dispatcher',
+                  author: item.note.author,
+                  at: item.note.iso ?? '',
+                  text: item.note.text,
+                }}
+                timeLabel={item.note.iso ? undefined : item.note.at}
+              />
             ),
           )}
         </ul>

@@ -2,14 +2,14 @@ import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it } from 'vitest';
 import App from '../../App';
-import { loginAsDemoUser } from '../../store/slices/authSlice';
+import { loginAsUser } from '../../store/slices/authSlice';
 import { createAppStore } from '../../store/store';
 
 describe('Підтримка', () => {
   it('sends an urgent problem report with context and shows a toast', async () => {
     const user = userEvent.setup();
     const store = createAppStore();
-    store.dispatch(loginAsDemoUser('driver'));
+    store.dispatch(loginAsUser('driver'));
     render(<App customStore={store} />);
 
     await user.click(screen.getByRole('button', { name: 'Підтримка' }));

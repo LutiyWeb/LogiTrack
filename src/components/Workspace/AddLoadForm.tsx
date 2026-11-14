@@ -1,11 +1,12 @@
 import { useEffect, type InputHTMLAttributes } from 'react';
 import { loadStatusLabel, runStatusLabel, t } from '../../i18n';
+import DateField from '../DateField/DateField';
 import {
   backhaulPreset,
   loadStatuses,
   type LoadDraft,
   type LoadStatus,
-} from '../../runs/demo';
+} from '../../runs/seed';
 import { useAppDispatch, useAppSelector } from '../../store/hooks';
 import {
   addLoad,
@@ -34,13 +35,17 @@ function AddLoadModal({ defaultRunId }: { defaultRunId?: string }) {
   if (!isOpen) return null;
 
   const targetRunId = modalRunId || defaultRunId || runs[0]?.id || '214';
+  const rateNegative = Number(draft.rate) < 0;
+  const milesNegative = Number(draft.miles) < 0;
   const canAdd = Boolean(
     draft.customer.trim() &&
-      draft.pickupCity.trim() &&
-      draft.pickupState.trim() &&
-      draft.deliveryCity.trim() &&
-      draft.deliveryState.trim() &&
-      draft.miles.trim(),
+    draft.pickupCity.trim() &&
+    draft.pickupState.trim() &&
+    draft.deliveryCity.trim() &&
+    draft.deliveryState.trim() &&
+    draft.miles.trim() &&
+    !rateNegative &&
+    !milesNegative,
   );
   const update = (partial: Partial<LoadDraft>) => dispatch(patchDraft(partial));
 
@@ -108,6 +113,7 @@ function AddLoadModal({ defaultRunId }: { defaultRunId?: string }) {
           step="1"
           value={draft.rate}
           onText={(rate) => update({ rate })}
+          error={rateNegative ? t.addLoad.negativeError : undefined}
         />
         <label className="runs__field">
           <span className="runs__label">{t.addLoad.status}</span>
@@ -132,6 +138,7 @@ function AddLoadModal({ defaultRunId }: { defaultRunId?: string }) {
           step="1"
           value={draft.miles}
           onText={(miles) => update({ miles })}
+          error={milesNegative ? t.addLoad.negativeError : undefined}
         />
         <FormInput
           label={t.addLoad.driveHours}
@@ -203,19 +210,35 @@ function StopFields({
 function FormInput({
   label,
   onText,
+  error,
   ...props
 }: {
   label: string;
   onText: (v: string) => void;
+  error?: string;
 } & Omit<InputHTMLAttributes<HTMLInputElement>, 'onChange'>) {
   return (
     <label className="runs__field">
       <span className="runs__label">{label}</span>
-      <input
-        className="runs__input"
-        {...props}
-        onChange={(e) => onText(e.target.value)}
-      />
+      {props.type === 'datetime-local' ? (
+        <DateField
+          type="datetime-local"
+          value={String(props.value ?? '')}
+          onValue={onText}
+        />
+      ) : (
+        <input
+          className="runs__input"
+          {...props}
+          aria-invalid={error ? true : undefined}
+          onChange={(e) => onText(e.target.value)}
+        />
+      )}
+      {error && (
+        <span className="runs__field-error" role="alert">
+          {error}
+        </span>
+      )}
     </label>
   );
 }

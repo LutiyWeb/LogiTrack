@@ -9,7 +9,7 @@ import '../Workspace/Workspace.scss';
 
 type Kind = 'bug' | 'question' | 'idea';
 
-/** Окно «Повідомити про проблему». В демо обращение никуда не уходит. */
+/** Окно «Повідомити про проблему». Обращение пока никуда не отправляется. */
 function SupportDialog({ sectionLabel, onClose }: { sectionLabel: string; onClose: () => void }) {
   const dispatch = useAppDispatch();
   const user = useAppSelector(selectCurrentUser);

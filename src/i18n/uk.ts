@@ -1,4 +1,4 @@
-import type { BillingStatus, LoadStatus, RunStatus } from '../runs/demo';
+import type { BillingStatus, LoadStatus, RunStatus } from '../runs/seed';
 import type { StatusFilter } from '../store/slices/uiSlice';
 
 /**
@@ -79,12 +79,18 @@ export const uk = {
     signOut: 'Вийти',
     collapse: 'Згорнути меню',
     expand: 'Розгорнути меню',
+    openMenu: 'Відкрити меню',
+    closeMenu: 'Закрити меню',
+    moreMenu: 'Інші розділи',
+    bottomNav: 'Основні розділи',
+    short: { inbox: 'Вхідні' } as Partial<Record<string, string>>,
   },
 
   common: {
     cancel: 'Скасувати',
     close: 'Закрити',
     remove: 'Видалити',
+    more: 'Ще',
     dispatcherFallback: 'Диспетчер',
     dispatchFallbackRole: 'Диспетчерська',
     allInTooltip: 'Виручка ÷ усі милі (під вантажем + порожні)',
@@ -99,14 +105,14 @@ export const uk = {
   login: {
     ariaLabel: 'Вхід',
     subtitle: 'Увійдіть у робочий простір диспетчера',
-    devLogin: (name: string) => `Швидкий вхід для розробки (${name})`,
+    quickLogin: 'Вхід',
     formTitle: 'Вхід за email і паролем',
-    passwordHint: 'Пароль для всіх демо-акаунтів: demo123',
+    passwordHint: 'Пароль для всіх акаунтів: logitrack2026',
     email: 'Email',
     password: 'Пароль',
     submit: 'Увійти',
-    demoTitle: 'Демо-акаунти · швидкий вхід',
-    demoAria: 'Демо-акаунти',
+    accountsTitle: 'Акаунти · швидкий вхід',
+    accountsAria: 'Акаунти',
     signInAs: (name: string) => `Увійти як ${name}`,
     invalid: 'Невірний email або пароль',
   },
@@ -149,13 +155,20 @@ export const uk = {
   runs: {
     title: 'Рейси',
     filterAria: 'Фільтр рейсів за статусом',
-    resetDemo: 'Скинути демо',
+    resetData: 'Скинути дані',
     searchPlaceholder: 'Пошук: тягач, водій, місто, клієнт або ТТН…',
     searchAria: 'Пошук рейсів',
     backhaulNeeded: (percent: number) => `Потрібен зворотний вантаж · ${percent}% порожніх`,
     backhaulAssigned: 'Зворотний вантаж призначено',
     hosShort: (value: string) => `${value} водіння`,
     emptyNeeded: 'Вкажіть порожній пробіг',
+    resetTitle: 'Скинути всі дані?',
+    resetText: 'Усі рейси, вантажі, чати та налаштування повернуться до початкового стану. Цю дію не можна скасувати.',
+    resetConfirm: 'Скинути',
+    searchEmpty: 'Нічого не знайдено',
+    searchEmptyFor: (query: string) => `За запитом «${query}» рейсів немає.`,
+    filterEmpty: 'У цьому статусі рейсів немає.',
+    clearSearch: 'Очистити пошук',
   },
 
   runDetail: {
@@ -186,12 +199,16 @@ export const uk = {
     poNumber: (value: string) => `Замовлення № ${value}`,
     brokerContact: (name: string) => `Контакт брокера ${name}`,
     rateConFile: (name: string) => `Підтвердження ставки: ${name}`,
+    instructions: 'Особливі вимоги',
     routeMapTitle: (truck: string) => `Карта маршруту · ${truck}`,
     timelineAria: 'Етапи маршруту',
     timelineTitle: 'Маршрут по ділянках',
     paidLeg: 'Під вантажем',
     emptyLeg: 'Порожній перегін',
     emptyMilesFor: (from: string, to: string) => `Порожні милі від ${from} до ${to}`,
+    removeTitle: (customer: string) => `Видалити вантаж ${customer}?`,
+    removeText: 'Вантаж буде видалено з рейсу і не повернеться в чергу «Вхідні вантажі». Цю дію не можна скасувати.',
+    removeConfirm: 'Видалити',
     milesPlaceholder: 'милі',
   },
 
@@ -233,6 +250,7 @@ export const uk = {
     truckDriver: 'Тягач / водій',
     customer: 'Клієнт',
     rate: 'Ставка, $',
+    negativeError: 'Значення не може бути від’ємним',
     status: 'Статус',
     pickup: {
       place: 'Місце завантаження',
@@ -260,6 +278,8 @@ export const uk = {
     addManual: 'Додати вручну',
     simulateEmail: 'Імітувати новий лист',
     receivingEmail: 'Отримую лист…',
+    addLoad: 'Додати вантаж',
+    simulateEmailDemo: 'Імітувати новий лист (демо)',
     filterAria: 'Фільтр черги',
     filters: {
       waiting: (n: number) => `Очікують (${n})`,
@@ -290,7 +310,7 @@ export const uk = {
     planned: (date: string) => `Орієнтовно ${date}`,
     openRun: 'Відкрити рейс',
     reviewTitle: 'Перевірка вантажу',
-    saveChecked: 'Зберегти як перевірений',
+    saveChecked: 'Зберегти',
     dropTitle: 'Перетягніть PDF, щоб додати вантаж у чергу',
     dropSub: 'Підтвердження ставки від будь-якого брокера',
     overviewAlert: (n: number) =>
@@ -339,6 +359,9 @@ export const uk = {
     accrued: 'Нараховано',
     markPaid: 'Позначити виплаченим',
     cannotAssign: ' · документи прострочені',
+    badgeIdle: 'Простій',
+    badgeSoon: 'Скоро',
+    badgeExpired: 'Прострочено',
     overviewIdle: (truck: string, name: string, days: number) =>
       `${truck} / ${name} без рейсу ${days} ${plural(days, 'день', 'дні', 'днів')}`,
     overviewDoc: (name: string, note: string) => `${name} — ${note.charAt(0).toLowerCase()}${note.slice(1)}`,
@@ -397,7 +420,7 @@ export const uk = {
 
   chats: {
     title: 'Чати з водіями',
-    subtitle: 'Водії пишуть у WhatsApp або SMS, а ви відповідаєте звідси. Демо: інтеграції ще немає.',
+    subtitle: 'Водії пишуть у WhatsApp або SMS, а ви відповідаєте звідси.',
     listAria: 'Список чатів',
     channel: { whatsapp: 'WhatsApp', sms: 'SMS' } as Record<'whatsapp' | 'sms', string>,
     unread: (n: number) => `${n} ${plural(n, 'непрочитане', 'непрочитані', 'непрочитаних')}`,
@@ -511,6 +534,7 @@ export const uk = {
     done: 'Виконано',
     open: 'Відкрити',
     confirm: 'Брокер підтвердив',
+    confirmShort: 'Підтвердити',
     confirmed: (customer: string) => `Вантаж ${customer} підтверджено — він у черзі «Вхідні вантажі»`,
     reminderDone: 'Нагадування виконано',
     formTentative: 'Новий попередній вантаж',
@@ -569,7 +593,7 @@ export const uk = {
 
   account: {
     title: 'Акаунт',
-    subtitle: 'Профіль диспетчера, нормативи перевізника та керування демо',
+    subtitle: 'Профіль диспетчера, нормативи перевізника та керування даними',
     profileAria: 'Профіль перевізника',
     profileTitle: 'Профіль перевізника та диспетчера',
     carrier: 'Перевізник',
@@ -587,11 +611,11 @@ export const uk = {
     maxEmpty: (value: number) => `Максимальний порожній пробіг (${value}%)`,
     fuelCost: 'Витрати на пальне за милю ($/милю)',
     driverPay: 'Оплата водію за милю ($/милю)',
-    demoAria: 'Керування демо',
-    demoTitle: 'Керування демо-середовищем',
-    demoSub:
-      'Повернути всі рейси, вантажі та налаштування до початкового стану презентації (тягач 214 до призначення зворотного вантажу).',
-    resetDemo: 'Скинути демо-дані',
+    dataAria: 'Керування даними',
+    dataTitle: 'Керування даними',
+    dataSub:
+      'Повернути всі рейси, вантажі та налаштування до початкового стану (тягач 214 до призначення зворотного вантажу).',
+    resetData: 'Скинути всі дані',
   },
 
   map: {
@@ -651,6 +675,7 @@ export const uk = {
       freight: 'Вантаж і оплата',
       assign: 'Призначення',
       route: 'Перевірка маршруту',
+      instructions: 'Особливі вимоги для водія',
     },
     fields: {
       customer: 'Брокер / клієнт',
@@ -660,8 +685,10 @@ export const uk = {
       brokerPhone: 'Телефон',
       brokerEmail: 'Email',
       place: 'Об’єкт',
+      address: 'Вулиця, будинок',
       city: 'Місто',
       state: 'Штат',
+      zip: 'ZIP',
       appointment: 'Запланований час',
       rate: 'Ставка, $',
       commodity: 'Вантаж (що веземо)',
@@ -671,6 +698,7 @@ export const uk = {
       poNumber: 'Номер замовлення / завантаження',
       miles: 'Милі під вантажем',
       driveHours: 'Час у дорозі, год',
+      specialInstructions: 'Що має знати водій',
     },
     assignAria: 'Куди призначити',
     newRun: 'Новий рейс',
@@ -678,6 +706,12 @@ export const uk = {
     truckDriver: 'Тягач і водій',
     hoursLeft: (value: number) => `залишилось ${value} год`,
     onActiveRun: ' · уже в активному рейсі',
+    allBusy: 'Усі тягачі зайняті — новий рейс створити не можна.',
+    soonestFree: (truck: string, driver: string, when: string, place: string) =>
+      `Найраніше звільниться ${truck} · ${driver}: ${when}, ${place}.`,
+    makesPickup: 'Встигає до завантаження.',
+    missesPickup: 'Не встигає до завантаження — узгодьте з брокером інший час.',
+    planOn: (truck: string) => `Запланувати на ${truck}`,
     run: 'Рейс',
     enterStops: 'Вкажіть місто і штат завантаження та доставки, щоб прокласти маршрут.',
     routing: (from: string, to: string) => `Прокладаю маршрут ${from} → ${to}…`,

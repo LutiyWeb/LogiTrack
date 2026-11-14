@@ -11,7 +11,7 @@ import {
   type LngLat,
 } from '../../geo/geo';
 import { runStatusLabel, t } from '../../i18n';
-import { formatWhen, nextStop, placeName, type Run } from '../../runs/demo';
+import { formatWhen, nextStop, placeName, type Run } from '../../runs/seed';
 import type { EnrichedRun } from '../../store/selectors/runsSelectors';
 
 type MapLib = typeof import('maplibre-gl');
@@ -338,7 +338,7 @@ export function FleetRouteMap({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [ready, fitKey]);
 
-  // Fetch road geometry for legs that are not in the bundled demo routes.
+  // Fetch road geometry for legs that are not in the bundled routes.
   useEffect(() => {
     if (mapData.missing.length === 0) return;
     let cancelled = false;

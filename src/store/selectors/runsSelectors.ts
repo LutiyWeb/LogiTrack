@@ -12,7 +12,7 @@ import {
   type Leg,
   type RouteStep,
   type Run,
-} from '../../runs/demo';
+} from '../../runs/seed';
 import type { RootState } from '../store';
 
 export type EnrichedRun = {
@@ -147,6 +147,27 @@ export const selectOpenRun = createSelector(
   [selectEnrichedRuns, selectOpenRunId],
   (enrichedRuns, openRunId) =>
     enrichedRuns.find((item) => item.run.id === openRunId) ?? null,
+);
+
+export const OVERVIEW_RUNS_LIMIT = 5;
+
+/** 0 — needs action (empty return or too many empty miles), 1 — in transit, 2 — planned. */
+function urgencyRank(item: EnrichedRun) {
+  if (item.run.status === 'Empty return' || item.needsBackhaul) return 0;
+  if (item.run.status === 'In transit') return 1;
+  return 2;
+}
+
+/** Active runs for the overview, most urgent first; fewer driving hours left goes higher. */
+export const selectOverviewRuns = createSelector([selectEnrichedRuns], (enrichedRuns) =>
+  enrichedRuns
+    .filter((item) => item.run.status !== 'Completed')
+    .sort(
+      (a, b) =>
+        urgencyRank(a) - urgencyRank(b) ||
+        (a.run.drivingHoursLeft ?? Infinity) - (b.run.drivingHoursLeft ?? Infinity),
+    )
+    .slice(0, OVERVIEW_RUNS_LIMIT),
 );
 
 export const selectFleetKpis = createSelector(

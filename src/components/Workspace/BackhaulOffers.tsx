@@ -8,7 +8,7 @@ import {
   previewOfferMetrics,
   type BackhaulOffer,
   type Run,
-} from '../../runs/demo';
+} from '../../runs/seed';
 import { useAppDispatch, useAppSelector } from '../../store/hooks';
 import {
   addLoad,

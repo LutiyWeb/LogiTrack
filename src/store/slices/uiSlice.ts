@@ -1,6 +1,6 @@
 import { createSlice, type PayloadAction } from '@reduxjs/toolkit';
 import type { MenuItem } from '../../navigation';
-import type { RunStatus } from '../../runs/demo';
+import type { RunStatus } from '../../runs/seed';
 
 export type StatusFilter = 'All' | RunStatus;
 

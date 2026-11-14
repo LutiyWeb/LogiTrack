@@ -2,25 +2,49 @@ import { useState } from 'react';
 import { seedDrivers } from '../../drivers/drivers';
 import { t } from '../../i18n';
 import { emptyManualLoad } from '../../inbox/inbox';
-import { buildEvents, TODAY, type CalendarEvent, type EventKind } from '../../planning/planning';
+import {
+  buildEvents,
+  TODAY,
+  type CalendarEvent,
+  type EventKind,
+} from '../../planning/planning';
 import { useAppDispatch, useAppSelector } from '../../store/hooks';
 import { addInboxLoad, setInboxStatus } from '../../store/slices/inboxSlice';
 import { addReminder, toggleReminder } from '../../store/slices/plannerSlice';
 import { openRun } from '../../store/slices/runsSlice';
 import { showToast } from '../../store/slices/toastsSlice';
 import { setActiveSection } from '../../store/slices/uiSlice';
+import DateField from '../DateField/DateField';
 import '../Workspace/Workspace.scss';
 import './Planning.scss';
 
-const kinds: EventKind[] = ['tentative', 'pickup', 'delivery', 'reminder', 'document'];
+const kinds: EventKind[] = [
+  'tentative',
+  'pickup',
+  'delivery',
+  'reminder',
+  'document',
+];
 
-const monthFormatter = new Intl.DateTimeFormat('uk-UA', { month: 'long', year: 'numeric' });
-const dayFormatter = new Intl.DateTimeFormat('uk-UA', { weekday: 'long', day: 'numeric', month: 'long' });
+const monthFormatter = new Intl.DateTimeFormat('uk-UA', {
+  month: 'long',
+  year: 'numeric',
+});
+const dayFormatter = new Intl.DateTimeFormat('uk-UA', {
+  weekday: 'long',
+  day: 'numeric',
+  month: 'long',
+});
 
 /** Заглавная только первая буква: «Жовтень 2026 р.», «Середа, 28 жовтня». */
-const capitalize = (text: string) => text.charAt(0).toUpperCase() + text.slice(1);
-const monthFormat = { format: (date: Date) => capitalize(monthFormatter.format(date)) };
-const dayFormat = { format: (date: Date) => capitalize(dayFormatter.format(date)) };
+const capitalize = (text: string) =>
+  text.charAt(0).toUpperCase() + text.slice(1);
+const monthFormat = {
+  format: (date: Date) => capitalize(monthFormatter.format(date)),
+};
+const dayFormat = {
+  format: (date: Date) => capitalize(dayFormatter.format(date)),
+};
 
 /** Дата в формате YYYY-MM-DD без сдвига часового пояса. */
 function toKey(date: Date) {
@@ -40,7 +64,9 @@ function monthCells(month: Date) {
   const offset = (first.getDay() + 6) % 7;
   return [
     ...Array.from({ length: offset }, () => null),
-    ...Array.from({ length: days }, (_, i) => toKey(new Date(month.getFullYear(), month.getMonth(), i + 1))),
+    ...Array.from({ length: days }, (_, i) =>
+      toKey(new Date(month.getFullYear(), month.getMonth(), i + 1)),
+    ),
   ];
 }
 
@@ -57,10 +83,14 @@ function Planning() {
 
   const events = buildEvents(runs, inbox, reminders, seedDrivers);
   const byDay = new Map<string, CalendarEvent[]>();
-  events.forEach((event) => byDay.set(event.date, [...(byDay.get(event.date) ?? []), event]));
+  events.forEach((event) =>
+    byDay.set(event.date, [...(byDay.get(event.date) ?? []), event]),
+  );
 
   // Без выбранного дня — ближайшие 14 дней начиная с сегодня.
-  const horizon = toKey(new Date(fromKey(TODAY).getTime() + 13 * 24 * 60 * 60 * 1000));
+  const horizon = toKey(
+    new Date(fromKey(TODAY).getTime() + 13 * 24 * 60 * 60 * 1000),
+  );
   const agendaDays = selected
     ? [selected]
     : [...byDay.keys()].filter((key) => key >= TODAY && key <= horizon);
@@ -69,7 +99,9 @@ function Planning() {
     if (!event.inboxId) return;
     const item = inbox.find((entry) => entry.id === event.inboxId);
     dispatch(setInboxStatus({ id: event.inboxId, status: 'New' }));
-    dispatch(showToast('success', t.planning.confirmed(item?.draft.customer ?? '')));
+    dispatch(
+      showToast('success', t.planning.confirmed(item?.draft.customer ?? '')),
+    );
   }
 
   return (
@@ -82,17 +114,25 @@ function Planning() {
         <div className="runs__toolbar-actions">
           <button
             type="button"
-            className="runs__button runs__button--secondary runs__button--small"
-            onClick={() => setForm((current) => (current === 'reminder' ? null : 'reminder'))}
+            className={`runs__button runs__button--secondary runs__button--small${form === 'reminder' ? ' is-active' : ''}`}
+            aria-pressed={form === 'reminder'}
+            onClick={() =>
+              setForm((current) => (current === 'reminder' ? null : 'reminder'))
+            }
           >
-            + {t.planning.addReminder}
+            {t.planning.addReminder}
           </button>
           <button
             type="button"
-            className="runs__button runs__button--small"
-            onClick={() => setForm((current) => (current === 'tentative' ? null : 'tentative'))}
+            className={`runs__button runs__button--small${form === 'tentative' ? ' is-active' : ''}`}
+            aria-pressed={form === 'tentative'}
+            onClick={() =>
+              setForm((current) =>
+                current === 'tentative' ? null : 'tentative',
+              )
+            }
           >
-            + {t.planning.addTentative}
+            {t.planning.addTentative}
           </button>
         </div>
       </header>
@@ -115,7 +155,13 @@ function Planning() {
             };
             dispatch(addInboxLoad(item));
             if (values.remindAt && values.note) {
-              dispatch(addReminder({ date: values.remindAt, text: values.note, inboxId: item.id }));
+              dispatch(
+                addReminder({
+                  date: values.remindAt,
+                  text: values.note,
+                  inboxId: item.id,
+                }),
+              );
             }
             dispatch(showToast('success', t.planning.savedTentative));
             setForm(null);
@@ -134,13 +180,18 @@ function Planning() {
       )}
 
       <div className="planning">
-        <section className="runs__block planning__calendar" aria-label={monthFormat.format(month)}>
+        <section
+          className="runs__block planning__calendar"
+          aria-label={monthFormat.format(month)}
+        >
           <div className="planning__month-head">
             <button
               type="button"
               className="runs__button runs__button--tertiary runs__button--small"
               aria-label={t.planning.prevMonth}
-              onClick={() => setMonth(new Date(month.getFullYear(), month.getMonth() - 1, 1))}
+              onClick={() =>
+                setMonth(new Date(month.getFullYear(), month.getMonth() - 1, 1))
+              }
             >
               ←
             </button>
@@ -149,7 +200,9 @@ function Planning() {
               type="button"
               className="runs__button runs__button--tertiary runs__button--small"
               aria-label={t.planning.nextMonth}
-              onClick={() => setMonth(new Date(month.getFullYear(), month.getMonth() + 1, 1))}
+              onClick={() =>
+                setMonth(new Date(month.getFullYear(), month.getMonth() + 1, 1))
+              }
             >
               →
             </button>
@@ -172,14 +225,23 @@ function Planning() {
                   ].join(' ')}
                   aria-pressed={key === selected}
                   aria-label={dayFormat.format(fromKey(key))}
-                  onClick={() => setSelected((current) => (current === key ? null : key))}
+                  onClick={() =>
+                    setSelected((current) => (current === key ? null : key))
+                  }
                 >
                   <span>{fromKey(key).getDate()}</span>
                   <span className="planning__dots">
                     {kinds
-                      .filter((kind) => byDay.get(key)?.some((event) => event.kind === kind && !event.done))
+                      .filter((kind) =>
+                        byDay
+                          .get(key)
+                          ?.some((event) => event.kind === kind && !event.done),
+                      )
                       .map((kind) => (
-                        <span key={kind} className={`planning__dot planning__dot--${kind}`} />
+                        <span
+                          key={kind}
+                          className={`planning__dot planning__dot--${kind}`}
+                        />
                       ))}
                   </span>
                 </button>
@@ -191,17 +253,25 @@ function Planning() {
           <ul className="planning__legend" aria-label={t.planning.legendAria}>
             {kinds.map((kind) => (
               <li key={kind}>
-                <span className={`planning__dot planning__dot--${kind}`} aria-hidden="true" />
+                <span
+                  className={`planning__dot planning__dot--${kind}`}
+                  aria-hidden="true"
+                />
                 {t.planning.kinds[kind]}
               </li>
             ))}
           </ul>
         </section>
 
-        <section className="runs__block planning__agenda" aria-label={t.planning.upcoming}>
+        <section
+          className="runs__block planning__agenda"
+          aria-label={t.planning.upcoming}
+        >
           <div className="runs__form-head">
             <h2 className="runs__subtitle">
-              {selected ? t.planning.dayTitle(dayFormat.format(fromKey(selected))) : t.planning.upcoming}
+              {selected
+                ? t.planning.dayTitle(dayFormat.format(fromKey(selected)))
+                : t.planning.upcoming}
             </h2>
             {selected && (
               <button
@@ -214,7 +284,8 @@ function Planning() {
             )}
           </div>
 
-          {agendaDays.length === 0 || agendaDays.every((key) => !byDay.get(key)?.length) ? (
+          {agendaDays.length === 0 ||
+          agendaDays.every((key) => !byDay.get(key)?.length) ? (
             <p className="runs__meta">{t.planning.empty}</p>
           ) : (
             agendaDays.map((key) => (
@@ -227,18 +298,26 @@ function Planning() {
                 )}
                 <ul className="runs__loads">
                   {(byDay.get(key) ?? []).map((event) => (
-                    <li key={event.id} className={`planning__event planning__event--${event.kind}${event.done ? ' is-done' : ''}`}>
-                      <span className={`planning__dot planning__dot--${event.kind}`} aria-hidden="true" />
-                      <span className="planning__event-text">
-                        <span className="planning__event-kind">{t.planning.kinds[event.kind]}</span>
-                        {event.text}
+                    <li
+                      key={event.id}
+                      className={`planning__event planning__event--${event.kind}${event.done ? ' is-done' : ''}`}
+                    >
+                      <span className="planning__event-kind">
+                        <span
+                          className={`planning__dot planning__dot--${event.kind}`}
+                          aria-hidden="true"
+                        />
+                        {t.planning.kinds[event.kind]}
                       </span>
                       <EventActions
                         event={event}
                         onToggle={() => {
                           if (!event.reminderId) return;
                           dispatch(toggleReminder(event.reminderId));
-                          if (!event.done) dispatch(showToast('success', t.planning.reminderDone));
+                          if (!event.done)
+                            dispatch(
+                              showToast('success', t.planning.reminderDone),
+                            );
                         }}
                         onConfirm={() => confirmTentative(event)}
                         onOpenRun={() => {
@@ -246,8 +325,11 @@ function Planning() {
                           dispatch(openRun(event.runId));
                           dispatch(setActiveSection('board'));
                         }}
-                        onOpenDrivers={() => dispatch(setActiveSection('drivers'))}
+                        onOpenDrivers={() =>
+                          dispatch(setActiveSection('drivers'))
+                        }
                       />
+                      <span className="planning__event-text">{event.text}</span>
                     </li>
                   ))}
                 </ul>
@@ -283,8 +365,14 @@ function EventActions({
   }
   if (event.kind === 'tentative') {
     return (
-      <button type="button" className="runs__button runs__button--secondary runs__button--small" onClick={onConfirm}>
-        {t.planning.confirm}
+      <button
+        type="button"
+        className="runs__button runs__button--secondary runs__button--small"
+        title={t.planning.confirm}
+        aria-label={t.planning.confirm}
+        onClick={onConfirm}
+      >
+        {t.planning.confirmShort}
       </button>
     );
   }
@@ -311,7 +399,13 @@ type TentativeValues = {
   note: string;
 };
 
-function TentativeForm({ onSave, onCancel }: { onSave: (values: TentativeValues) => void; onCancel: () => void }) {
+function TentativeForm({
+  onSave,
+  onCancel,
+}: {
+  onSave: (values: TentativeValues) => void;
+  onCancel: () => void;
+}) {
   const [values, setValues] = useState<TentativeValues>({
     customer: '',
     fromCity: '',
@@ -324,9 +418,15 @@ function TentativeForm({ onSave, onCancel }: { onSave: (values: TentativeValues)
     note: '',
   });
   const f = t.planning.fields;
-  const set = (key: keyof TentativeValues) => (event: React.ChangeEvent<HTMLInputElement>) =>
-    setValues((current) => ({ ...current, [key]: event.target.value }));
-  const ready = values.customer.trim() && values.fromCity.trim() && values.toCity.trim() && values.date;
+  const set =
+    (key: keyof TentativeValues) =>
+    (event: React.ChangeEvent<HTMLInputElement>) =>
+      setValues((current) => ({ ...current, [key]: event.target.value }));
+  const ready =
+    values.customer.trim() &&
+    values.fromCity.trim() &&
+    values.toCity.trim() &&
+    values.date;
 
   return (
     <form
@@ -337,15 +437,50 @@ function TentativeForm({ onSave, onCancel }: { onSave: (values: TentativeValues)
         if (ready) onSave(values);
       }}
     >
-      <h2 className="runs__subtitle runs__form-head">{t.planning.formTentative}</h2>
-      <Field label={f.customer} value={values.customer} onChange={set('customer')} />
-      <Field label={f.rate} value={values.rate} onChange={set('rate')} type="number" />
-      <Field label={f.fromCity} value={values.fromCity} onChange={set('fromCity')} />
-      <Field label={f.fromState} value={values.fromState} onChange={set('fromState')} maxLength={2} />
+      <h2 className="runs__subtitle runs__form-head">
+        {t.planning.formTentative}
+      </h2>
+      <Field
+        label={f.customer}
+        value={values.customer}
+        onChange={set('customer')}
+      />
+      <Field
+        label={f.rate}
+        value={values.rate}
+        onChange={set('rate')}
+        type="number"
+      />
+      <Field
+        label={f.fromCity}
+        value={values.fromCity}
+        onChange={set('fromCity')}
+      />
+      <Field
+        label={f.fromState}
+        value={values.fromState}
+        onChange={set('fromState')}
+        maxLength={2}
+      />
       <Field label={f.toCity} value={values.toCity} onChange={set('toCity')} />
-      <Field label={f.toState} value={values.toState} onChange={set('toState')} maxLength={2} />
-      <Field label={f.date} value={values.date} onChange={set('date')} type="date" />
-      <Field label={f.remindAt} value={values.remindAt} onChange={set('remindAt')} type="date" />
+      <Field
+        label={f.toState}
+        value={values.toState}
+        onChange={set('toState')}
+        maxLength={2}
+      />
+      <Field
+        label={f.date}
+        value={values.date}
+        onChange={set('date')}
+        type="date"
+      />
+      <Field
+        label={f.remindAt}
+        value={values.remindAt}
+        onChange={set('remindAt')}
+        type="date"
+      />
       <label className="runs__field runs__field--wide">
         <span className="runs__label">{f.note}</span>
         <input
@@ -356,7 +491,11 @@ function TentativeForm({ onSave, onCancel }: { onSave: (values: TentativeValues)
         />
       </label>
       <div className="runs__form-submit">
-        <button type="button" className="runs__button runs__button--tertiary" onClick={onCancel}>
+        <button
+          type="button"
+          className="runs__button runs__button--tertiary"
+          onClick={onCancel}
+        >
           {t.common.cancel}
         </button>
         <button type="submit" className="runs__button" disabled={!ready}>
@@ -367,7 +506,13 @@ function TentativeForm({ onSave, onCancel }: { onSave: (values: TentativeValues)
   );
 }
 
-function ReminderForm({ onSave, onCancel }: { onSave: (date: string, text: string) => void; onCancel: () => void }) {
+function ReminderForm({
+  onSave,
+  onCancel,
+}: {
+  onSave: (date: string, text: string) => void;
+  onCancel: () => void;
+}) {
   const [date, setDate] = useState(TODAY);
   const [text, setText] = useState('');
   const f = t.planning.fields;
@@ -381,11 +526,26 @@ function ReminderForm({ onSave, onCancel }: { onSave: (date: string, text: strin
         if (text.trim()) onSave(date, text.trim());
       }}
     >
-      <h2 className="runs__subtitle runs__form-head">{t.planning.formReminder}</h2>
-      <Field label={f.reminderDate} value={date} onChange={(event) => setDate(event.target.value)} type="date" />
-      <Field label={f.note} value={text} onChange={(event) => setText(event.target.value)} />
+      <h2 className="runs__subtitle runs__form-head">
+        {t.planning.formReminder}
+      </h2>
+      <Field
+        label={f.reminderDate}
+        value={date}
+        onChange={(event) => setDate(event.target.value)}
+        type="date"
+      />
+      <Field
+        label={f.note}
+        value={text}
+        onChange={(event) => setText(event.target.value)}
+      />
       <div className="runs__form-submit">
-        <button type="button" className="runs__button runs__button--tertiary" onClick={onCancel}>
+        <button
+          type="button"
+          className="runs__button runs__button--tertiary"
+          onClick={onCancel}
+        >
           {t.common.cancel}
         </button>
         <button type="submit" className="runs__button" disabled={!text.trim()}>
@@ -403,7 +563,19 @@ function Field({
   return (
     <label className="runs__field">
       <span className="runs__label">{label}</span>
-      <input className="runs__input" {...props} />
+      {props.type === 'date' ? (
+        <DateField
+          type="date"
+          value={String(props.value ?? '')}
+          onValue={(value) =>
+            props.onChange?.({
+              target: { value },
+            } as React.ChangeEvent<HTMLInputElement>)
+          }
+        />
+      ) : (
+        <input className="runs__input" {...props} />
+      )}
     </label>
   );
 }

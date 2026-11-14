@@ -3,7 +3,7 @@ import { t } from '../../i18n';
 
 export type UserRole = 'manager' | 'dispatcher' | 'driver';
 
-export type DemoUser = {
+export type User = {
   id: string;
   name: string;
   email: string;
@@ -24,12 +24,12 @@ export type RolePermissions = {
   canViewFinance: boolean;
 };
 
-export const demoUsers: DemoUser[] = [
+export const users: User[] = [
   {
     id: 'manager',
     name: 'Sarah Jenkins',
-    email: 'sarah@logitrack.demo',
-    password: 'demo123',
+    email: 'sarah@logitrack.app',
+    password: 'logitrack2026',
     role: 'manager',
     roleTitle: 'Менеджер автопарку',
     summary:
@@ -38,8 +38,8 @@ export const demoUsers: DemoUser[] = [
   {
     id: 'dispatcher',
     name: 'Alex Mercer',
-    email: 'alex@logitrack.demo',
-    password: 'demo123',
+    email: 'alex@logitrack.app',
+    password: 'logitrack2026',
     role: 'dispatcher',
     roleTitle: 'Старший диспетчер',
     summary:
@@ -48,8 +48,8 @@ export const demoUsers: DemoUser[] = [
   {
     id: 'driver',
     name: 'Marcus Hill',
-    email: 'marcus@logitrack.demo',
-    password: 'demo123',
+    email: 'marcus@logitrack.app',
+    password: 'logitrack2026',
     role: 'driver',
     roleTitle: 'Водій · Тягач 214',
     summary:
@@ -86,12 +86,12 @@ export const ROLE_PERMISSIONS: Record<UserRole, RolePermissions> = {
 };
 
 export type AuthState = {
-  currentUser: DemoUser | null;
+  currentUser: User | null;
   loginError: string | null;
 };
 
 export function createInitialAuthState(
-  defaultUser: DemoUser | null = null,
+  defaultUser: User | null = null,
 ): AuthState {
   return {
     currentUser: defaultUser,
@@ -108,7 +108,7 @@ const authSlice = createSlice({
       action: PayloadAction<{ email: string; password: string }>,
     ) {
       const normalizedEmail = action.payload.email.trim().toLowerCase();
-      const matched = demoUsers.find(
+      const matched = users.find(
         (user) =>
           user.email.toLowerCase() === normalizedEmail &&
           user.password === action.payload.password,
@@ -122,8 +122,8 @@ const authSlice = createSlice({
       state.currentUser = matched;
       state.loginError = null;
     },
-    loginAsDemoUser(state, action: PayloadAction<string>) {
-      const matched = demoUsers.find((user) => user.id === action.payload);
+    loginAsUser(state, action: PayloadAction<string>) {
+      const matched = users.find((user) => user.id === action.payload);
       if (matched) {
         state.currentUser = matched;
         state.loginError = null;
@@ -136,7 +136,7 @@ const authSlice = createSlice({
   },
 });
 
-export const { loginWithCredentials, loginAsDemoUser, logout } =
+export const { loginWithCredentials, loginAsUser, logout } =
   authSlice.actions;
 
 export const selectCurrentUser = (state: { auth: AuthState }) =>

@@ -1,5 +1,5 @@
 import { loadStatusLabel, runStatusLabel, t } from '../../i18n';
-import { loadStatuses, type LoadStatus, type RunStatus } from '../../runs/demo';
+import { loadStatuses, type LoadStatus, type RunStatus } from '../../runs/seed';
 
 const statusModifiers: Record<RunStatus, string> = {
   'In transit': 'runs__status--in-transit',

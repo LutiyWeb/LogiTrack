@@ -15,7 +15,6 @@
     gap: 10px;
     padding: 12px 12px 12px 14px;
     border: 1px solid var(--color-line);
-    border-left-width: 4px;
     font-size: var(--font-size-s);
     line-height: 1.4;
     color: var(--color-text);
@@ -24,22 +23,6 @@
     box-shadow: 0 8px 24px rgb(15 23 42 / 14%);
     animation: toast-in var(--transition-base);
     pointer-events: auto;
-
-    &--success {
-      border-left-color: var(--color-good-fill);
-    }
-
-    &--warning {
-      border-left-color: var(--color-warn);
-    }
-
-    &--error {
-      border-left-color: var(--color-danger-fill);
-    }
-
-    &--info {
-      border-left-color: var(--color-primary);
-    }
   }
 
   &__icon {
@@ -99,5 +82,20 @@
   to {
     opacity: 1;
     transform: translateY(0);
+  }
+}
+
+// Keep toasts above the mobile bottom tabs.
+@media (max-width: 767px) {
+  .toasts {
+    right: 16px;
+    bottom: calc(var(--mobile-tabs-height) + env(safe-area-inset-bottom) + 12px);
+  }
+}
+
+// Above the floating "+" button when a page shows one.
+@media (max-width: 767px) {
+  body.has-fab .toasts {
+    bottom: calc(var(--mobile-tabs-height) + env(safe-area-inset-bottom) + 16px + 56px + 12px);
   }
 }

@@ -18,8 +18,11 @@ export type DispatchNote = {
 
 export type Stop = {
   place: string;
+  /** Street line, e.g. "2800 Concord Rd". */
+  address?: string;
   city: string;
   state: string;
+  zip?: string;
   at: string;
 };
 
@@ -45,6 +48,8 @@ export type Load = {
   brokerPhone?: string;
   brokerEmail?: string;
   rateConFile?: string;
+  /** Instructions the driver must see, e.g. "Call 2 hours before arrival". */
+  specialInstructions?: string;
 };
 
 export type TruckLocation = {
@@ -109,6 +114,11 @@ export type LoadDraft = {
   brokerContact?: string;
   brokerPhone?: string;
   brokerEmail?: string;
+  pickupAddress?: string;
+  pickupZip?: string;
+  deliveryAddress?: string;
+  deliveryZip?: string;
+  specialInstructions?: string;
 };
 
 export type BackhaulOffer = {
@@ -214,6 +224,11 @@ export const emptyDraft: LoadDraft = {
   brokerContact: '',
   brokerPhone: '',
   brokerEmail: '',
+  pickupAddress: '',
+  pickupZip: '',
+  deliveryAddress: '',
+  deliveryZip: '',
+  specialInstructions: '',
 };
 
 export const backhaulPreset: LoadDraft = {
@@ -309,9 +324,9 @@ const emptyMiles: Record<string, number> = {
   'Nashville, TN|Bowling Green, KY': 65,
 };
 
-/** «Сейчас» в демо: все данные построены вокруг этой даты. */
-export const DEMO_NOW = '2026-10-28T15:00';
-const demoNow = new Date(DEMO_NOW);
+/** «Сейчас» для стартовых данных: всё построены вокруг этой даты. */
+export const SEED_NOW = '2026-10-28T15:00';
+const seedNow = new Date(SEED_NOW);
 
 export const runs: Run[] = [
   {
@@ -332,7 +347,7 @@ export const runs: Run[] = [
       {
         id: 'hart',
         customer: 'Hart Freight',
-        brokerEmail: 'dispatch@hartfreight-demo.example',
+        brokerEmail: 'dispatch@hartfreight.example',
         rate: 3200,
         pickup: {
           place: 'Midwest DC',
@@ -391,7 +406,7 @@ export const runs: Run[] = [
       {
         id: '118-load',
         customer: 'Midwest Steel Co.',
-        brokerEmail: 'shipping@midweststeel-demo.example',
+        brokerEmail: 'shipping@midweststeel.example',
         rate: 1450,
         pickup: {
           place: 'Northside Foundry',
@@ -471,7 +486,7 @@ export const runs: Run[] = [
       {
         id: '305-load-1',
         customer: 'Apex Industrial',
-        brokerEmail: 'ops@apexindustrial-demo.example',
+        brokerEmail: 'ops@apexindustrial.example',
         rate: 1650,
         pickup: {
           place: 'Queen City Logistics Park',
@@ -495,7 +510,7 @@ export const runs: Run[] = [
       {
         id: '305-load-2',
         customer: 'Heartland Foods',
-        brokerEmail: 'logistics@heartlandfoods-demo.example',
+        brokerEmail: 'logistics@heartlandfoods.example',
         rate: 1400,
         pickup: {
           place: 'Valley Packaging',
@@ -598,7 +613,7 @@ export function shiftNote(run: Run, load: Load) {
   if (load.driveHours <= run.drivingHoursLeft) return '';
 
   const resumeAt =
-    demoNow.getTime() + (run.drivingHoursLeft + 10) * 60 * 60 * 1000;
+    seedNow.getTime() + (run.drivingHoursLeft + 10) * 60 * 60 * 1000;
   const pickupAt = load.pickup.at ? new Date(load.pickup.at).getTime() : NaN;
   const pickupWaits = Number.isFinite(pickupAt) && pickupAt >= resumeAt;
   const waitLine = pickupWaits ? t.hos.pickupWaits : t.hos.pickupDropsOff;
@@ -618,14 +633,18 @@ export function draftToLoad(draft: LoadDraft, id = 'preview'): Load {
     rate: readNumber(draft.rate),
     pickup: {
       place: draft.pickupPlace.trim(),
+      ...optionalStopText('address', draft.pickupAddress),
       city: draft.pickupCity.trim(),
       state: draft.pickupState.trim().toUpperCase(),
+      ...optionalStopText('zip', draft.pickupZip),
       at: draft.pickupAt,
     },
     delivery: {
       place: draft.deliveryPlace.trim(),
+      ...optionalStopText('address', draft.deliveryAddress),
       city: draft.deliveryCity.trim(),
       state: draft.deliveryState.trim().toUpperCase(),
+      ...optionalStopText('zip', draft.deliveryZip),
       at: draft.deliveryAt,
     },
     miles: readNumber(draft.miles),
@@ -640,6 +659,7 @@ export function draftToLoad(draft: LoadDraft, id = 'preview'): Load {
     ...optionalText('brokerContact', draft.brokerContact),
     ...optionalText('brokerPhone', draft.brokerPhone),
     ...optionalText('brokerEmail', draft.brokerEmail),
+    ...optionalText('specialInstructions', draft.specialInstructions),
     ...(draft.weight && readNumber(draft.weight) > 0
       ? { weightLbs: readNumber(draft.weight) }
       : {}),
@@ -649,6 +669,11 @@ export function draftToLoad(draft: LoadDraft, id = 'preview'): Load {
 function optionalText<K extends keyof Load>(key: K, value?: string) {
   const text = value?.trim();
   return text ? ({ [key]: text } as Pick<Load, K>) : {};
+}
+
+function optionalStopText<K extends 'address' | 'zip'>(key: K, value?: string) {
+  const text = value?.trim();
+  return text ? ({ [key]: text } as Pick<Stop, K>) : {};
 }
 
 export function previewOfferMetrics(

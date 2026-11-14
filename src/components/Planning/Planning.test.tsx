@@ -2,14 +2,14 @@ import { render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it } from 'vitest';
 import App from '../../App';
-import { loginAsDemoUser } from '../../store/slices/authSlice';
+import { loginAsUser } from '../../store/slices/authSlice';
 import { createAppStore } from '../../store/store';
 
 describe('Планування', () => {
   it('shows upcoming events, completes a reminder and confirms a tentative load', async () => {
     const user = userEvent.setup();
     const store = createAppStore();
-    store.dispatch(loginAsDemoUser('dispatcher'));
+    store.dispatch(loginAsUser('dispatcher'));
     render(<App customStore={store} />);
 
     const navItem = screen.getByRole('button', { name: /Планування/ });
@@ -35,11 +35,11 @@ describe('Планування', () => {
   it('adds a tentative load with a reminder', async () => {
     const user = userEvent.setup();
     const store = createAppStore();
-    store.dispatch(loginAsDemoUser('dispatcher'));
+    store.dispatch(loginAsUser('dispatcher'));
     render(<App customStore={store} />);
 
     await user.click(screen.getByRole('button', { name: /Планування/ }));
-    await user.click(screen.getByRole('button', { name: '+ Попередній вантаж' }));
+    await user.click(screen.getByRole('button', { name: 'Попередній вантаж' }));
     const form = screen.getByRole('form', { name: 'Новий попередній вантаж' });
     await user.type(within(form).getByLabelText('Брокер / клієнт'), 'Prairie Route Brokerage');
     await user.type(within(form).getByLabelText('Звідки, місто'), 'Lafayette');

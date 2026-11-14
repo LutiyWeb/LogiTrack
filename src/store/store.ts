@@ -35,7 +35,7 @@ import uiReducer, {
 } from './slices/uiSlice';
 
 // Поднимать версию, когда меняется форма сохранённого состояния.
-const STORAGE_KEY = 'logitrack_demo_state_v8';
+const STORAGE_KEY = 'logitrack_state_v10';
 
 const rootReducer = combineReducers({
   auth: authReducer,
@@ -107,7 +107,7 @@ function savePersistedState(state: RootState) {
   try {
     window.localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
   } catch {
-    // Ignore storage quota errors in demo mode
+    // Ignore storage quota errors
   }
 }
 
@@ -143,7 +143,7 @@ export const store = createAppStore(loadPersistedState(), true);
 export type AppStore = ReturnType<typeof createAppStore>;
 export type AppDispatch = AppStore['dispatch'];
 
-export function resetAllDemoData(dispatch: AppDispatch) {
+export function resetAllData(dispatch: AppDispatch) {
   clearPersistedState();
   dispatch(resetRunsState());
   dispatch(resetUiState());
