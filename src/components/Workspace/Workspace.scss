@@ -1457,11 +1457,8 @@
 // grows with its text; "Reject" takes whatever is left.
 @media (max-width: 767px) {
   .runs__account-actions {
-    flex-wrap: nowrap;
-
     > .runs__button:not(:only-child) {
       justify-content: center;
-      white-space: nowrap;
     }
 
     > .runs__button--tertiary:not(:only-child) {
@@ -1473,5 +1470,52 @@
       flex: 0 0 auto;
       min-width: calc(50% - 4px);
     }
+  }
+}
+
+// Mobile: every item of a list inside a white block is its own tile.
+@media (max-width: 767px) {
+  .runs__list--tiles > li {
+    overflow: hidden;
+    background: var(--color-bg);
+    border-radius: var(--radius-m);
+
+    > .runs__row {
+      padding: 12px;
+      background: transparent;
+      border: 0;
+
+      &:hover {
+        background: transparent;
+      }
+    }
+
+    > .runs__driver-card {
+      margin: 0 12px 12px;
+    }
+  }
+}
+
+// "Show all" button under a shortened list: full width on mobile, below the tiles.
+@media (max-width: 767px) {
+  .runs__list--tiles + .runs__button {
+    width: 100%;
+    margin-top: 8px;
+  }
+}
+
+// Account page header: the title on the left, the action button on the right of the same row.
+@media (max-width: 767px) {
+  .runs__heading--with-action {
+    flex-direction: row;
+    align-items: flex-start;
+    justify-content: space-between;
+  }
+}
+
+// Button that fills the row on narrow screens.
+@media (max-width: 415px) {
+  .runs__button--block {
+    width: 100%;
   }
 }

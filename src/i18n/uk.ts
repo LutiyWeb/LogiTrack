@@ -321,6 +321,16 @@ export const uk = {
 
   drivers: {
     title: 'Водії',
+    showAll: (count: number) => `Показати всіх (${count})`,
+    showLess: 'Сховати',
+    filterAria: 'Фільтр водіїв за статусом',
+    statusFilter: {
+      all: 'Усі',
+      Free: 'Вільні',
+      OnRun: 'У рейсі',
+      Resting: 'Відпочинок',
+      DocsExpired: 'Документи прострочені',
+    },
     subtitle: 'Хто вільний, де зараз, терміни документів і виплати.',
     kpiAria: 'Показники водіїв',
     free: 'Вільні',
@@ -593,6 +603,8 @@ export const uk = {
 
   account: {
     title: 'Акаунт',
+    showAll: 'Показати все',
+    showLess: 'Сховати',
     subtitle: 'Профіль диспетчера, нормативи перевізника та керування даними',
     profileAria: 'Профіль перевізника',
     profileTitle: 'Профіль перевізника та диспетчера',

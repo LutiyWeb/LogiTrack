@@ -1,5 +1,6 @@
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { useMediaQuery } from '../../hooks/useMediaQuery';
+import { useRouteSync } from '../../hooks/useRouteSync';
 import LoginScreen from '../Auth/LoginScreen';
 import MobileNav from '../MobileNav/MobileNav';
 import Sidebar from '../Sidebar/Sidebar';
@@ -17,6 +18,7 @@ import { dueReminders } from '../../planning/planning';
 import { selectUnreadChats } from '../../store/slices/chatsSlice';
 import { selectWaitingInboxCount } from '../../store/slices/inboxSlice';
 import { openRun } from '../../store/slices/runsSlice';
+import { selectRunIds } from '../../store/selectors/runsSelectors';
 import { setActiveSection, toggleSidebar } from '../../store/slices/uiSlice';
 import './AppShell.scss';
 
@@ -33,16 +35,28 @@ function AppShell() {
   );
   const [supportOpen, setSupportOpen] = useState(false);
   const isMobile = useMediaQuery('(max-width: 767px)');
+  const openRunId = useAppSelector((state) => state.runs.openRunId);
+  const runIds = useAppSelector(selectRunIds);
+
+  const visibleItems = useMemo(
+    () => menuItems.filter((item) => !item.permission || permissions[item.permission]),
+    [permissions],
+  );
+  const allowedSections = useMemo(() => visibleItems.map((item) => item.id), [visibleItems]);
+  const active = visibleItems.find((item) => item.id === activeId) ?? visibleItems[0];
+
+  useRouteSync({
+    enabled: Boolean(currentUser),
+    sectionId: active?.id ?? 'board',
+    openRunId,
+    allowedSections,
+    runIds,
+  });
 
   if (!currentUser) {
     return <LoginScreen />;
   }
 
-  const visibleItems = menuItems.filter(
-    (item) => !item.permission || permissions[item.permission],
-  );
-  const active =
-    visibleItems.find((item) => item.id === activeId) ?? visibleItems[0];
   const badges = {
     inbox: waitingInboxCount,
     planning: dueCount,

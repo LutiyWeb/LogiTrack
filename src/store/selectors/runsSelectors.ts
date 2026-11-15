@@ -271,3 +271,5 @@ export const selectBrokerSummaries = createSelector(
     return Array.from(map.values());
   },
 );
+
+export const selectRunIds = createSelector([selectRunsList], (runs) => runs.map((run) => run.id));

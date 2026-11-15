@@ -7,6 +7,7 @@ type StatTileProps = {
   badgeTone?: 'ok' | 'warn' | 'danger';
   badgeText?: string;
   meta?: string;
+  valueClassName?: string;
 };
 
 // One KPI tile: label, value, optional status badge and muted details.
@@ -18,6 +19,7 @@ function StatTile({
   badgeTone,
   badgeText,
   meta,
+  valueClassName,
 }: StatTileProps) {
   const badge =
     badgeText && badgeTone ? (
@@ -30,7 +32,7 @@ function StatTile({
   return (
     <div className="runs__stat" title={tooltip}>
       <dt>{label}</dt>
-      <dd>{value}</dd>
+      <dd className={valueClassName}>{value}</dd>
       {badge && details ? (
         <div className="runs__inline-visual">
           {badge}
