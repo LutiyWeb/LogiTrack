@@ -29,11 +29,15 @@ import runsReducer, {
   createInitialRunsState,
   resetRunsState,
 } from './slices/runsSlice';
-import { STORAGE_KEY, clearRemoteState, scheduleRemoteSave } from './remote';
+import { applyRemote } from './entities';
+import { attachSync, getRemote, resetRemote } from './sync';
 import uiReducer, {
   createInitialUiState,
   resetUiState,
 } from './slices/uiSlice';
+
+// Поднимать версию, когда меняется форма сохранённого состояния.
+const STORAGE_KEY = 'logitrack_state_v10';
 
 const rootReducer = combineReducers({
   auth: authReducer,
@@ -104,7 +108,6 @@ function savePersistedState(state: RootState) {
   if (typeof window === 'undefined' || !window.localStorage) return;
   try {
     window.localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
-    scheduleRemoteSave(state);
   } catch {
     // Ignore storage quota errors
   }
@@ -114,10 +117,22 @@ export function clearPersistedState() {
   if (typeof window === 'undefined' || !window.localStorage) return;
   try {
     window.localStorage.removeItem(STORAGE_KEY);
-    clearRemoteState();
   } catch {
     // Ignore
   }
+}
+
+function initialRootState(): RootState {
+  return rootReducer(undefined, { type: '@@init' });
+}
+
+/** Локальный кэш + данные сервера: бизнес-сущности берутся с сервера, сессия и вид остаются локальными. */
+function loadStartState(): Partial<RootState> | undefined {
+  const local = loadPersistedState();
+  const remote = getRemote();
+  if (!remote || !remote.seeded) return local;
+  const base = { ...initialRootState(), ...local } as RootState;
+  return applyRemote(base, remote.data);
 }
 
 export function createAppStore(
@@ -133,18 +148,20 @@ export function createAppStore(
     configuredStore.subscribe(() => {
       savePersistedState(configuredStore.getState());
     });
+    attachSync(configuredStore, getRemote());
   }
 
   return configuredStore;
 }
 
-export const store = createAppStore(loadPersistedState(), true);
+export const store = createAppStore(loadStartState(), true);
 
 export type AppStore = ReturnType<typeof createAppStore>;
 export type AppDispatch = AppStore['dispatch'];
 
 export function resetAllData(dispatch: AppDispatch) {
   clearPersistedState();
+  void resetRemote();
   dispatch(resetRunsState());
   dispatch(resetUiState());
   dispatch(resetInboxState());
