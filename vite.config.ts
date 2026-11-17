@@ -12,6 +12,9 @@ export default defineConfig({
   optimizeDeps: {
     exclude: ['maplibre-gl'],
   },
+  server: {
+    proxy: { '/api': 'http://localhost:8787' },
+  },
   test: {
     environment: 'jsdom',
     globals: true,

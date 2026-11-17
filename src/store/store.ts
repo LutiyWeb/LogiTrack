@@ -29,13 +29,11 @@ import runsReducer, {
   createInitialRunsState,
   resetRunsState,
 } from './slices/runsSlice';
+import { STORAGE_KEY, clearRemoteState, scheduleRemoteSave } from './remote';
 import uiReducer, {
   createInitialUiState,
   resetUiState,
 } from './slices/uiSlice';
-
-// Поднимать версию, когда меняется форма сохранённого состояния.
-const STORAGE_KEY = 'logitrack_state_v10';
 
 const rootReducer = combineReducers({
   auth: authReducer,
@@ -106,6 +104,7 @@ function savePersistedState(state: RootState) {
   if (typeof window === 'undefined' || !window.localStorage) return;
   try {
     window.localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+    scheduleRemoteSave(state);
   } catch {
     // Ignore storage quota errors
   }
@@ -115,6 +114,7 @@ export function clearPersistedState() {
   if (typeof window === 'undefined' || !window.localStorage) return;
   try {
     window.localStorage.removeItem(STORAGE_KEY);
+    clearRemoteState();
   } catch {
     // Ignore
   }
