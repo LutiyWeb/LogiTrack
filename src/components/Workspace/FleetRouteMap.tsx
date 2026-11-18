@@ -35,6 +35,12 @@ const statusTone: Record<Run['status'], string> = {
 
 type FeatureCollection = GeoCollection<Geometry>;
 
+/** Цвет из токена проекта: линии карты рисует canvas, он не читает CSS-переменные. */
+function token(name: string, fallback: string) {
+  const value = getComputedStyle(document.documentElement).getPropertyValue(name).trim();
+  return value || fallback;
+}
+
 function emptyCollection(): FeatureCollection {
   return { type: 'FeatureCollection', features: [] };
 }
@@ -107,6 +113,50 @@ function truckMarkerElement(run: Run) {
     <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 6h11v9H3zM14 9h4l3 3v3h-7z" fill="currentColor"/><circle cx="7" cy="17" r="2" fill="currentColor"/><circle cx="17" cy="17" r="2" fill="currentColor"/></svg>
     <span>${run.truck.replace(/^\D+/, '')}</span>`;
   return element;
+}
+
+// Рамка маркера вместе с зоной нажатия (маркер до ~60 px + по 7 px зоны с каждой стороны): зоны не пересекаются.
+const MARKER_WIDTH = 78;
+const MARKER_HEIGHT = 42;
+
+/**
+ * Раздвигает маркеры так, чтобы их рамки на экране (вместе с зоной нажатия) не пересекались,
+ * а сами маркеры целиком помещались в карту. Маркер сдвигается на минимальное расстояние от своей точки.
+ */
+function spreadMarkers(map: MapLibreMap, markers: Marker[]) {
+  const half = MARKER_WIDTH / 2;
+  const width = map.getContainer().clientWidth;
+  const clamp = (x: number) => Math.min(Math.max(x, half), Math.max(half, width - half));
+  const items = markers
+    .map((marker) => ({ marker, point: map.project(marker.getLngLat()) }))
+    .sort((a, b) => a.point.x - b.point.x || a.point.y - b.point.y);
+  // Кандидаты по близости к своей точке: сначала на месте, затем сдвиг на одну рамку в сторону или вниз/вверх.
+  const grid = [0, 1, -1, 2, -2];
+  const candidates: [number, number][] = grid
+    .flatMap((col) => grid.map((row) => ({ col, row })))
+    .sort(
+      (a, b) =>
+        Math.abs(a.col) + Math.abs(a.row) - (Math.abs(b.col) + Math.abs(b.row)) ||
+        Math.abs(a.row) - Math.abs(b.row),
+    )
+    .map(({ col, row }) => [col * MARKER_WIDTH, row * MARKER_HEIGHT]);
+  const placed: { x: number; y: number }[] = [];
+  items.forEach(({ marker, point }) => {
+    let best = { x: clamp(point.x), y: point.y };
+    for (const [dx, dy] of candidates) {
+      const candidate = { x: clamp(point.x + dx), y: point.y + dy };
+      const clash = placed.some(
+        (other) =>
+          Math.abs(other.x - candidate.x) < MARKER_WIDTH && Math.abs(other.y - candidate.y) < MARKER_HEIGHT,
+      );
+      if (!clash) {
+        best = candidate;
+        break;
+      }
+    }
+    placed.push(best);
+    marker.setOffset([best.x - point.x, best.y - point.y - 6]);
+  });
 }
 
 function popupContent(run: Run, onOpenRun?: (runId: string) => void) {
@@ -221,7 +271,7 @@ export function FleetRouteMap({
             source: 'routes',
             filter: ['==', ['get', 'kind'], 'paid'],
             layout: { 'line-join': 'round', 'line-cap': 'round' },
-            paint: { 'line-color': '#2563eb', 'line-width': 4, 'line-offset': LANE_OFFSET },
+            paint: { 'line-color': token('--color-primary', '#2a6177'), 'line-width': 4, 'line-offset': LANE_OFFSET },
           });
           map.addLayer({
             id: 'route-empty',
@@ -230,7 +280,7 @@ export function FleetRouteMap({
             filter: ['==', ['get', 'kind'], 'empty'],
             layout: { 'line-join': 'round' },
             paint: {
-              'line-color': '#d97706',
+              'line-color': token('--color-warn', '#b45309'),
               'line-width': 3,
               'line-offset': LANE_OFFSET,
               'line-dasharray': [1.5, 1.5],
@@ -298,22 +348,27 @@ export function FleetRouteMap({
       const position = truckPosition(run);
       return position ? [{ run, position, key: position.join(',') }] : [];
     });
-    markersRef.current = placed.map(({ run, position, key }) => {
-      // Trucks parked at the same spot (e.g. the yard) sit side by side.
-      const sameSpot = placed.filter((item) => item.key === key);
-      const slot = sameSpot.findIndex((item) => item.run.id === run.id);
-      const offsetX = (slot - (sameSpot.length - 1) / 2) * 56;
+    markersRef.current = placed.map(({ run, position }) => {
       const popup = new lib.Popup({ offset: 18, closeButton: false, maxWidth: '260px' })
         .setDOMContent(popupContent(run, onOpenRunRef.current));
       return new lib.Marker({
         element: truckMarkerElement(run),
         anchor: 'bottom',
-        offset: [offsetX, -6],
+        offset: [0, -6],
       })
         .setLngLat(position)
         .setPopup(popup)
         .addTo(map);
     });
+
+    // Маркеры, которые на экране налезают друг на друга (в том числе на одной точке), раздвигаются
+    // по горизонтали; пересчёт при каждом изменении масштаба.
+    const spread = () => spreadMarkers(map, markersRef.current);
+    spread();
+    map.on('zoomend', spread);
+    return () => {
+      map.off('zoomend', spread);
+    };
   }, [ready, mapData, runs]);
 
   // Frame the visible runs whenever the set of legs changes.
@@ -329,8 +384,10 @@ export function FleetRouteMap({
         return position ? [position] : [];
       }),
     ];
+    // Поля с запасом на ширину маркера и раздвижение соседних маркеров, чтобы они не обрезались краем карты.
+    const side = Math.min(96, Math.round(map.getContainer().clientWidth * 0.2));
     map.fitBounds(boundsOf(points), {
-      padding: { top: 64, bottom: 72, left: 56, right: 56 },
+      padding: { top: 64, bottom: 72, left: side, right: side },
       maxZoom: 9,
       duration: 0,
     });
@@ -366,6 +423,9 @@ export function FleetRouteMap({
       <div className="runs__map" ref={containerRef}>
         {failed && (
           <p className="runs__map-fallback">{t.map.unavailable}</p>
+        )}
+        {!failed && runs.length === 0 && (
+          <p className="runs__map-fallback" role="status">{t.map.empty}</p>
         )}
       </div>
     </section>

@@ -219,6 +219,7 @@ describe('Redux store (runsSlice, uiSlice, authSlice, and selectors)', () => {
       canUpdateLoadStatus: true,
       canEditTargets: false,
       canViewFinance: false,
+      canResetData: false,
     });
 
     store.dispatch(loginAsUser('manager'));

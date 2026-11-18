@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
+import { useModalDialog } from '../../hooks/useModalDialog';
 import { t } from '../../i18n';
 import { sampleUrl, type InboxLoad } from '../../inbox/inbox';
 import { isPdfFile, readSource, type RateConSource } from '../../ratecon/files';
@@ -34,6 +35,7 @@ function RateConImport({
   const [error, setError] = useState('');
   const [dragging, setDragging] = useState(false);
   const [loadingSample, setLoadingSample] = useState('');
+  const dialogRef = useModalDialog<HTMLDivElement>(!!state);
 
   const close = () => {
     setError('');
@@ -89,6 +91,8 @@ function RateConImport({
       }}
     >
       <div
+        ref={dialogRef}
+        tabIndex={-1}
         className={
           reviewing
             ? `ratecon__dialog ratecon__dialog--review${state.pdf ? '' : ' ratecon__dialog--form'}`

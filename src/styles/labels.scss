@@ -11,9 +11,9 @@
   --color-primary-line: #bcd3dc;
   --color-muted: #676879;
   // good/danger — затемнённые «Won»/«Lost», чтобы текст читался на светлом фоне.
-  --color-good: #2b8a4e;
+  --color-good: #1d7340;
   --color-good-fill: #5bc67d;
-  --color-warn: #d97706;
+  --color-warn: #b45309; // текст и метки: контраст ≥ 4.5 на белом и на --color-tint-amber
   --color-danger: #c23b52;
   --color-danger-fill: #e46b7c;
   --color-danger-line: #f4c4cc;
@@ -28,6 +28,7 @@
 
   --font-family: Inter, system-ui, sans-serif;
   --font-display: "Fira Sans Condensed", Inter, system-ui, sans-serif;
+  --font-size-xs: 12px;
   --font-size-s: 14px;
   --font-size-l: 24px;
 

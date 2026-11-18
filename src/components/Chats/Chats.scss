@@ -1,3 +1,5 @@
+@use '../../styles/breakpoints' as *;
+
 .chats {
   display: grid;
   grid-template-columns: minmax(240px, 320px) minmax(0, 1fr);
@@ -141,12 +143,108 @@
 
   &__reply {
     display: flex;
+    align-items: flex-start;
     gap: 8px;
+
+    .runs__button {
+      flex-shrink: 0;
+      height: 40px;
+      padding-top: 0;
+      padding-bottom: 0;
+      white-space: nowrap;
+    }
+
+    .runs__input {
+      flex: 1 1 auto;
+      min-width: 0;
+    }
   }
 }
 
-@media (max-width: 800px) {
+@media (max-width: $content-stack-max) {
   .chats {
     grid-template-columns: minmax(0, 1fr);
   }
+}
+
+// ChatsView: список и переписка, прокручиваются внутри блока — страница под ними не растёт.
+.chatview {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  min-height: 0;
+
+  &--page {
+    height: min(70vh, 720px);
+    min-height: 420px;
+    padding: 16px;
+    background: var(--color-surface);
+    border-radius: var(--radius-m);
+  }
+
+  &--panel {
+    height: 100%;
+  }
+
+  &__tools {
+    display: flex;
+    flex: 0 0 auto;
+    align-items: center;
+    gap: 8px;
+
+    .runs__input {
+      flex: 1 1 auto;
+      min-width: 0;
+    }
+
+    .runs__button {
+      flex: 0 0 auto;
+      white-space: nowrap;
+    }
+  }
+
+  &__list {
+    display: flex;
+    flex: 1 1 auto;
+    flex-direction: column;
+    gap: 4px;
+    min-height: 0;
+    overflow-y: auto;
+  }
+
+  &__thread {
+    display: flex;
+    flex: 1 1 auto;
+    flex-direction: column;
+    gap: 12px;
+    min-height: 0;
+  }
+
+  &__run {
+    flex: 0 0 auto;
+  }
+
+  &__messages {
+    display: flex;
+    flex: 1 1 auto;
+    flex-direction: column;
+    gap: 8px;
+    min-height: 0;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+  }
+
+  &__older {
+    align-self: center;
+  }
+}
+
+.chatview .chats__thread-head {
+  flex: 0 0 auto;
+  justify-content: flex-start;
+  padding-bottom: 8px;
+}
+
+.chatview .chats__reply {
+  flex: 0 0 auto;
 }

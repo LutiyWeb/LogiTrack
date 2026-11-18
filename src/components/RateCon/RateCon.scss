@@ -1,3 +1,5 @@
+@use '../../styles/breakpoints' as *;
+
 .ratecon {
   --rc-muted: var(--color-muted);
 
@@ -12,6 +14,11 @@
     border: 1px solid var(--color-line);
     border-radius: 12px;
     box-shadow: 0 24px 48px rgb(15 23 42 / 22%);
+
+    // The window takes focus on open (useModalDialog); the frame needs no ring.
+    &:focus {
+      outline: none;
+    }
 
     &--review {
       max-width: 1240px;
@@ -31,6 +38,11 @@
     gap: 16px;
     padding: 16px 20px;
     border-bottom: 1px solid var(--color-line);
+
+    > div {
+      min-width: 0;
+      overflow-wrap: anywhere;
+    }
   }
 
   &__sub {
@@ -40,9 +52,10 @@
   }
 
   &__close {
-    width: 32px;
-    height: 32px;
-    font-size: 22px;
+    flex-shrink: 0;
+    width: 40px;
+    height: 40px;
+    font-size: var(--font-size-l);
     line-height: 1;
     color: var(--rc-muted);
     cursor: pointer;
@@ -60,7 +73,11 @@
   &__pick {
     display: grid;
     gap: 16px;
+    grid-auto-rows: max-content;
+    align-content: start;
+    min-height: 0;
     padding: 20px;
+    overflow-y: auto;
   }
 
   &__drop {
@@ -72,7 +89,7 @@
     color: var(--color-text);
     cursor: pointer;
     background: var(--color-bg);
-    border: 1.5px dashed #cbd5e1;
+    border: 1.5px dashed var(--color-primary-line);
     border-radius: 12px;
     transition:
       border-color 0.15s ease,
@@ -110,6 +127,7 @@
 
   &__sample {
     display: grid;
+    grid-template-rows: 1fr auto;
     gap: 6px;
     padding: 10px 12px;
     border: 1px solid var(--color-line);
@@ -142,6 +160,9 @@
   }
 
   &__sample-download {
+    display: inline-flex;
+    align-items: center;
+    min-height: 40px;
     font-size: 12px;
     color: var(--color-primary);
   }
@@ -181,13 +202,13 @@
   }
 
   &__review--no-pdf {
-    grid-template-columns: 1fr;
+    grid-template-columns: minmax(0, 1fr);
   }
 
   &__preview {
     overflow-y: auto;
     padding: 16px;
-    background: #e9ecef;
+    background: var(--color-tint-slate);
     border-right: 1px solid var(--color-line);
   }
 
@@ -211,6 +232,7 @@
   &__panel {
     display: flex;
     flex-direction: column;
+    min-width: 0;
     min-height: 0;
   }
 
@@ -246,7 +268,7 @@
   }
 
   &__warning {
-    color: #92400e;
+    color: var(--color-warn);
     background: var(--color-tint-amber);
   }
 
@@ -256,10 +278,6 @@
     gap: 6px;
     color: var(--color-text);
     background: var(--color-hover);
-  }
-
-  &__segment {
-    display: grid;
   }
 
   &__textarea {
@@ -302,7 +320,7 @@
 
     // Поле из PDF — нейтральное: признак «Із PDF» несёт только метка.
     &--pdf .runs__input {
-      background: #fafbfc;
+      background: var(--color-bg);
       border-color: var(--color-line);
     }
 
@@ -312,8 +330,8 @@
     }
 
     &--missing .runs__input {
-      background: #fffaf0;
-      border-color: #f3c27a;
+      background: var(--color-tint-amber);
+      border-color: color-mix(in srgb, var(--color-warn) 45%, var(--color-surface));
     }
   }
 
@@ -328,6 +346,7 @@
 
   &__chip {
     padding: 0 6px;
+    white-space: nowrap;
     font-size: 10.5px;
     font-weight: 600;
     line-height: 17px;
@@ -344,7 +363,7 @@
     }
 
     &--missing {
-      color: #b45309;
+      color: var(--color-warn);
       background: var(--color-tint-amber);
     }
 
@@ -354,39 +373,31 @@
     }
   }
 
-  &__segmented {
-    display: inline-grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 4px;
-    padding: 4px;
-    background: var(--color-hover);
-    border-radius: 10px;
+  // Переключатель «Новый рейс / Добавить к активному» — те же .runs__filters, что и в списках.
+  &__review .runs__filters {
+    flex-wrap: nowrap;
+  }
 
-    button {
-      padding: 7px 10px;
-      font: 600 13px/1.2 var(--font-family);
-      color: var(--rc-muted);
-      cursor: pointer;
-      background: transparent;
-      border: 0;
-      border-radius: 7px;
+  &__segment:first-child {
+    flex: 0 0 auto;
 
-      &.is-active {
-        color: var(--color-text);
-        background: var(--color-surface);
-        box-shadow: 0 1px 3px rgb(15 23 42 / 12%);
-      }
+    .runs__filter {
+      white-space: nowrap;
+    }
+  }
 
-      &:disabled {
-        cursor: not-allowed;
-        opacity: 0.5;
-      }
+  &__segment {
+    display: flex;
+    flex: 1 1 auto;
+    min-width: 0;
+
+    .runs__filter {
+      flex: 1;
     }
   }
 
   &__route {
     display: grid;
-    grid-template-columns: repeat(4, minmax(0, 1fr));
     gap: 8px;
     font-size: 13px;
     color: var(--rc-muted);
@@ -396,38 +407,32 @@
     }
   }
 
-  &__stat {
+  // Плитки маршрута — общий StatTile; строки подписи, значения и пояснения выровнены по всем плиткам.
+  &__route-stats {
     display: grid;
-    gap: 2px;
-    padding: 10px;
-    background: var(--color-bg);
-    border: 1px solid var(--color-line);
-    border-radius: 8px;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 8px;
+    grid-column: 1 / -1;
 
-    strong {
-      font-size: 16px;
-      color: var(--color-text);
+    .runs__stat {
+      display: grid;
+      grid-row: span 3;
+      grid-template-rows: subgrid;
+      gap: 4px;
+      padding: 12px;
+
+      dd {
+        font-size: 18px;
+
+        &.is-good {
+          color: var(--color-good);
+        }
+
+        &.is-warn {
+          color: var(--color-warn);
+        }
+      }
     }
-
-    &--good strong {
-      color: var(--color-good);
-    }
-
-    &--warn strong {
-      color: var(--color-warn);
-    }
-  }
-
-  &__stat-label {
-    font-size: 11px;
-    font-weight: 600;
-    text-transform: uppercase;
-    letter-spacing: 0.03em;
-  }
-
-  &__stat-hint {
-    font-size: 11.5px;
-    line-height: 1.3;
   }
 
   &__footer {
@@ -440,15 +445,13 @@
     border-top: 1px solid var(--color-line);
   }
 
-  // Подсказка — отдельной строкой над кнопками.
+  // Подсказка — отдельной строкой над кнопками; длинный список пропусков переносится.
   &__footer-hint {
     flex: 1 0 100%;
     min-width: 0;
-    overflow: hidden;
     font-size: 13px;
     color: var(--rc-muted);
-    white-space: nowrap;
-    text-overflow: ellipsis;
+    overflow-wrap: anywhere;
   }
 }
 
@@ -458,7 +461,7 @@
   }
 }
 
-@media (max-width: 900px) {
+@media (max-width: $dialog-stack-max) {
   .ratecon {
     &__review {
       grid-template-columns: 1fr;
@@ -471,8 +474,7 @@
       border-bottom: 1px solid var(--color-line);
     }
 
-    &__route,
-    &__sample-list {
+    &__route-stats {
       grid-template-columns: repeat(2, minmax(0, 1fr));
     }
   }
@@ -480,7 +482,7 @@
 
 // Mobile footer: "Cancel" + "Save as checked" share the first row, the main action
 // takes the full width under them.
-@media (max-width: 767px) {
+@media (max-width: $mobile-max) {
   .ratecon__footer {
     padding: 12px 16px;
 
@@ -498,5 +500,68 @@
     > .runs__button:not(.runs__button--tertiary):not(.runs__button--secondary) {
       flex: 0 0 100%;
     }
+  }
+}
+
+// Phone (до $mobile-max): PDF folded into a toggle row, one-column fields with no clipped values,
+// 40px tap targets.
+@media (max-width: $mobile-max) {
+  .ratecon {
+    &__pdf-fold {
+      display: grid;
+      gap: 12px;
+      padding: 12px 16px;
+      border-bottom: 1px solid var(--color-line);
+
+      .ratecon__preview {
+        border-bottom: 0;
+        border-radius: var(--radius-m);
+      }
+    }
+
+    &__pdf-toggle {
+      width: 100%;
+    }
+
+    &__grid {
+      grid-template-columns: minmax(0, 1fr);
+    }
+
+    &__field .runs__input,
+    &__dialog .runs__input {
+      min-height: 40px;
+    }
+
+    .runs__check {
+      min-height: 40px;
+    }
+  }
+}
+
+// Кнопки до 415 px — на всю ширину (окно без второстепенной кнопки).
+@media (max-width: $narrow-max) {
+  .ratecon__footer:not(:has(> .runs__button--secondary)) > .runs__button {
+    flex: 0 0 100%;
+  }
+}
+
+// Отступ футера по бокам такой же, как у шапки и тела окна.
+@media (max-width: $mobile-max) {
+  .ratecon__dialog:not(.ratecon__dialog--review) .ratecon__footer {
+    padding-inline: 20px;
+  }
+}
+
+// 416 px … порог мобильной раскладки: в окне без второстепенной кнопки отмена и главная — в одной строке справа.
+@media (min-width: $narrow-max + 1) and (max-width: $mobile-max) {
+  .ratecon__footer:not(:has(> .runs__button--secondary)) > .runs__button:not(.runs__button--tertiary):not(.runs__button--secondary) {
+    flex: 0 1 auto;
+  }
+}
+
+// Образцы: до 520 px — по одному в строке, чтобы карточки были одной ширины.
+@media (max-width: $compact-max) {
+  .ratecon__sample-list {
+    grid-template-columns: minmax(0, 1fr);
   }
 }

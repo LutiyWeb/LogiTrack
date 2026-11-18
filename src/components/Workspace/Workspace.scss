@@ -1,3 +1,5 @@
+@use '../../styles/breakpoints' as *;
+
 @keyframes runs-fade-in {
   from {
     opacity: 0;
@@ -67,6 +69,11 @@
 
     &:hover {
       color: var(--color-text);
+    }
+
+    &:disabled {
+      cursor: not-allowed;
+      opacity: 0.5;
     }
 
     &.is-active {
@@ -144,8 +151,10 @@
   }
 
   &__truck {
+    min-width: 0;
     font-size: var(--font-size-s);
     font-weight: 600;
+    overflow-wrap: anywhere;
   }
 
   &__badge + &__truck,
@@ -157,6 +166,8 @@
   &__label {
     font-size: var(--font-size-s);
     line-height: 1.4;
+    min-width: 0;
+    overflow-wrap: anywhere;
   }
 
   &__status {
@@ -436,33 +447,51 @@
     overflow: hidden;
     border: 1px solid var(--color-line);
     border-radius: var(--radius-m);
-    background: #f2f3f0;
+    background: var(--color-hover);
   }
 
+  // Подсказка в верхнем левом углу карты (карта недоступна или нет рейсов): плашка поверх подложки,
+  // не закрывает подписи на карте и кнопки масштаба справа.
   &__map-fallback {
     position: absolute;
-    inset: 0;
-    display: grid;
-    place-items: center;
+    top: 12px;
+    left: 12px;
+    z-index: 1;
+    max-width: calc(100% - 72px);
+    padding: 8px 12px;
     font-size: 13px;
     color: var(--color-muted);
+    overflow-wrap: anywhere;
+    background: var(--color-surface);
+    border-radius: var(--radius-m);
+    pointer-events: none;
+  }
+
+  &__map-card > .runs__form-head > * {
+    min-width: 0;
   }
 
   &__map-legend {
     display: flex;
+    flex-wrap: wrap;
     align-items: center;
-    gap: 12px;
+    gap: 4px 12px;
+    min-width: 0;
+    max-width: 100%;
   }
 
   &__map-key {
     display: inline-flex;
     align-items: center;
     gap: 6px;
+    min-width: 0;
     font-size: 12px;
     font-weight: 500;
+    overflow-wrap: anywhere;
 
     &::before {
       content: '';
+      flex: 0 0 16px;
       width: 16px;
       height: 3px;
       border-radius: 999px;
@@ -632,6 +661,13 @@
     }
   }
 
+  // Одна высота полей во всём проекте: 40 px (многострочные поля не затронуты).
+  &__input:not(textarea) {
+    height: 40px;
+    padding-top: 0;
+    padding-bottom: 0;
+  }
+
   select#{&}__input {
     padding-right: 36px;
     background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1.5 6 6.5 11 1.5' fill='none' stroke='%231c1c1c' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
@@ -657,7 +693,7 @@
   // Карточка клиента: статус сверху справа, действия снизу справа.
   &__account {
     display: grid;
-    grid-template-columns: 1fr auto;
+    grid-template-columns: minmax(0, 1fr) auto;
     grid-template-rows: auto 1fr;
     gap: 8px 16px;
   }
@@ -778,8 +814,20 @@
     display: flex;
     align-items: center;
     gap: 8px;
+    min-width: 0;
     font-size: var(--font-size-s);
+    overflow-wrap: anywhere;
     cursor: pointer;
+
+    input {
+      flex-shrink: 0;
+      accent-color: var(--color-primary);
+
+      &:focus-visible {
+        outline: 2px solid var(--color-text);
+        outline-offset: 2px;
+      }
+    }
   }
 
   // Поле формы на всю ширину сетки.
@@ -789,6 +837,8 @@
 
   // Primary — главное действие экрана.
   &__button {
+    min-width: 0;
+    overflow-wrap: anywhere;
     padding: 10px 16px;
     border: 1px solid var(--color-primary);
     font-size: var(--font-size-s);
@@ -866,7 +916,7 @@
   }
 }
 
-@media (max-width: 800px) {
+@media (max-width: $content-stack-max) {
   .runs {
     &__account {
       grid-template-columns: 1fr;
@@ -915,7 +965,8 @@
   align-items: center;
   gap: 4px;
   padding: 3px 8px 3px 5px;
-  font: 600 12px/1 var(--font-family);
+  font: 600 var(--font-size-xs)/1 var(--font-family);
+  white-space: nowrap;
   color: #fff;
   cursor: pointer;
   background: var(--truck-tone);
@@ -929,8 +980,16 @@
   }
 
   svg {
+    flex: 0 0 auto;
     width: 16px;
     height: 16px;
+  }
+
+  // Маркер остаётся компактным, а зона нажатия — не меньше 40 px во всех ширинах.
+  &::after {
+    content: '';
+    position: absolute;
+    inset: -7px;
   }
 
   &--transit {
@@ -1031,28 +1090,68 @@
 }
 
 // Mobile: an outer group is just a heading — one card level only.
-@media (max-width: 767px) {
+@media (max-width: $mobile-max) {
   .runs__block--flat-mobile {
     padding: 0;
     background: transparent;
   }
 }
 
-// Backhaul alert cards on mobile: badge, truck, details, then a full-width action.
-@media (max-width: 767px) {
+// Backhaul alert card: title (badge + truck) and action share the first row on desktop;
+// on mobile the action goes full-width under the details.
+.runs__load--alert {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  grid-template-areas:
+    'head action'
+    'meta meta'
+    'visual visual';
+  gap: 6px 8px;
+  align-items: center;
+
+  > .runs__alert-head {
+    grid-area: head;
+  }
+
+  > .runs__meta {
+    grid-area: meta;
+  }
+
+  > .runs__inline-visual {
+    grid-area: visual;
+  }
+
+  > .runs__alert-action {
+    grid-area: action;
+  }
+}
+
+@media (max-width: $mobile-max) {
   .runs__load--alert {
-    display: flex;
-    flex-direction: column;
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-areas:
+      'head'
+      'meta'
+      'visual'
+      'action';
     gap: 8px;
   }
 
-  .runs__alert-head,
-  .runs__alert-title {
-    display: contents;
+  // Пустые элементы-«разрывы» ряда кнопок груза здесь не нужны: они давали лишние 16 px в шапке.
+  .runs__load--alert .runs__alert-head::before,
+  .runs__load--alert .runs__alert-head::after {
+    display: none;
+  }
+
+  .runs__load--alert .runs__alert-head,
+  .runs__load--alert .runs__alert-title {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 8px;
   }
 
   .runs__load--alert .runs__badge {
-    align-self: flex-start;
     white-space: nowrap;
   }
 
@@ -1061,18 +1160,37 @@
   }
 
   .runs__alert-action {
-    order: 10;
-    align-self: flex-start;
+    justify-self: start;
     white-space: nowrap;
   }
 }
 
-// Alert card buttons share one width: full width up to 415px, at least 180px above.
+// Кнопки блока оповещений — одной ширины (по самой длинной подписи, «Знайти зворотний вантаж»);
+// до $narrow-max — на всю ширину.
 .runs__alerts .runs__button {
-  min-width: 180px;
+  width: 13rem;
+  max-width: 100%;
+  white-space: normal;
+  overflow-wrap: anywhere;
 }
 
-@media (max-width: 415px) {
+// Длинный текст не расширяет блок оповещений.
+.runs__alerts .runs__account,
+.runs__alerts .runs__load {
+  min-width: 0;
+  overflow-wrap: anywhere;
+
+  > * {
+    min-width: 0;
+  }
+}
+
+.runs__account-actions {
+  min-width: 0;
+  max-width: 100%;
+}
+
+@media (max-width: $narrow-max) {
   .runs__alerts .runs__button {
     width: 100%;
   }
@@ -1080,7 +1198,7 @@
 
 // «Зведення рейсів» on mobile: each run is one tile.
 // Header: truck + driver left, status top-right; then route, driver hours, miles, money.
-@media (max-width: 767px) {
+@media (max-width: $mobile-max) {
   .runs__summary-head {
     flex-direction: row;
     justify-content: space-between;
@@ -1100,7 +1218,8 @@
         'miles miles'
         'money money'
         'loads loads';
-      grid-template-columns: minmax(0, 1fr) auto;
+      // Имени — не меньше 12rem: статус сжимается и переносится, а не имя столбиком.
+      grid-template-columns: minmax(min(100%, 12rem), 1fr) minmax(0, auto);
       align-items: start;
       gap: 4px 12px;
       padding: 12px;
@@ -1125,7 +1244,7 @@
 
     .runs__row-side > .runs__status {
       grid-area: status;
-      white-space: nowrap;
+      max-width: 100%;
     }
 
     .runs__row-main > .runs__meta {
@@ -1165,47 +1284,65 @@
   color: var(--color-primary);
 }
 
-// Overview KPI cards on mobile: label + status on top, value right under the label,
-// details below in muted text.
-@media (max-width: 767px) {
-  .runs__stats--kpi {
-    .runs__stat {
-      display: grid;
-      grid-template-areas:
-        'label status'
-        'value value'
-        'meta meta';
-      grid-template-columns: minmax(0, 1fr) auto;
-      align-items: start;
-      gap: 4px 12px;
-    }
+// Плитки KPI (общий StatTile): подпись, значение, бейдж, пояснение. В сетке из 2+ колонок строки общие
+// для соседних плиток (subgrid), поэтому значения стоят на одной линии, даже если у одной плитки подпись
+// в две строки, а у другой нет бейджа. В одной колонке (телефон) резерв под бейдж не нужен.
+.runs__stats--kpi .runs__stat {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+  overflow-wrap: anywhere;
 
-    .runs__inline-visual {
-      display: contents;
-    }
+  dt,
+  dd {
+    min-width: 0;
+  }
+
+  .runs__badge {
+    align-self: flex-start;
+    max-width: 100%;
+    white-space: normal;
+  }
+
+  .runs__inline-visual {
+    display: contents;
+  }
+
+  .runs__meta {
+    min-width: 0;
+    color: var(--color-muted);
+  }
+}
+
+@media (min-width: $tablet-min) {
+  .runs__stats--kpi .runs__stat {
+    display: grid;
+    grid-row: span 4;
+    grid-template-rows: subgrid;
+    align-content: start;
 
     dt {
-      grid-area: label;
+      grid-row: 1;
     }
 
     dd {
-      grid-area: value;
+      grid-row: 2;
     }
 
     .runs__badge {
-      grid-area: status;
-      white-space: nowrap;
+      grid-row: 3;
+      justify-self: start;
     }
 
     .runs__meta {
-      grid-area: meta;
-      color: var(--color-muted);
+      grid-row: 4;
     }
   }
 }
 
 // Mobile: switch tabs stay on one line and scroll sideways instead of wrapping.
-@media (max-width: 767px) {
+@media (max-width: $mobile-max) {
   .runs__filters--scroll {
     flex-wrap: nowrap;
     align-self: stretch;
@@ -1219,6 +1356,7 @@
 
     .runs__filter {
       flex: 0 0 auto;
+      min-height: 40px;
       white-space: nowrap;
     }
   }
@@ -1228,6 +1366,28 @@
 .runs__field-error {
   font-size: 12px;
   color: var(--color-danger);
+}
+
+.runs__label[data-required]::after {
+  content: attr(data-required);
+  margin-left: 6px;
+  padding: 0 6px;
+  font-size: 10.5px;
+  font-weight: 600;
+  line-height: 17px;
+  color: var(--color-warn);
+  background: var(--color-tint-amber);
+  border-radius: 999px;
+}
+
+.runs__form-hint {
+  grid-column: 1 / -1;
+  font-size: 13px;
+  color: var(--color-warn);
+}
+
+.runs__input[aria-invalid='true'] {
+  border-color: var(--color-danger);
 }
 
 .runs__empty {
@@ -1245,7 +1405,30 @@
 }
 
 // Mobile: every tap target is at least 40px.
-@media (max-width: 767px) {
+@media (max-width: $mobile-max) {
+  .runs__chip,
+  .runs__input--compact {
+    min-height: 40px;
+  }
+
+  .runs__back {
+    min-height: 40px;
+  }
+
+  .runs__button--small {
+    min-width: 40px;
+    min-height: 40px;
+  }
+
+  .runs__check {
+    min-height: 40px;
+
+    input {
+      width: 20px;
+      height: 20px;
+    }
+  }
+
   .runs__back {
     display: inline-flex;
     align-items: center;
@@ -1255,18 +1438,11 @@
     width: 40px;
     height: 40px;
   }
-
-  // The truck marker stays small; its tap area grows around it.
-  .truck-marker::after {
-    content: '';
-    position: absolute;
-    inset: -7px;
-  }
 }
 
 // Runs list card on mobile: truck + status on one line (status top-right),
 // then backhaul badge, driver, hours, route, miles bar, miles and money.
-@media (max-width: 767px) {
+@media (max-width: $mobile-max) {
   .runs__list--cards .runs__row {
     display: grid;
     grid-template-areas:
@@ -1335,7 +1511,7 @@
 }
 
 // Mobile: the toolbar may shrink to the screen so the scrolling filters stay inside it.
-@media (max-width: 767px) {
+@media (max-width: $mobile-max) {
   .runs__toolbar {
     align-items: stretch;
   }
@@ -1353,12 +1529,13 @@
   display: contents;
 }
 
-@media (max-width: 767px) {
+@media (max-width: $mobile-max) {
   .runs__run-head {
     display: grid;
+    // «Чат з водієм» стоит в одной строке с заголовком, а не отдельной строкой под ним.
     grid-template-areas:
       'back status'
-      'title title';
+      'title chat';
     grid-template-columns: minmax(0, 1fr) auto;
     align-items: center;
     gap: 0 12px;
@@ -1379,6 +1556,11 @@
     .runs__heading-controls > .runs__status {
       grid-area: status;
     }
+
+    .runs__heading-controls > .runs__button {
+      grid-area: chat;
+      white-space: nowrap;
+    }
   }
 }
 
@@ -1395,7 +1577,7 @@
   justify-content: space-between;
 }
 
-@media (max-width: 767px) {
+@media (max-width: $mobile-max) {
   // Load card head: row 1 customer + "More", row 2 status + broker, then billing.
   .runs__load-head {
     flex-wrap: wrap;
@@ -1412,20 +1594,26 @@
       display: contents;
     }
 
-    .runs__load-actions > .action-menu {
-      order: 1;
-    }
-
+    // Строки карточки груза: 1 — клиент и «Ще»; 2 — статус и «Брокер»; 3 — бейджи и кнопки.
+    // Два пустых элемента-«разрыва» не дают бейджу встать в строку со статусом.
+    &::before,
     &::after {
       content: '';
-      order: 2;
       flex: 0 0 100%;
       height: 0;
     }
 
+    &::before {
+      order: 1;
+    }
+
+    &::after {
+      order: 3;
+    }
+
     .runs__load-status,
     .runs__load-broker {
-      order: 3;
+      order: 2;
       flex: 1 1 0;
       min-width: 0;
     }
@@ -1443,7 +1631,12 @@
       justify-content: center;
     }
 
-    .runs__load-actions > .runs__badge,
+    // Кнопки — на всю ширину; бейджи остаются по ширине текста.
+    .runs__load-actions > .runs__badge {
+      order: 4;
+      flex: 0 0 auto;
+    }
+
     .runs__load-actions > .runs__button:not(.runs__load-broker) {
       order: 4;
       flex: 0 0 100%;
@@ -1455,7 +1648,7 @@
 
 // Inbox card with two actions on mobile: the main one is at least half the row and
 // grows with its text; "Reject" takes whatever is left.
-@media (max-width: 767px) {
+@media (max-width: $mobile-max) {
   .runs__account-actions {
     > .runs__button:not(:only-child) {
       justify-content: center;
@@ -1474,7 +1667,7 @@
 }
 
 // Mobile: every item of a list inside a white block is its own tile.
-@media (max-width: 767px) {
+@media (max-width: $mobile-max) {
   .runs__list--tiles > li {
     overflow: hidden;
     background: var(--color-bg);
@@ -1497,7 +1690,7 @@
 }
 
 // "Show all" button under a shortened list: full width on mobile, below the tiles.
-@media (max-width: 767px) {
+@media (max-width: $mobile-max) {
   .runs__list--tiles + .runs__button {
     width: 100%;
     margin-top: 8px;
@@ -1505,7 +1698,7 @@
 }
 
 // Account page header: the title on the left, the action button on the right of the same row.
-@media (max-width: 767px) {
+@media (max-width: $mobile-max) {
   .runs__heading--with-action {
     flex-direction: row;
     align-items: flex-start;
@@ -1514,8 +1707,196 @@
 }
 
 // Button that fills the row on narrow screens.
-@media (max-width: 415px) {
+@media (max-width: $narrow-max) {
   .runs__button--block {
     width: 100%;
+  }
+}
+
+// «Додати вантаж»: the window takes focus on open (no ring on the frame); 40px tap targets on a phone.
+.runs__modal:focus {
+  outline: none;
+}
+
+@media (max-width: $mobile-max) {
+  .runs__modal {
+    .runs__button,
+    .runs__input {
+      min-height: 40px;
+    }
+  }
+}
+
+// Кнопки до 415 px — на всю ширину: шапка и формы «Планування».
+@media (max-width: $narrow-max) {
+  .runs__form-submit {
+    flex-wrap: wrap;
+  }
+
+  .runs__heading > .runs__toolbar-actions {
+    width: 100%;
+  }
+
+  .runs__toolbar-actions > .runs__button,
+  .runs__form-submit > .runs__button {
+    flex: 1 1 100%;
+  }
+}
+
+// Строка водителя в открытом рейсе: кольцо часов и текст в одной строке, полоса пробега под ними.
+.runs__run-status {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 16px;
+}
+
+.runs__run-driver {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+@media (max-width: $mobile-max) {
+  .runs__run-status {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .runs__run-status .runs__miles-bar {
+    width: 100%;
+  }
+}
+
+// Список рейсов на широком экране: правая колонка одной ширины, полоса пробега начинается с одной линии.
+@media (min-width: $mobile-max + 1) {
+  .runs__list--cards .runs__row-main,
+  .runs__list--summary .runs__row-main {
+    flex: 1 1 0;
+    min-width: 0;
+  }
+
+  // Кольцо часов и подпись — всегда в одной строке, у всех строк одинаково.
+  .runs__list--cards .runs__row-main > .runs__inline-visual,
+  .runs__list--summary .runs__row-main > .runs__inline-visual {
+    flex-wrap: nowrap;
+  }
+
+  .runs__list--cards .runs__row-side,
+  .runs__list--summary .runs__row-side {
+    flex: 0 0 min(50%, 600px);
+    align-items: stretch;
+
+    > .runs__status {
+      align-self: flex-end;
+    }
+
+    > .runs__meta {
+      text-align: right;
+    }
+
+    > .runs__inline-visual {
+      flex-wrap: nowrap;
+      justify-content: space-between;
+    }
+
+    .runs__miles-bar {
+      flex: 0 0 140px;
+    }
+  }
+}
+
+// Кнопки до 415 px — на всю ширину: журнал, письмо брокеру, «Додати з черги».
+@media (max-width: $narrow-max) {
+  form.runs__load-actions {
+    flex-wrap: wrap;
+
+    > .runs__input,
+    > .runs__button {
+      flex: 1 1 100%;
+    }
+  }
+
+  .runs__broker-actions > .runs__button {
+    flex: 1 1 100%;
+  }
+
+  .runs__form-head--row {
+    flex-wrap: wrap;
+
+    > .runs__button {
+      flex: 1 1 100%;
+    }
+  }
+}
+
+// Заголовок формы с подсказкой (FormHead): подсказка — в правой колонке полей, на одной линии с ними.
+.runs__form-head.runs__form-head--hint {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+  align-items: start;
+
+  > .runs__meta {
+    min-width: 0;
+    overflow-wrap: anywhere;
+  }
+}
+
+@media (max-width: $content-stack-max) {
+  .runs__form-head.runs__form-head--hint {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 4px;
+  }
+}
+
+// Статусные бейджи груза (простой, счёт) — строка под заголовком карточки, не в ряду кнопок.
+.runs__load-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+// Контент уже ~700 px (мобильная раскладка и десктоп с сайдбаром до $content-narrow-max):
+// «Огляд» — блоки друг под другом.
+@media (max-width: $content-narrow-max) {
+  .runs__overview-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+// «Планшет» ($tablet-min … $content-narrow-max): плитки в 2 колонки, карта 16:9.
+// Ниже $tablet-min — одна колонка, на широком десктопе — как раньше.
+@media (min-width: $tablet-min) and (max-width: $content-narrow-max) {
+  .runs__stats {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  // Карта — на всю ширину в пропорции 16:9 вместо фиксированных 400 px.
+  .runs__map {
+    flex: 0 0 auto;
+    width: 100%;
+    min-height: 0;
+    aspect-ratio: 16 / 9;
+  }
+}
+
+// Мобильная раскладка без сайдбара ($tablet-min … $mobile-max): короткие оповещения — по два в ряд.
+@media (min-width: $tablet-min) and (max-width: $mobile-max) {
+  // Короткие оповещения («Сьогодні N нагадувань», «N вантажів чекають») — по два в ряд.
+  .runs__alerts {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 12px;
+    align-items: start;
+
+    > * {
+      grid-column: 1 / -1;
+    }
+
+    > .runs__account--compact {
+      grid-column: auto;
+    }
   }
 }

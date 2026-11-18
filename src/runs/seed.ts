@@ -39,6 +39,8 @@ export type Load = {
   status: LoadStatus;
   billingStatus?: BillingStatus;
   detentionFee?: number;
+  /** Сумма, на которую выставлен счёт: доплата за простой после счёта в неё не входит. */
+  invoicedAmount?: number;
   loadNumber?: string;
   poNumber?: string;
   equipment?: string;
@@ -837,3 +839,12 @@ export const fleetRoster: FleetTruck[] = [
   { truck: 'Тягач 107', driver: 'Luis Ortega', drivingHoursLeft: 0 },
   { truck: 'Тягач 305', driver: 'Elena Rostova', drivingHoursLeft: 5.5 },
 ];
+
+/**
+ * Номер нового рейса — номер тягача (как у стартовых рейсов: /runs/214), чтобы ссылку можно было набрать руками.
+ * Если такой рейс уже есть (тягач ездил раньше), берётся уникальный идентификатор.
+ */
+export function newRunId(truck: string, existing: { id: string }[]) {
+  const digits = truck.replace(/\D/g, '');
+  return digits && !existing.some((run) => run.id === digits) ? digits : crypto.randomUUID();
+}

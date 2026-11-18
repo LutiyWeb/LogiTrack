@@ -1,3 +1,5 @@
+@use '../../styles/breakpoints' as *;
+
 .planning {
   display: grid;
   grid-template-columns: minmax(300px, 380px) minmax(0, 1fr);
@@ -166,7 +168,7 @@
   }
 }
 
-@media (max-width: 1000px) {
+@media (max-width: $content-narrow-max) {
   .planning {
     grid-template-columns: 1fr;
   }

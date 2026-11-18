@@ -14,6 +14,7 @@ import {
   formatWhen,
   formatMoney,
   isKnownEmptyLeg,
+  newRunId,
   placeName,
   readNumber,
   runLegs,
@@ -27,8 +28,11 @@ import { addInboxLoad, saveInboxLoad } from '../../store/slices/inboxSlice';
 import { showToast } from '../../store/slices/toastsSlice';
 import { bookRateCon, openRun } from '../../store/slices/runsSlice';
 import { carrierProfile, setActiveSection } from '../../store/slices/uiSlice';
+import { validateDraft } from '../../runs/validation';
+import { useIsMobile } from '../../hooks/useMediaQuery';
 import DateField from '../DateField/DateField';
 import PdfPreview from './PdfPreview';
+import StatTile from '../Workspace/StatTile';
 
 
 type FieldKey = RateConField | 'driveHours';
@@ -86,6 +90,9 @@ function RateConReview({
   const { warnings, unrecognized } = item;
   const [plan, setPlan] = useState<LoadRoutePlan | null>(null);
   const [routing, setRouting] = useState(false);
+  // On a phone the PDF starts folded so the form opens right under the header.
+  const isMobile = useIsMobile();
+  const [pdfOpen, setPdfOpen] = useState(false);
 
   const activeRuns = runs.filter((run) => run.status !== 'Completed');
   const busyTrucks = new Set(activeRuns.map((run) => run.truck));
@@ -97,7 +104,9 @@ function RateConReview({
   );
   const isBlocked = (item: (typeof fleetRoster)[number]) =>
     busyTrucks.has(item.truck) || expiredDrivers.has(item.driver);
-  const firstFreeTruck = fleetRoster.find((item) => !isBlocked(item));
+  const freeTrucks = fleetRoster.filter((item) => !isBlocked(item));
+  // По умолчанию — свободный тягач, у водителя которого есть часы вождения.
+  const firstFreeTruck = freeTrucks.find((item) => item.drivingHoursLeft > 0) ?? freeTrucks[0];
   // A busy truck frees up when the last load on its active run is delivered.
   const soonestFree = activeRuns
     .flatMap((run) => {
@@ -139,10 +148,16 @@ function RateConReview({
       planLoadRoute(pickupName, deliveryName, [
         [previousStop, pickupName],
         [deliveryName, YARD],
-      ]).then((result) => {
+      ])
+        .catch(() => null)
+        .then((result) => {
         if (cancelled) return;
-        setPlan(result);
         setRouting(false);
+        if (!result) {
+          setPlan(null);
+          return;
+        }
+        setPlan(result);
         const loaded = result.loaded;
         if (!loaded) return;
         // Fill miles and drive time unless they came from the PDF or were typed in.
@@ -158,7 +173,7 @@ function RateConReview({
           }
           return next;
         });
-      });
+        });
     }, 400);
     return () => {
       cancelled = true;
@@ -198,6 +213,9 @@ function RateConReview({
           };
     const legs = runLegs(simulated, { ...manualMiles, ...legMiles });
     return {
+      // Те же мили, что попадут в рейс: известные перегоны берутся из таблицы, а не из маршрутизатора.
+      deadheadIn: legs.at(-2)?.miles ?? null,
+      returnEmpty: legs.at(-1)?.miles ?? null,
       emptyMiles: emptyMilesTotal(legs),
       perMile: dollarsPerMile(simulated, legs),
       revenue: simulated.loads.reduce((sum, item) => sum + item.rate, 0),
@@ -215,8 +233,11 @@ function RateConReview({
 
   const missingRequired = REQUIRED.filter((key) => !String(draft[key] ?? '').trim());
   const rateValue = readNumber(draft.rate);
+  const errors = validateDraft(draft);
+  const hasErrors = Object.keys(errors).length > 0;
   const canBook =
     missingRequired.length === 0 &&
+    !hasErrors &&
     rateValue > 0 &&
     (target.kind === 'new' ? !!roster : !!targetRun);
   const foundCount = Object.values(sources).filter((value) => value === 'pdf').length;
@@ -235,6 +256,7 @@ function RateConReview({
       required={REQUIRED.includes(key)}
       expected={fromPdf && SHOULD_HAVE.includes(key)}
       fromPdf={fromPdf}
+      error={errors[key as keyof LoadDraft]}
       onChange={(value) => update(key, value)}
       {...options}
     />
@@ -242,7 +264,8 @@ function RateConReview({
 
   const book = () => {
     if (!canBook) return;
-    const runId = target.kind === 'new' ? crypto.randomUUID() : (targetRun as Run).id;
+    const runId =
+      target.kind === 'new' ? newRunId(roster?.truck ?? '', runs) : (targetRun as Run).id;
     if (!inQueue) dispatch(addInboxLoad({ ...item, draft }));
     dispatch(
       bookRateCon({
@@ -283,7 +306,20 @@ function RateConReview({
 
   return (
     <div className={pdf ? 'ratecon__review' : 'ratecon__review ratecon__review--no-pdf'}>
-      {pdf && item.fileName && <PdfPreview data={pdf} fileName={item.fileName} />}
+      {pdf && item.fileName && isMobile && (
+        <div className="ratecon__pdf-fold">
+          <button
+            type="button"
+            className={`runs__button runs__button--secondary ratecon__pdf-toggle${pdfOpen ? ' is-active' : ''}`}
+            aria-expanded={pdfOpen}
+            onClick={() => setPdfOpen((value) => !value)}
+          >
+            {pdfOpen ? t.rateCon.hidePdf : t.rateCon.showPdf}
+          </button>
+          {pdfOpen && <PdfPreview data={pdf} fileName={item.fileName} />}
+        </div>
+      )}
+      {pdf && item.fileName && !isMobile && <PdfPreview data={pdf} fileName={item.fileName} />}
 
       <div className="ratecon__panel">
         <div className="ratecon__scroll">
@@ -341,25 +377,27 @@ function RateConReview({
           </RcSection>
 
           <RcSection title={t.rateCon.sections.assign}>
-            <div className="ratecon__segmented ratecon__wide" role="group" aria-label={t.rateCon.assignAria}>
+            <div className="runs__filters ratecon__wide" role="group" aria-label={t.rateCon.assignAria}>
               <span className="ratecon__segment" title={firstFreeTruck ? undefined : t.rateCon.allBusy}>
                 <button
                   type="button"
-                  className={target.kind === 'new' ? 'is-active' : ''}
+                  className={target.kind === 'new' ? 'runs__filter is-active' : 'runs__filter'}
                   disabled={!firstFreeTruck}
                   onClick={() => firstFreeTruck && setTarget({ kind: 'new', truck: firstFreeTruck.truck })}
                 >
                   {t.rateCon.newRun}
                 </button>
               </span>
+              <span className="ratecon__segment">
               <button
                 type="button"
-                className={target.kind === 'existing' ? 'is-active' : ''}
+                className={target.kind === 'existing' ? 'runs__filter is-active' : 'runs__filter'}
                 disabled={activeRuns.length === 0}
                 onClick={() => activeRuns[0] && setTarget({ kind: 'existing', runId: activeRuns[0].id })}
               >
                 {t.rateCon.existingRun}
               </button>
+              </span>
             </div>
             {!firstFreeTruck && (
               <div className="ratecon__note ratecon__wide" role="status">
@@ -391,6 +429,7 @@ function RateConReview({
               </div>
             )}
             {target.kind === 'new' ? (
+              <>
               <label className="ratecon__field ratecon__wide">
                 <span className="ratecon__label">{t.rateCon.truckDriver}</span>
                 <select
@@ -407,6 +446,12 @@ function RateConReview({
                   ))}
                 </select>
               </label>
+              {roster?.drivingHoursLeft === 0 && (
+                <p className="ratecon__note ratecon__wide" role="status">
+                  {t.rateCon.noHoursNote(roster.driver)}
+                </p>
+              )}
+              </>
             ) : (
               <label className="ratecon__field ratecon__wide">
                 <span className="ratecon__label">{t.rateCon.run}</span>
@@ -433,21 +478,23 @@ function RateConReview({
                 <span>{t.rateCon.routing(pickupName, deliveryName)}</span>
               ) : plan && projection ? (
                 <>
-                  <RouteStat label={t.rateCon.deadheadIn} value={milesText(plan.emptyLegs[0].miles)} hint={`${previousStop} → ${pickupName}`} />
-                  <RouteStat label={t.rateCon.loaded} value={milesText(readNumber(draft.miles) || null)} hint={t.rateCon.drivingHours(draft.driveHours || '–')} />
-                  <RouteStat label={t.rateCon.returnEmpty} value={milesText(plan.emptyLegs[1].miles)} hint={`${deliveryName} → ${YARD}`} />
-                  <RouteStat
-                    label={t.rateCon.runAllIn}
-                    value={projection.perMile === null ? '–' : formatMoney(projection.perMile, 2)}
-                    hint={
-                      projection.perMile === null
-                        ? t.rateCon.someUnknown
-                        : projection.perMile >= targetRate
-                          ? t.rateCon.atOrAbove(formatMoney(targetRate, 2))
-                          : t.rateCon.below(formatMoney(targetRate, 2))
-                    }
-                    tone={projection.perMile === null ? undefined : projection.perMile >= targetRate ? 'good' : 'warn'}
-                  />
+                  <dl className="ratecon__route-stats">
+                    <StatTile label={t.rateCon.deadheadIn} value={milesText(projection.deadheadIn)} meta={`${previousStop} → ${pickupName}`} />
+                    <StatTile label={t.rateCon.loaded} value={milesText(readNumber(draft.miles) || null)} meta={t.rateCon.drivingHours(draft.driveHours || '–')} />
+                    <StatTile label={t.rateCon.returnEmpty} value={milesText(projection.returnEmpty)} meta={`${deliveryName} → ${YARD}`} />
+                    <StatTile
+                      label={t.rateCon.runAllIn}
+                      value={projection.perMile === null ? '–' : formatMoney(projection.perMile, 2)}
+                      valueClassName={projection.perMile === null ? undefined : projection.perMile >= targetRate ? 'is-good' : 'is-warn'}
+                      meta={
+                        projection.perMile === null
+                          ? t.rateCon.someUnknown
+                          : projection.perMile >= targetRate
+                            ? t.rateCon.atOrAbove(formatMoney(targetRate, 2))
+                            : t.rateCon.below(formatMoney(targetRate, 2))
+                      }
+                    />
+                  </dl>
                   {plan.unknownCities.length > 0 && (
                     <p className="ratecon__warning ratecon__wide">
                       {t.rateCon.cityNotFound(plan.unknownCities.join(', '))}
@@ -466,7 +513,11 @@ function RateConReview({
           <span className="ratecon__footer-hint">
             {missingRequired.length > 0
               ? t.rateCon.missing(missingRequired.map(labelOf).join(', '))
-              : `${draft.customer} · ${formatMoney(rateValue, 0)}`}
+              : hasErrors
+                ? t.rateCon.fixErrors
+                : rateValue <= 0
+                ? t.rateCon.rateNotPositive
+                : `${draft.customer} · ${formatMoney(rateValue, 0)}`}
           </span>
           <button type="button" className="runs__button runs__button--tertiary" onClick={onClose}>
             {t.common.cancel}
@@ -474,7 +525,7 @@ function RateConReview({
           <button
             type="button"
             className="runs__button runs__button--secondary"
-            disabled={missingRequired.length > 0}
+            disabled={missingRequired.length > 0 || hasErrors}
             onClick={save}
           >
             {t.inbox.saveChecked}
@@ -514,6 +565,7 @@ function RcField({
   required,
   expected,
   fromPdf,
+  error,
   onChange,
   type = 'text',
   wide,
@@ -525,6 +577,7 @@ function RcField({
   required: boolean;
   expected: boolean;
   fromPdf: boolean;
+  error?: string;
   onChange: (value: string) => void;
   type?: string;
   wide?: boolean;
@@ -548,7 +601,7 @@ function RcField({
         {chip && <span className={`ratecon__chip ratecon__chip--${state}`}>{chip}</span>}
       </span>
       {type === 'datetime-local' ? (
-        <DateField type="datetime-local" value={value} placeholder={placeholder} onValue={onChange} />
+        <DateField type="datetime-local" value={value} placeholder={placeholder} onValue={onChange} aria-invalid={!!error} />
       ) : type === 'textarea' ? (
         <textarea
           className="runs__input ratecon__textarea"
@@ -563,32 +616,14 @@ function RcField({
           type={type}
           value={value}
           placeholder={placeholder}
+          aria-invalid={!!error}
           min={type === 'number' ? 0 : undefined}
           step={type === 'number' ? 'any' : undefined}
           onChange={(event) => onChange(event.target.value)}
         />
       )}
+      {error && <span className="runs__field-error">{error}</span>}
     </label>
-  );
-}
-
-function RouteStat({
-  label,
-  value,
-  hint,
-  tone,
-}: {
-  label: string;
-  value: string;
-  hint: string;
-  tone?: 'good' | 'warn';
-}) {
-  return (
-    <div className={tone ? `ratecon__stat ratecon__stat--${tone}` : 'ratecon__stat'}>
-      <span className="ratecon__stat-label">{label}</span>
-      <strong>{value}</strong>
-      <span className="ratecon__stat-hint">{hint}</span>
-    </div>
   );
 }
 

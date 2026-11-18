@@ -22,6 +22,8 @@ export type RolePermissions = {
   canEditTargets: boolean;
   /** Раздел «Фінанси»: маржа и расходы компании — только владелец. */
   canViewFinance: boolean;
+  /** «Скинути всі дані» стирає данные всей компании — только менеджер. */
+  canResetData: boolean;
 };
 
 export const users: User[] = [
@@ -66,6 +68,7 @@ export const ROLE_PERMISSIONS: Record<UserRole, RolePermissions> = {
     canUpdateLoadStatus: true,
     canEditTargets: true,
     canViewFinance: true,
+    canResetData: true,
   },
   dispatcher: {
     canViewOverview: true,
@@ -74,6 +77,7 @@ export const ROLE_PERMISSIONS: Record<UserRole, RolePermissions> = {
     canUpdateLoadStatus: true,
     canEditTargets: false,
     canViewFinance: false,
+    canResetData: false,
   },
   driver: {
     canViewOverview: false,
@@ -82,6 +86,7 @@ export const ROLE_PERMISSIONS: Record<UserRole, RolePermissions> = {
     canUpdateLoadStatus: true,
     canEditTargets: false,
     canViewFinance: false,
+    canResetData: false,
   },
 };
 

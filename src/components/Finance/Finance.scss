@@ -1,3 +1,5 @@
+@use '../../styles/breakpoints' as *;
+
 // Цвета серий: бирюзовый под палитру проекта и оранжевый; пара проверена валидатором палитры.
 $revenue: #2b7fa8;
 $costs: #eb6834;
@@ -182,7 +184,7 @@ $costs: #eb6834;
   }
 }
 
-@media (max-width: 1100px) {
+@media (max-width: $content-narrow-max) {
   .finance {
     &__top {
       grid-template-columns: minmax(0, 1fr);
@@ -191,7 +193,7 @@ $costs: #eb6834;
 }
 
 // Mobile: the ring sits above its text instead of squeezing it into a narrow column.
-@media (max-width: 767px) {
+@media (max-width: $mobile-max) {
   .finance__ring-card {
     flex-direction: column;
     align-items: stretch;

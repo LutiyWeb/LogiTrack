@@ -91,14 +91,14 @@ function OfferCard({
         <div className="runs__load-actions">
           <button
             type="button"
-            className="runs__button runs__button--secondary runs__button--small"
+            className="runs__button runs__button--tertiary runs__button--small"
             onClick={onFillForm}
           >
             {t.backhaul.fillForm}
           </button>
           <button
             type="button"
-            className="runs__button runs__button--small"
+            className="runs__button runs__button--secondary runs__button--small"
             disabled={hasHosConflict}
             title={
               hasHosConflict

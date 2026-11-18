@@ -1,3 +1,5 @@
+@use '../../styles/breakpoints' as *;
+
 .toasts {
   position: fixed;
   right: 24px;
@@ -86,7 +88,7 @@
 }
 
 // Keep toasts above the mobile bottom tabs.
-@media (max-width: 767px) {
+@media (max-width: $mobile-max) {
   .toasts {
     right: 16px;
     bottom: calc(var(--mobile-tabs-height) + env(safe-area-inset-bottom) + 12px);
@@ -94,7 +96,7 @@
 }
 
 // Above the floating "+" button when a page shows one.
-@media (max-width: 767px) {
+@media (max-width: $mobile-max) {
   body.has-fab .toasts {
     bottom: calc(var(--mobile-tabs-height) + env(safe-area-inset-bottom) + 16px + 56px + 12px);
   }

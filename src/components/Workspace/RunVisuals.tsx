@@ -36,10 +36,13 @@ export function LoadStatusBadge({ status }: { status: LoadStatus }) {
 export function LoadStatusSelect({
   status,
   ariaLabel,
+  disabled,
   onChange,
 }: {
   status: LoadStatus;
   ariaLabel: string;
+  /** Статус груза с выставленным счётом менять нельзя. */
+  disabled?: boolean;
   onChange: (nextStatus: LoadStatus) => void;
 }) {
   return (
@@ -47,6 +50,7 @@ export function LoadStatusSelect({
       className={`runs__input runs__input--compact runs__status-select ${loadStatusModifiers[status]}`}
       aria-label={ariaLabel}
       value={status}
+      disabled={disabled}
       onChange={(e) => onChange(e.target.value as LoadStatus)}
     >
       {loadStatuses.map((s) => (

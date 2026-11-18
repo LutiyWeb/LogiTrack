@@ -1,4 +1,4 @@
-import { render, screen, within } from '@testing-library/react';
+import { fireEvent, render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it } from 'vitest';
 import App from '../../App';
@@ -52,5 +52,27 @@ describe('Планування', () => {
     const added = store.getState().inbox.items.find((item) => item.draft.customer === 'Prairie Route Brokerage');
     expect(added?.status).toBe('Tentative');
     expect(store.getState().planner.reminders.some((item) => item.inboxId === added?.id)).toBe(true);
+  });
+
+  it('does not accept a reminder in the past or a tentative load with a bad rate/state', async () => {
+    const user = userEvent.setup();
+    const store = createAppStore();
+    store.dispatch(loginAsUser('dispatcher'));
+    render(<App customStore={store} />);
+
+    await user.click(screen.getByRole('button', { name: /Планування/ }));
+    await user.click(screen.getByRole('button', { name: 'Нагадування' }));
+    const reminder = screen.getByRole('form', { name: 'Нове нагадування' });
+    fireEvent.change(reminder.querySelector('.date-field__native') as HTMLInputElement, { target: { value: '2020-01-01' } });
+    await user.type(within(reminder).getByLabelText('Що зробити'), 'Тест');
+    expect(within(reminder).getByText('Дата не може бути в минулому')).toBeInTheDocument();
+    expect(within(reminder).getByRole('button', { name: 'Зберегти' })).toBeDisabled();
+
+    await user.click(screen.getByRole('button', { name: 'Попередній вантаж' }));
+    const form = screen.getByRole('form', { name: 'Новий попередній вантаж' });
+    await user.type(within(form).getByLabelText('Ставка, $ (якщо відома)'), '-500');
+    await user.type(within(form).getAllByLabelText('Штат')[0], 'ZZ');
+    expect(within(form).getByText('Ставка має бути більше $0')).toBeInTheDocument();
+    expect(within(form).getByText('Вкажіть код штату США, наприклад IN')).toBeInTheDocument();
   });
 });

@@ -24,6 +24,8 @@ export type EnrichedRun = {
   totalMiles: number | null;
   revenue: number;
   operatingCost: number | null;
+  /** Затраты хотя бы на известные мили: в сводных показателях рейс не считается бесплатным. */
+  knownCost: number;
   netProfit: number | null;
   dollarsPerMile: number | null;
   deadheadPercent: number | null;
@@ -118,6 +120,7 @@ export const selectEnrichedRuns = createSelector(
         totalMiles: total,
         revenue: earned,
         operatingCost,
+        knownCost: Math.round((paid + (empty ?? 0)) * costPerMile),
         netProfit,
         dollarsPerMile: perMile,
         deadheadPercent,
@@ -178,7 +181,7 @@ export const selectFleetKpis = createSelector(
       0,
     );
     const totalOperatingCost = enrichedRuns.reduce(
-      (sum, item) => sum + (item.operatingCost ?? 0),
+      (sum, item) => sum + (item.operatingCost ?? item.knownCost),
       0,
     );
     const totalNetProfit = totalRevenue - totalOperatingCost;
@@ -256,7 +259,7 @@ export const selectBrokerSummaries = createSelector(
         existing.loadsCount += 1;
         existing.totalRevenue += load.rate;
         if (isInvoiced) {
-          existing.invoicedRevenue += load.rate;
+          existing.invoicedRevenue += load.invoicedAmount ?? load.rate;
         }
         if (load.billingStatus === 'POD received') {
           existing.readyToInvoiceCount += 1;

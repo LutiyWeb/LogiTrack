@@ -1,3 +1,5 @@
+@use '../../styles/breakpoints' as *;
+
 .auth-screen {
   display: grid;
   place-items: center;
@@ -268,10 +270,6 @@
     margin-top: 0;
   }
 
-  &__logout {
-    font-weight: 600;
-  }
-
   &__label {
     min-width: 0;
     overflow: hidden;
@@ -292,8 +290,8 @@
   }
 }
 
-// Below 768px navigation moves to the fixed top bar and bottom tabs (MobileNav).
-@media (max-width: 767px) {
+// Up to $mobile-max navigation moves to the fixed top bar and bottom tabs (MobileNav).
+@media (max-width: $mobile-max) {
   .shell,
   .shell.is-collapsed {
     grid-template-columns: minmax(0, 1fr);

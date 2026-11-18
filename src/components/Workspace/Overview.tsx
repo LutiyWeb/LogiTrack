@@ -38,13 +38,16 @@ function Overview() {
   const payPerMile = useAppSelector((state) => state.ui.driverPayPerMile);
   const idleDaysAlert = useAppSelector((state) => state.ui.idleDaysAlert);
   const paidThisWeek = useAppSelector((state) => state.drivers.paidThisWeek);
+  const paidAmounts = useAppSelector((state) => state.drivers.paidAmounts);
   const drivers = driverAlerts(
-    buildDriverRows(seedDrivers, enrichedRuns, payPerMile, paidThisWeek),
+    buildDriverRows(seedDrivers, enrichedRuns, payPerMile, paidThisWeek, paidAmounts),
     idleDaysAlert,
   );
   const hasDriverAlerts =
     drivers.idle.length > 0 || drivers.docs.length > 0 || drivers.toPay > 0;
 
+  // Без рейсов оценки по нулевым данным не показываем: вместо них «—».
+  const hasData = kpis.totalMiles > 0;
   const rateIsGood = kpis.averageDollarsPerMile >= targetRate;
   const deadheadIsHigh = kpis.deadheadPercent > maxEmptyPercent;
 
@@ -74,6 +77,7 @@ function Overview() {
       >
         <StatTile
           label={t.overview.revenue}
+          tooltip={t.overview.profitNote}
           value={formatMoney(kpis.totalRevenue, 0)}
           meta={t.overview.revenueMeta(
             formatMoney(kpis.totalNetProfit, 0),
@@ -82,24 +86,30 @@ function Overview() {
         />
         <StatTile
           label={t.common.allInLabel}
-          value={formatMoney(kpis.averageDollarsPerMile, 2)}
+          value={hasData ? formatMoney(kpis.averageDollarsPerMile, 2) : t.units.dash}
           tooltip={t.common.allInTooltip}
-          badgeTone={rateIsGood ? 'ok' : 'warn'}
+          badgeTone={hasData ? (rateIsGood ? 'ok' : 'warn') : undefined}
           badgeText={
-            rateIsGood ? t.overview.aboveTarget : t.overview.belowTarget
+            hasData
+              ? rateIsGood
+                ? t.overview.aboveTarget
+                : t.overview.belowTarget
+              : undefined
           }
           meta={t.overview.target(formatMoney(targetRate, 2))}
         />
         <StatTile
           label={t.overview.deadhead}
-          value={`${kpis.deadheadPercent}%`}
-          badgeTone={deadheadIsHigh ? 'danger' : 'ok'}
+          value={hasData ? `${kpis.deadheadPercent}%` : t.units.dash}
+          badgeTone={hasData ? (deadheadIsHigh ? 'danger' : 'ok') : undefined}
           badgeText={
-            deadheadIsHigh
-              ? t.overview.aboveLimit(maxEmptyPercent)
-              : t.overview.withinTarget
+            hasData
+              ? deadheadIsHigh
+                ? t.overview.aboveLimit(maxEmptyPercent)
+                : t.overview.withinTarget
+              : undefined
           }
-          meta={t.overview.emptyTotal(formatMiles(kpis.totalEmptyMiles))}
+          meta={hasData ? t.overview.emptyTotal(formatMiles(kpis.totalEmptyMiles)) : undefined}
         />
         <StatTile
           label={t.overview.activeTrucks}
@@ -242,13 +252,6 @@ function Overview() {
                         {item.run.driver.replace(/ /g, '\u00a0')}
                       </p>
                     </div>
-                    <button
-                      type="button"
-                      className="runs__button runs__button--secondary runs__button--small runs__alert-action"
-                      onClick={() => jumpToRun(item.run.id, true)}
-                    >
-                      {t.overview.findBackhaul}
-                    </button>
                   </div>
                   <p className="runs__meta">
                     {t.overview.lane} {item.lane} · {t.overview.emptyLabel}{' '}
@@ -276,16 +279,28 @@ function Overview() {
                       )}
                     </span>
                   </div>
+                  <button
+                    type="button"
+                    className="runs__button runs__button--secondary runs__button--small runs__alert-action"
+                    onClick={() => jumpToRun(item.run.id, true)}
+                  >
+                    {t.overview.findBackhaul}
+                  </button>
                 </li>
               ))}
             </ul>
-          ) : (
+          ) : hasData ? (
             <p className="runs__note">
               {t.overview.allClear(
                 maxEmptyPercent,
                 formatMoney(kpis.averageDollarsPerMile, 2),
               )}
             </p>
+          ) : (
+            // Без рейсов: пояснение показываем, только если нет и других оповещений.
+            !(canViewFinance || dueCount > 0 || waitingLoads > 0 || hasDriverAlerts) && (
+              <p className="runs__note">{t.overview.noRunsAlerts}</p>
+            )
           )}
         </section>
 
@@ -309,6 +324,7 @@ function Overview() {
             {t.overview.viewAll}
           </button>
         </div>
+        {overviewRuns.length === 0 && <p className="runs__note">{t.overview.noRuns}</p>}
         <ul className="runs__list runs__list--summary">
           {overviewRuns.map((item) => (
             <li key={item.run.id}>

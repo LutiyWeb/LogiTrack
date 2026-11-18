@@ -67,4 +67,11 @@ describe('routes', () => {
     await user.click(screen.getByRole('button', { name: 'Увійти як Marcus Hill' }));
     expect(screen.getByLabelText('address')).toHaveTextContent(/^\/runs$/);
   });
+
+  it('keeps a driver on their own run when another run is opened by link', async () => {
+    const user = renderAt('/runs/118');
+    await user.click(screen.getByRole('button', { name: 'Увійти як Marcus Hill' }));
+    expect(screen.getByLabelText('address')).toHaveTextContent('/runs/214');
+    expect(screen.getByRole('heading', { name: 'Тягач 214' })).toBeInTheDocument();
+  });
 });

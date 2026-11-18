@@ -8,6 +8,7 @@ import {
   type CalendarEvent,
   type EventKind,
 } from '../../planning/planning';
+import { rateError, stateError } from '../../runs/validation';
 import { useAppDispatch, useAppSelector } from '../../store/hooks';
 import { addInboxLoad, setInboxStatus } from '../../store/slices/inboxSlice';
 import { addReminder, toggleReminder } from '../../store/slices/plannerSlice';
@@ -422,11 +423,22 @@ function TentativeForm({
     (key: keyof TentativeValues) =>
     (event: React.ChangeEvent<HTMLInputElement>) =>
       setValues((current) => ({ ...current, [key]: event.target.value }));
-  const ready =
-    values.customer.trim() &&
-    values.fromCity.trim() &&
-    values.toCity.trim() &&
-    values.date;
+  const missing = [
+    !values.customer.trim() && f.customer,
+    !values.fromCity.trim() && f.fromCity,
+    !values.toCity.trim() && f.toCity,
+    !values.date && f.date,
+  ].filter(Boolean) as string[];
+  const errors = {
+    rate: rateError(values.rate),
+    fromState: stateError(values.fromState),
+    toState: stateError(values.toState),
+    remindAt:
+      values.remindAt && values.date && values.remindAt > values.date
+        ? t.validation.remindAfterDate
+        : '',
+  };
+  const ready = missing.length === 0 && !Object.values(errors).some(Boolean);
 
   return (
     <form
@@ -444,42 +456,54 @@ function TentativeForm({
         label={f.customer}
         value={values.customer}
         onChange={set('customer')}
+        required
       />
       <Field
         label={f.rate}
         value={values.rate}
         onChange={set('rate')}
         type="number"
+        error={errors.rate}
       />
       <Field
         label={f.fromCity}
         value={values.fromCity}
         onChange={set('fromCity')}
+        required
       />
       <Field
         label={f.fromState}
         value={values.fromState}
         onChange={set('fromState')}
         maxLength={2}
+        error={errors.fromState}
       />
-      <Field label={f.toCity} value={values.toCity} onChange={set('toCity')} />
+      <Field
+        label={f.toCity}
+        value={values.toCity}
+        onChange={set('toCity')}
+        required
+      />
       <Field
         label={f.toState}
         value={values.toState}
         onChange={set('toState')}
         maxLength={2}
+        error={errors.toState}
       />
       <Field
         label={f.date}
         value={values.date}
         onChange={set('date')}
         type="date"
+        required
       />
       <Field
         label={f.remindAt}
         value={values.remindAt}
         onChange={set('remindAt')}
         type="date"
+        error={errors.remindAt}
       />
       <label className="runs__field runs__field--wide">
         <span className="runs__label">{f.note}</span>
@@ -490,6 +514,9 @@ function TentativeForm({
           onChange={set('note')}
         />
       </label>
+      {missing.length > 0 && (
+        <p className="runs__form-hint">{t.validation.missing(missing.join(', '))}</p>
+      )}
       <div className="runs__form-submit">
         <button
           type="button"
@@ -516,6 +543,9 @@ function ReminderForm({
   const [date, setDate] = useState(TODAY);
   const [text, setText] = useState('');
   const f = t.planning.fields;
+  // Нагадування на дату в минулому ни в одном списке не видно, поэтому такую дату не принимаем.
+  const dateIssue = !date ? t.validation.required : date < TODAY ? t.validation.pastDate : '';
+  const ready = !!text.trim() && !dateIssue;
 
   return (
     <form
@@ -523,7 +553,7 @@ function ReminderForm({
       aria-label={t.planning.formReminder}
       onSubmit={(event) => {
         event.preventDefault();
-        if (text.trim()) onSave(date, text.trim());
+        if (ready) onSave(date, text.trim());
       }}
     >
       <h2 className="runs__subtitle runs__form-head">
@@ -534,12 +564,17 @@ function ReminderForm({
         value={date}
         onChange={(event) => setDate(event.target.value)}
         type="date"
+        error={date ? dateIssue : ''}
       />
       <Field
         label={f.note}
         value={text}
         onChange={(event) => setText(event.target.value)}
+        required
       />
+      {!text.trim() && (
+        <p className="runs__form-hint">{t.validation.missing(f.note)}</p>
+      )}
       <div className="runs__form-submit">
         <button
           type="button"
@@ -548,7 +583,7 @@ function ReminderForm({
         >
           {t.common.cancel}
         </button>
-        <button type="submit" className="runs__button" disabled={!text.trim()}>
+        <button type="submit" className="runs__button" disabled={!ready}>
           {t.planning.save}
         </button>
       </div>
@@ -558,11 +593,23 @@ function ReminderForm({
 
 function Field({
   label,
+  error,
+  required,
   ...props
-}: { label: string } & React.InputHTMLAttributes<HTMLInputElement>) {
+}: {
+  label: string;
+  error?: string;
+  required?: boolean;
+} & React.InputHTMLAttributes<HTMLInputElement>) {
+  const empty = !String(props.value ?? '').trim();
   return (
     <label className="runs__field">
-      <span className="runs__label">{label}</span>
+      <span
+        className="runs__label"
+        data-required={required && empty ? t.validation.required : undefined}
+      >
+        {label}
+      </span>
       {props.type === 'date' ? (
         <DateField
           type="date"
@@ -574,8 +621,9 @@ function Field({
           }
         />
       ) : (
-        <input className="runs__input" {...props} />
+        <input className="runs__input" aria-invalid={!!error} {...props} />
       )}
+      {error && <span className="runs__field-error">{error}</span>}
     </label>
   );
 }

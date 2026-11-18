@@ -3,6 +3,7 @@ import { DEFAULT_USER, quickLogin } from '../../auth/quickLogin';
 import { useAppDispatch, useAppSelector } from '../../store/hooks';
 import { users, loginWithCredentials } from '../../store/slices/authSlice';
 import { t } from '../../i18n';
+import FormHead from '../Workspace/FormHead';
 import '../Workspace/Workspace.scss';
 
 function LoginScreen() {
@@ -46,10 +47,7 @@ function LoginScreen() {
             dispatch(loginWithCredentials({ email, password }));
           }}
         >
-          <div className="runs__form-head">
-            <h2 className="runs__subtitle">{t.login.formTitle}</h2>
-            <span className="runs__meta">{t.login.passwordHint}</span>
-          </div>
+          <FormHead title={t.login.formTitle} hint={t.login.passwordHint} />
           <label className="runs__field">
             <span className="runs__label">{t.login.email}</span>
             <input className="runs__input" type="email" placeholder="alex@logitrack.app" value={email} onChange={(e) => setEmail(e.target.value)} />

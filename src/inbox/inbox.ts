@@ -74,6 +74,13 @@ export async function intakePdf(
   };
 }
 
+/** Груз с тем же номером уже есть в очереди (в любом статусе). */
+export function findDuplicate(items: InboxLoad[], loadNumber: string | undefined) {
+  const key = (loadNumber ?? '').trim().toLowerCase();
+  if (!key) return undefined;
+  return items.find((item) => (item.draft.loadNumber ?? '').trim().toLowerCase() === key);
+}
+
 export function emptyManualLoad(): InboxLoad {
   return {
     id: crypto.randomUUID(),

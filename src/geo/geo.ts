@@ -64,6 +64,12 @@ const STATE_NAMES: Record<string, string> = {
   DC: 'District of Columbia',
 };
 
+/** Является ли код штатом США (или DC). */
+export function isUsState(code: string) {
+  return Object.hasOwn(STATE_NAMES, code.trim().toUpperCase());
+}
+
+const REQUEST_TIMEOUT_MS = 8000;
 const PHOTON_URL = 'https://photon.komoot.io/api/';
 const geocoding = new Map<string, Promise<LngLat | null>>();
 
@@ -90,7 +96,7 @@ export function geocodeCity(name: string): Promise<LngLat | null> {
     osm_tag: 'place',
   });
 
-  const request = fetch(`${PHOTON_URL}?${query}`)
+  const request = fetch(`${PHOTON_URL}?${query}`, { signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS) })
     .then((response) => (response.ok ? response.json() : null))
     .then((body: { features?: PhotonFeature[] } | null) => {
       const match = body?.features?.find(
@@ -127,6 +133,7 @@ export function fetchLegRoute(from: string, to: string): Promise<LegRoute | null
 
   const request = fetch(
     `${OSRM_URL}/${a.join(',')};${b.join(',')}?overview=simplified&geometries=geojson`,
+    { signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS) },
   )
     .then((response) => (response.ok ? response.json() : null))
     .then((body) => {

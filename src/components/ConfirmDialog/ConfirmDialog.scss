@@ -1,3 +1,5 @@
+@use '../../styles/breakpoints' as *;
+
 .confirm {
   position: fixed;
   inset: 0;
@@ -23,6 +25,10 @@
     background: var(--color-surface);
     border-radius: 12px;
     box-shadow: 0 20px 40px rgb(15 23 42 / 22%);
+
+    &:focus {
+      outline: none;
+    }
   }
 
   &__title {
@@ -48,4 +54,15 @@
   border-color: var(--color-danger);
   color: var(--color-surface);
   background: var(--color-danger);
+}
+
+// Кнопки до 415 px — на всю ширину.
+@media (max-width: $narrow-max) {
+  .confirm__actions {
+    flex-direction: column-reverse;
+
+    .runs__button {
+      width: 100%;
+    }
+  }
 }

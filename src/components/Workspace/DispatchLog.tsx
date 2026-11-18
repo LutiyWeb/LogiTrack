@@ -11,25 +11,8 @@ function DispatchLog({ run }: { run: Run }) {
   const dispatch = useAppDispatch();
   const currentUser = useAppSelector(selectCurrentUser);
   const [text, setText] = useState('');
-  const notes = run.notes ?? [];
-  const chat = useAppSelector((state) =>
-    state.chats.chats.find((item) => item.driver === run.driver),
-  );
-  // Лента рейса: записи журнала и сообщения водителя по этому рейсу, по времени.
-  const feed = [
-    ...notes.map((note) => ({
-      kind: 'note' as const,
-      key: note.iso ?? '',
-      note,
-    })),
-    ...(chat?.messages ?? [])
-      .filter((message) => message.runId === run.id)
-      .map((message) => ({
-        kind: 'message' as const,
-        key: message.at,
-        message,
-      })),
-  ].sort((a, b) => a.key.localeCompare(b.key));
+  // Журнал — только записи диспетчера и события рейса. Переписка с водителем живёт в панели чатов.
+  const feed = [...(run.notes ?? [])].sort((a, b) => (a.iso ?? '').localeCompare(b.iso ?? ''));
 
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -50,28 +33,19 @@ function DispatchLog({ run }: { run: Run }) {
       <h2 className="runs__subtitle">{t.dispatchLog.title}</h2>
       {feed.length > 0 && (
         <ul className="runs__loads">
-          {feed.map((item) =>
-            item.kind === 'message' ? (
-              <MessageBubble
-                key={item.message.id}
-                message={item.message}
-                channel={chat ? t.chats.channel[chat.channel] : undefined}
-              />
-            ) : (
-              <MessageBubble
-                key={item.note.id}
-                message={{
-                  id: item.note.id,
-                  from:
-                    item.note.author === run.driver ? 'driver' : 'dispatcher',
-                  author: item.note.author,
-                  at: item.note.iso ?? '',
-                  text: item.note.text,
-                }}
-                timeLabel={item.note.iso ? undefined : item.note.at}
-              />
-            ),
-          )}
+          {feed.map((note) => (
+            <MessageBubble
+              key={note.id}
+              message={{
+                id: note.id,
+                from: note.author === run.driver ? 'driver' : 'dispatcher',
+                author: note.author,
+                at: note.iso ?? '',
+                text: note.text,
+              }}
+              timeLabel={note.iso ? undefined : note.at}
+            />
+          ))}
         </ul>
       )}
       <form className="runs__load-actions" onSubmit={handleSubmit}>

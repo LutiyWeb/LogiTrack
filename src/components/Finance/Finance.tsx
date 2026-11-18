@@ -5,13 +5,18 @@ import {
   type MonthResult,
 } from '../../finance/finance';
 import { t } from '../../i18n';
-import { formatMiles, formatMoney, readNumber } from '../../runs/seed';
+import { formatMiles, formatMoney } from '../../runs/seed';
 import { useAppDispatch, useAppSelector } from '../../store/hooks';
 import { selectMonthResult } from '../../store/selectors/financeSelectors';
 import { setFixedCost, updateFinance } from '../../store/slices/financeSlice';
 import '../Workspace/Workspace.scss';
 import './Finance.scss';
+import FormHead from '../Workspace/FormHead';
+import NumberField from '../Workspace/NumberField';
 import StatTile from '../Workspace/StatTile';
+
+/** Верхняя граница денежных настроек: защита от опечаток вроде лишних нулей. */
+const MAX_MONEY = 1_000_000;
 
 const fixedKeys = Object.keys(t.finance.fixed) as (keyof FixedCosts)[];
 
@@ -105,76 +110,62 @@ function Finance() {
       </section>
 
       <section className="runs__form" aria-label={t.finance.settingsAria}>
-        <div className="runs__form-head">
-          <h2 className="runs__subtitle">{t.finance.settingsTitle}</h2>
-          <span className="runs__meta">{t.finance.estimateNote}</span>
-        </div>
+        <FormHead title={t.finance.settingsTitle} hint={t.finance.estimateNote} />
 
         <h3 className="runs__label runs__form-head">
           {t.finance.fixedTitle} · {formatMoney(fixedTotal(settings.fixed), 0)}
         </h3>
         {fixedKeys.map((key) => (
-          <MoneyField
+          <NumberField
             key={key}
             label={t.finance.fixed[key]}
             value={settings.fixed[key]}
+            min={0}
+            max={MAX_MONEY}
             step="50"
-            onChange={(value) => dispatch(setFixedCost({ key, value }))}
+            onCommit={(value) => dispatch(setFixedCost({ key, value }))}
           />
         ))}
 
         <h3 className="runs__label runs__form-head">{t.finance.variableTitle}</h3>
-        <MoneyField label={`${t.finance.fuel} (${t.finance.fromAccount})`} value={fuel} disabled />
-        <MoneyField label={`${t.finance.driverPay} (${t.finance.fromAccount})`} value={driverPay} disabled />
-        <MoneyField
+        <MoneyField label={`${t.finance.fuel} (${t.finance.fromAccount})`} value={fuel} />
+        <MoneyField label={`${t.finance.driverPay} (${t.finance.fromAccount})`} value={driverPay} />
+        <NumberField
           label={t.finance.tolls}
           value={settings.tollsPerMile}
+          min={0}
+          max={5}
           step="0.01"
-          onChange={(value) => dispatch(updateFinance({ tollsPerMile: value }))}
+          onCommit={(value) => dispatch(updateFinance({ tollsPerMile: value }))}
         />
-        <MoneyField
+        <NumberField
           label={t.finance.repairs}
           value={settings.repairsPerMile}
+          min={0}
+          max={5}
           step="0.01"
-          onChange={(value) => dispatch(updateFinance({ repairsPerMile: value }))}
+          onCommit={(value) => dispatch(updateFinance({ repairsPerMile: value }))}
         />
 
-        <MoneyField
+        <NumberField
           label={t.finance.goalField}
           value={settings.monthlyGoal}
+          min={0}
+          max={MAX_MONEY}
           step="500"
-          onChange={(value) => dispatch(updateFinance({ monthlyGoal: value }))}
+          onCommit={(value) => dispatch(updateFinance({ monthlyGoal: value }))}
         />
       </section>
     </div>
   );
 }
 
-function MoneyField({
-  label,
-  value,
-  step,
-  disabled,
-  onChange,
-}: {
-  label: string;
-  value: number;
-  step?: string;
-  disabled?: boolean;
-  onChange?: (value: number) => void;
-}) {
+/** Значение, которое задаётся в «Акаунті»: здесь только для чтения. */
+function MoneyField({ label, value }: { label: string; value: number }) {
   return (
     <label className="runs__field">
       <span className="runs__label">{label}</span>
-      <input
-        className="runs__input"
-        type="number"
-        min="0"
-        step={step}
-        disabled={disabled}
-        value={value || ''}
-        onChange={(event) => onChange?.(readNumber(event.target.value))}
-      />
+      <input className="runs__input" type="number" disabled readOnly value={value || ''} />
     </label>
   );
 }

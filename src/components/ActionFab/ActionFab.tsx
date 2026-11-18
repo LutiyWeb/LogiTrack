@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
+import { useModalDialog } from '../../hooks/useModalDialog';
 import { t } from '../../i18n';
 import './ActionFab.scss';
 
@@ -19,6 +20,8 @@ type ActionFabProps = {
 /** Mobile floating "+" button that opens a bottom sheet with the page actions. */
 function ActionFab({ label, actions }: ActionFabProps) {
   const [open, setOpen] = useState(false);
+  // Фокус уходит в шторку, Tab не выходит из неё, после закрытия фокус возвращается на «+».
+  const panelRef = useModalDialog<HTMLDivElement>(open);
 
   // Lets toasts sit above the button while it is on screen.
   useEffect(() => {
@@ -32,11 +35,7 @@ function ActionFab({ label, actions }: ActionFabProps) {
       if (event.key === 'Escape') setOpen(false);
     };
     document.addEventListener('keydown', onKey);
-    document.body.style.overflow = 'hidden';
-    return () => {
-      document.removeEventListener('keydown', onKey);
-      document.body.style.overflow = '';
-    };
+    return () => document.removeEventListener('keydown', onKey);
   }, [open]);
 
   // Portal: the page container animates with a transform, which would pin `fixed` to it.
@@ -62,7 +61,7 @@ function ActionFab({ label, actions }: ActionFabProps) {
             aria-label={t.common.cancel}
             onClick={() => setOpen(false)}
           />
-          <div className="action-sheet__panel">
+          <div ref={panelRef} tabIndex={-1} className="action-sheet__panel">
             <p className="action-sheet__title">{label}</p>
             {actions.map((action) => (
               <button

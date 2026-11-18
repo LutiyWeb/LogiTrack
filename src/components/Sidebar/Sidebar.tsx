@@ -1,7 +1,7 @@
 import userPhoto from '../../assets/user.svg';
 import { t } from '../../i18n';
 import type { MenuItem } from '../../navigation';
-import { BrandMark, ChevronIcon, SupportIcon } from './icons';
+import { BrandMark, ChevronIcon, LogoutIcon, SupportIcon } from './icons';
 import { menuIcons as icons } from './menuIcons';
 
 type SidebarProps = {
@@ -71,6 +71,9 @@ function Sidebar({
               }
               type="button"
               aria-current={item.id === activeId ? 'page' : undefined}
+              // В свёрнутом меню подпись скрыта: имя и подсказка нужны самой кнопке.
+              aria-label={isOpen ? undefined : item.label}
+              title={isOpen ? undefined : item.label}
               onClick={() => onSelect(item.id)}
             >
               <Icon />
@@ -83,7 +86,13 @@ function Sidebar({
         })}
       </nav>
       {onSupport && (
-        <button className="sidebar__item sidebar__support" type="button" onClick={onSupport}>
+        <button
+          className="sidebar__item sidebar__support"
+          type="button"
+          aria-label={isOpen ? undefined : t.support.nav}
+          title={isOpen ? undefined : t.support.nav}
+          onClick={onSupport}
+        >
           <SupportIcon />
           <span className="sidebar__label">{t.support.nav}</span>
         </button>
@@ -92,8 +101,11 @@ function Sidebar({
         <button
           className="sidebar__item sidebar__logout"
           type="button"
+          aria-label={isOpen ? undefined : t.nav.signOut}
+          title={isOpen ? undefined : t.nav.signOut}
           onClick={onLogout}
         >
+          <LogoutIcon />
           <span className="sidebar__label">{t.nav.signOut}</span>
         </button>
       )}

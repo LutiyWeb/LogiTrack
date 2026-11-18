@@ -1,7 +1,10 @@
 import { useState } from 'react';
-import { useMediaQuery } from '../../hooks/useMediaQuery';
+import ConfirmDialog from '../ConfirmDialog/ConfirmDialog';
+import FormHead from './FormHead';
+import NumberField from './NumberField';
+import { useIsMobile } from '../../hooks/useMediaQuery';
 import { t } from '../../i18n';
-import { formatMoney, readNumber } from '../../runs/seed';
+import { formatMoney } from '../../runs/seed';
 import { useAppDispatch, useAppSelector } from '../../store/hooks';
 import {
   logout,
@@ -20,8 +23,9 @@ function Account() {
   const ui = useAppSelector((state) => state.ui);
   const currentUser = useAppSelector(selectCurrentUser);
   const permissions = useAppSelector(selectPermissions);
-  const isMobile = useMediaQuery('(max-width: 767px)');
+  const isMobile = useIsMobile();
   const [showAllProfile, setShowAllProfile] = useState(false);
+  const [confirmReset, setConfirmReset] = useState(false);
 
   return (
     <div className="runs">
@@ -84,10 +88,7 @@ function Account() {
       </section>
 
       <section className="runs__form" aria-label={t.account.targetsAria}>
-        <div className="runs__form-head">
-          <h2 className="runs__subtitle">{t.account.targetsTitle}</h2>
-          <span className="runs__meta">{t.account.targetsSub}</span>
-        </div>
+        <FormHead title={t.account.targetsTitle} hint={t.account.targetsSub} />
         {!permissions.canEditTargets && (
           <p className="runs__note runs__form-head">
             {t.account.readOnly}
@@ -98,130 +99,95 @@ function Account() {
           <input
             className="runs__input"
             disabled={!permissions.canEditTargets}
+            aria-invalid={!ui.dispatcherName.trim()}
             value={ui.dispatcherName}
             onChange={(event) =>
-              dispatch(
-                updateCarrierTargets({ dispatcherName: event.target.value }),
-              )
+              dispatch(updateCarrierTargets({ dispatcherName: event.target.value }))
             }
           />
+          {!ui.dispatcherName.trim() && (
+            <span className="runs__field-error">{t.validation.nameRequired}</span>
+          )}
         </label>
-        <label className="runs__field">
-          <span className="runs__label">
-            {t.account.targetRate(formatMoney(ui.targetRatePerMile, 2))}
-          </span>
-          <input
-            className="runs__input"
-            type="number"
-            min="0"
-            max="10"
-            step="0.25"
-            disabled={!permissions.canEditTargets}
-            value={ui.targetRatePerMile || ''}
-            onChange={(event) =>
-              dispatch(
-                updateCarrierTargets({
-                  targetRatePerMile: readNumber(event.target.value),
-                }),
-              )
-            }
-          />
-        </label>
-        <label className="runs__field">
-          <span className="runs__label">
-            {t.account.maxEmpty(ui.maxEmptyPercent)}
-          </span>
-          <input
-            className="runs__input"
-            type="number"
-            min="0"
-            max="80"
-            step="5"
-            disabled={!permissions.canEditTargets}
-            value={ui.maxEmptyPercent || ''}
-            onChange={(event) =>
-              dispatch(
-                updateCarrierTargets({
-                  maxEmptyPercent: readNumber(event.target.value),
-                }),
-              )
-            }
-          />
-        </label>
-        <label className="runs__field">
-          <span className="runs__label">
-            {t.account.fuelCost}
-          </span>
-          <input
-            className="runs__input"
-            type="number"
-            min="0"
-            max="5"
-            step="0.05"
-            disabled={!permissions.canEditTargets}
-            value={ui.fuelCostPerMile || ''}
-            onChange={(event) =>
-              dispatch(
-                updateCarrierTargets({
-                  fuelCostPerMile: readNumber(event.target.value),
-                }),
-              )
-            }
-          />
-        </label>
-        <label className="runs__field">
-          <span className="runs__label">
-            {t.account.driverPay}
-          </span>
-          <input
-            className="runs__input"
-            type="number"
-            min="0"
-            max="5"
-            step="0.05"
-            disabled={!permissions.canEditTargets}
-            value={ui.driverPayPerMile || ''}
-            onChange={(event) =>
-              dispatch(
-                updateCarrierTargets({
-                  driverPayPerMile: readNumber(event.target.value),
-                }),
-              )
-            }
-          />
-        </label>
-        <label className="runs__field">
-          <span className="runs__label">{t.drivers.idleSetting(ui.idleDaysAlert)}</span>
-          <input
-            className="runs__input"
-            type="number"
-            min="1"
-            max="14"
-            step="1"
-            disabled={!permissions.canEditTargets}
-            value={ui.idleDaysAlert || ''}
-            onChange={(event) =>
-              dispatch(updateCarrierTargets({ idleDaysAlert: readNumber(event.target.value) }))
-            }
-          />
-        </label>
+        <NumberField
+          label={t.account.targetRate(formatMoney(ui.targetRatePerMile, 2))}
+          value={ui.targetRatePerMile}
+          min={0}
+          max={20}
+          exclusiveMin
+          step="0.25"
+          disabled={!permissions.canEditTargets}
+          onCommit={(targetRatePerMile) => dispatch(updateCarrierTargets({ targetRatePerMile }))}
+        />
+        <NumberField
+          label={t.account.maxEmpty(ui.maxEmptyPercent)}
+          value={ui.maxEmptyPercent}
+          min={0}
+          max={100}
+          integer
+          step="5"
+          disabled={!permissions.canEditTargets}
+          onCommit={(maxEmptyPercent) => dispatch(updateCarrierTargets({ maxEmptyPercent }))}
+        />
+        <NumberField
+          label={t.account.fuelCost}
+          value={ui.fuelCostPerMile}
+          min={0}
+          max={5}
+          step="0.05"
+          disabled={!permissions.canEditTargets}
+          onCommit={(fuelCostPerMile) => dispatch(updateCarrierTargets({ fuelCostPerMile }))}
+        />
+        <NumberField
+          label={t.account.driverPay}
+          value={ui.driverPayPerMile}
+          min={0}
+          max={5}
+          step="0.05"
+          disabled={!permissions.canEditTargets}
+          onCommit={(driverPayPerMile) => dispatch(updateCarrierTargets({ driverPayPerMile }))}
+        />
+        <NumberField
+          label={t.drivers.idleSetting(ui.idleDaysAlert)}
+          value={ui.idleDaysAlert}
+          min={1}
+          max={14}
+          integer
+          step="1"
+          disabled={!permissions.canEditTargets}
+          onCommit={(idleDaysAlert) => dispatch(updateCarrierTargets({ idleDaysAlert }))}
+        />
       </section>
 
-      <section className="runs__block" aria-label={t.account.dataAria}>
-        <div className="runs__form-head">
-          <div>
-            <h2 className="runs__subtitle">{t.account.dataTitle}</h2>
-            <p className="runs__meta">{t.account.dataSub}</p>
+      {permissions.canResetData && (
+        <section className="runs__block" aria-label={t.account.dataAria}>
+          <div className="runs__form-head">
+            <div>
+              <h2 className="runs__subtitle">{t.account.dataTitle}</h2>
+              <p className="runs__meta">{t.account.dataSub}</p>
+            </div>
+            <button
+              type="button"
+              className="runs__button runs__button--secondary runs__button--block"
+              onClick={() => setConfirmReset(true)}
+            >
+              {t.account.resetData}
+            </button>
           </div>
-          <button
-            type="button"
-            className="runs__button runs__button--secondary runs__button--block"
-            onClick={() => resetAllData(dispatch)}
-          >
-            {t.account.resetData}
-          </button>
-        </div>
-      </section>
+        </section>
+      )}
+      {confirmReset && (
+        <ConfirmDialog
+          title={t.account.resetTitle}
+          text={t.account.resetText}
+          confirmLabel={t.account.resetConfirm}
+          onCancel={() => setConfirmReset(false)}
+          onConfirm={() => {
+            setConfirmReset(false);
+            resetAllData(dispatch);
+          }}
+        />
+      )}
     </div>
   );
 }

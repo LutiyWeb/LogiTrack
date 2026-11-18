@@ -30,6 +30,7 @@ import { markBrokerRead } from '../../store/slices/brokerSlice';
 import { showToast } from '../../store/slices/toastsSlice';
 import { setActiveSection } from '../../store/slices/uiSlice';
 import ActionMenu from '../ActionMenu/ActionMenu';
+import { useChatPanel } from '../Chats/ChatPanelContext';
 import ConfirmDialog from '../ConfirmDialog/ConfirmDialog';
 import AddLoadModal from './AddLoadForm';
 import BrokerThread from './BrokerThread';
@@ -50,6 +51,7 @@ const MAX_EMPTY_LEG_MILES = 5000;
 
 function RunDetail() {
   const dispatch = useAppDispatch();
+  const { openChat } = useChatPanel();
   const enriched = useAppSelector(selectOpenRun);
   const currentUser = useAppSelector(selectCurrentUser);
   const permissions = useAppSelector(selectPermissions);
@@ -72,6 +74,9 @@ function RunDetail() {
   }, [scrollToOffers, dispatch]);
 
   if (!enriched) return null;
+
+  // Выручка, расходы, маржа и $/милю — для диспетчера и менеджера; водителю видны только мили и часы.
+  const showEconomics = permissions.canViewOverview;
 
   const {
     run,
@@ -104,6 +109,15 @@ function RunDetail() {
           <h1 className="workspace__title">{run.truck}</h1>
           <div className="runs__heading-controls">
             <RunStatusBadge status={run.status} />
+            {permissions.canManageLoads && (
+              <button
+                type="button"
+                className="runs__button runs__button--secondary runs__button--small"
+                onClick={(event) => openChat(run.driver, event.currentTarget)}
+              >
+                {t.chats.chatWith}
+              </button>
+            )}
           </div>
         </header>
       </div>
@@ -131,6 +145,7 @@ function RunDetail() {
               : undefined
           }
         />
+        {showEconomics && (
         <StatTile
           label={t.runDetail.revenue}
           value={formatMoney(earned, 0)}
@@ -143,6 +158,8 @@ function RunDetail() {
               : undefined
           }
         />
+        )}
+        {showEconomics && (
         <StatTile
           label={t.common.allInLabel}
           value={perMile === null ? t.units.dash : formatMoney(perMile, 2)}
@@ -158,8 +175,10 @@ function RunDetail() {
               : undefined
           }
         />
+        )}
       </dl>
-      <div className="runs__inline-visual">
+      <div className="runs__run-status">
+        <div className="runs__run-driver">
         {run.status !== 'Completed' && (
           <HosRing hoursLeft={run.drivingHoursLeft} />
         )}
@@ -169,6 +188,7 @@ function RunDetail() {
             ? ''
             : t.runDetail.shiftLeft(formatHours(run.drivingHoursLeft))}
         </p>
+        </div>
         <MilesSplitBar paidMiles={paidMiles} emptyMiles={empty} />
       </div>
       <section className="runs__block" aria-label={t.runDetail.loadsAria}>
@@ -209,6 +229,7 @@ function RunDetail() {
                           ariaLabel={t.runDetail.statusFor(
                             load.customer || load.id,
                           )}
+                          disabled={billing === 'Invoiced'}
                           onChange={(nextStatus) =>
                             dispatch(
                               updateLoadStatus({
@@ -244,23 +265,13 @@ function RunDetail() {
                         )}
                       </button>
                     )}
-                    {load.detentionFee ? (
-                      <span className="runs__badge runs__badge--ok">
-                        {t.runDetail.detentionBadge(load.detentionFee)}
-                      </span>
-                    ) : null}
                     {load.status === 'Delivered' && (
                       <>
-                        <span
-                          className={`runs__badge ${billingTone ? `runs__badge${billingTone}` : ''}`}
-                        >
-                          {billingStatusLabel(billing)}
-                        </span>
                         {billing === 'POD required' &&
                           permissions.canUpdateLoadStatus && (
                             <button
                               type="button"
-                              className="runs__button runs__button--small"
+                              className="runs__button runs__button--secondary runs__button--small"
                               onClick={() =>
                                 dispatch(
                                   advanceLoadBilling({
@@ -277,7 +288,7 @@ function RunDetail() {
                           permissions.canManageLoads && (
                             <button
                               type="button"
-                              className="runs__button runs__button--small"
+                              className="runs__button runs__button--secondary runs__button--small"
                               onClick={() => {
                                 dispatch(
                                   advanceLoadBilling({
@@ -340,6 +351,23 @@ function RunDetail() {
                     />
                   </div>
                 </div>
+                {/* Статусы — отдельной строкой: в ряду справа остаются только действия. */}
+                {(load.detentionFee || load.status === 'Delivered') && (
+                  <div className="runs__load-tags">
+                    {load.detentionFee ? (
+                      <span className="runs__badge runs__badge--ok">
+                        {t.runDetail.detentionBadge(load.detentionFee)}
+                      </span>
+                    ) : null}
+                    {load.status === 'Delivered' && (
+                      <span
+                        className={`runs__badge ${billingTone ? `runs__badge${billingTone}` : ''}`}
+                      >
+                        {billingStatusLabel(billing)}
+                      </span>
+                    )}
+                  </div>
+                )}
                 {load.specialInstructions && (
                   <div className="runs__instructions" role="note">
                     <strong className="runs__instructions-title">

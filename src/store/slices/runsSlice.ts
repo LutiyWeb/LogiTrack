@@ -114,7 +114,8 @@ const runsSlice = createSlice({
           : (action.payload.draft ?? state.draft);
 
       const run = state.runs.find((item) => item.id === runId);
-      if (!run) return;
+      // В завершённый рейс груз не добавляется: для тягача создаётся новый рейс.
+      if (!run || run.status === 'Completed') return;
 
       const load = draftToLoad(sourceDraft, crypto.randomUUID());
       if (load.status === 'Delivered') {
@@ -191,7 +192,8 @@ const runsSlice = createSlice({
     ) {
       const run = state.runs.find((item) => item.id === action.payload.runId);
       const load = run?.loads.find((item) => item.id === action.payload.loadId);
-      if (run && load) {
+      // После выставленного счёта статус груза не откатывается.
+      if (run && load && load.billingStatus !== 'Invoiced') {
         load.status = action.payload.status;
         if (action.payload.status === 'Delivered' && !load.billingStatus) {
           load.billingStatus = 'POD required';
@@ -210,6 +212,7 @@ const runsSlice = createSlice({
         load.billingStatus = 'POD received';
       } else if (load.billingStatus === 'POD received') {
         load.billingStatus = 'Invoiced';
+        load.invoicedAmount = load.rate;
       }
     },
     invoiceCustomerLoads(state, action: PayloadAction<string>) {
@@ -221,6 +224,7 @@ const runsSlice = createSlice({
             load.billingStatus === 'POD received'
           ) {
             load.billingStatus = 'Invoiced';
+            load.invoicedAmount = load.rate;
           }
         });
       });

@@ -50,14 +50,20 @@ export const payoutHistory: PayoutRecord[] = [
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 
-/** Сколько полных дней от SEED_NOW до даты (отрицательно — срок уже прошёл). */
+/** Календарный день YYYY-MM-DD как UTC-полночь: разница дней не зависит от часового пояса и времени суток. */
+function dayStart(date: string) {
+  const [year, month, day] = date.slice(0, 10).split('-').map(Number);
+  return Date.UTC(year, month - 1, day);
+}
+
+/** Сколько календарных дней от «сегодня» (SEED_NOW) до даты (отрицательно — срок уже прошёл). */
 export function daysUntil(date: string) {
-  return Math.floor((new Date(date).getTime() - new Date(SEED_NOW).getTime()) / DAY_MS);
+  return Math.round((dayStart(date) - dayStart(SEED_NOW)) / DAY_MS);
 }
 
 /** Сколько полных дней прошло с даты до SEED_NOW. */
 function daysSince(date: string) {
-  return Math.floor((new Date(SEED_NOW).getTime() - new Date(date).getTime()) / DAY_MS);
+  return Math.round((dayStart(SEED_NOW) - dayStart(date)) / DAY_MS);
 }
 
 export type DriverRow = {
@@ -71,15 +77,36 @@ export type DriverRow = {
   idleDays: number | null;
   /** Мили и сумма к выплате за текущую неделю. */
   weekMiles: number;
+  /** Начислено за неделю по пройденным милям. */
   weekPay: number;
+  /** Уже выплачено (сумма на момент отметки). */
+  paidAmount: number;
+  /** Осталось выплатить: начислено минус выплачено. */
+  due: number;
   isPaid: boolean;
 };
+
+/**
+ * Пройденные мили рейса: порожний перегон до загрузки — когда водитель выехал,
+ * мили под вантажем — когда груз доставлен, возврат на базу — когда рейс завершён.
+ */
+export function traveledMiles(item: EnrichedRun) {
+  const { run, legs } = item;
+  let miles = 0;
+  run.loads.forEach((load, index) => {
+    if (load.status !== 'Assigned') miles += legs[index]?.miles ?? 0;
+    if (load.status === 'Delivered') miles += load.miles;
+  });
+  if (run.status === 'Completed') miles += legs.at(-1)?.miles ?? 0;
+  return miles;
+}
 
 export function buildDriverRows(
   drivers: Driver[],
   runs: EnrichedRun[],
   payPerMile: number,
   paidThisWeek: string[],
+  paidAmounts: Record<string, number> = {},
 ): DriverRow[] {
   return drivers.map((driver) => {
     const own = runs.filter((item) => item.run.driver === driver.name);
@@ -97,11 +124,13 @@ export function buildDriverRows(
             ? 'Resting'
             : 'Free';
 
-    // Оплачиваются пройденные мили: запланированный рейс ещё не начат.
-    const weekMiles = own
-      .filter((item) => item.run.status !== 'Planned')
-      .reduce((sum, item) => sum + (item.totalMiles ?? item.paidMiles), 0);
-    const isPaid = paidThisWeek.includes(driver.name);
+    // Оплачиваются только пройденные мили.
+    const weekMiles = own.reduce((sum, item) => sum + traveledMiles(item), 0);
+    const weekPay = Math.round(weekMiles * payPerMile);
+    const marked = paidThisWeek.includes(driver.name);
+    const paidAmount = marked ? (paidAmounts[driver.name] ?? weekPay) : 0;
+    const due = Math.max(0, weekPay - paidAmount);
+    const isPaid = marked && due === 0;
 
     const idleDays = !activeRun && driver.lastRunEnded ? daysSince(driver.lastRunEnded) : null;
 
@@ -114,7 +143,9 @@ export function buildDriverRows(
       docsDaysLeft,
       idleDays,
       weekMiles,
-      weekPay: Math.round(weekMiles * payPerMile),
+      weekPay,
+      paidAmount,
+      due,
       isPaid,
     };
   });
@@ -126,7 +157,7 @@ export function driverAlerts(rows: DriverRow[], idleDaysLimit: number) {
     (row) => row.status !== 'DocsExpired' && row.idleDays !== null && row.idleDays >= idleDaysLimit,
   );
   const docs = rows.filter((row) => row.docsDaysLeft <= 30);
-  const toPay = rows.filter((row) => !row.isPaid).reduce((sum, row) => sum + row.weekPay, 0);
+  const toPay = rows.reduce((sum, row) => sum + row.due, 0);
   return { idle, docs, toPay };
 }
 

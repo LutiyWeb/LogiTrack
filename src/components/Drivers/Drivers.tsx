@@ -18,7 +18,7 @@ import { markDriverPaid } from '../../store/slices/driversSlice';
 import { showToast } from '../../store/slices/toastsSlice';
 import { openRun } from '../../store/slices/runsSlice';
 import { setActiveSection } from '../../store/slices/uiSlice';
-import { useMediaQuery } from '../../hooks/useMediaQuery';
+import { useIsMobile } from '../../hooks/useMediaQuery';
 import { HosRing } from '../Workspace/RunVisuals';
 import StatTile from '../Workspace/StatTile';
 import '../Workspace/Workspace.scss';
@@ -39,12 +39,13 @@ function Drivers() {
   const runs = useAppSelector(selectEnrichedRuns);
   const payPerMile = useAppSelector((state) => state.ui.driverPayPerMile);
   const paidThisWeek = useAppSelector((state) => state.drivers.paidThisWeek);
+  const paidAmounts = useAppSelector((state) => state.drivers.paidAmounts);
   const [openName, setOpenName] = useState<string | null>(null);
   const [showAll, setShowAll] = useState(false);
   const [filter, setFilter] = useState<DriverFilter>('all');
-  const isMobile = useMediaQuery('(max-width: 767px)');
+  const isMobile = useIsMobile();
 
-  const rows = buildDriverRows(seedDrivers, runs, payPerMile, paidThisWeek);
+  const rows = buildDriverRows(seedDrivers, runs, payPerMile, paidThisWeek, paidAmounts);
   const statusFilters = (Object.keys(t.drivers.statusFilter) as DriverFilter[]).filter(
     (key) => key === 'all' || rows.some((row) => row.status === key),
   );
@@ -55,7 +56,7 @@ function Drivers() {
   const visibleRows = isShortened ? filteredRows.slice(0, MOBILE_DRIVERS_LIMIT) : filteredRows;
   const hasMore = isMobile && activeFilter === 'all' && rows.length > MOBILE_DRIVERS_LIMIT;
   const docsProblems = rows.filter((row) => row.docsDaysLeft <= 30).length;
-  const toPay = rows.filter((row) => !row.isPaid).reduce((sum, row) => sum + row.weekPay, 0);
+  const toPay = rows.reduce((sum, row) => sum + row.due, 0);
 
   return (
     <div className="runs">
@@ -145,14 +146,18 @@ function Drivers() {
                 </div>
                 <div className="runs__load-actions runs__account-actions">
                   <span className={`runs__badge runs__badge--${row.isPaid ? 'ok' : 'warn'}`}>
-                    {row.isPaid ? t.drivers.paid : t.drivers.accrued}
+                    {row.isPaid
+                      ? t.drivers.paid
+                      : row.paidAmount > 0
+                        ? t.drivers.partlyPaid(formatMoney(row.paidAmount, 0), formatMoney(row.due, 0))
+                        : t.drivers.accrued}
                   </span>
                   {!row.isPaid && (
                     <button
                       type="button"
                       className="runs__button runs__button--secondary runs__button--small"
                       onClick={() => {
-                        dispatch(markDriverPaid(row.driver.name));
+                        dispatch(markDriverPaid({ driver: row.driver.name, amount: row.weekPay }));
                         dispatch(showToast('success', t.notify.paid(row.driver.name)));
                       }}
                     >
@@ -221,7 +226,7 @@ function DriverItem({
             <span className="runs__meta">{t.drivers.idle(row.idleDays)}</span>
           )}
           <span className="runs__meta">
-            {row.isPaid ? t.drivers.paid : t.drivers.weekPay(formatMoney(row.weekPay, 0))}
+            {row.isPaid ? t.drivers.paid : t.drivers.weekPay(formatMoney(row.due, 0))}
           </span>
         </span>
       </button>
@@ -274,7 +279,11 @@ function DriverItem({
           <ul className="runs__driver-runs">
             <li className="runs__meta">
               {t.drivers.payoutLine(CURRENT_WEEK, formatMiles(row.weekMiles), formatMoney(row.weekPay, 0))} ·{' '}
-              {row.isPaid ? t.drivers.paid : t.drivers.accrued}
+              {row.isPaid
+                ? t.drivers.paid
+                : row.paidAmount > 0
+                  ? t.drivers.partlyPaid(formatMoney(row.paidAmount, 0), formatMoney(row.due, 0))
+                  : t.drivers.accrued}
             </li>
             {history.map((item) => (
               <li key={item.week} className="runs__meta">

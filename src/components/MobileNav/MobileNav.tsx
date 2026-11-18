@@ -1,8 +1,9 @@
 import { useEffect, useState } from 'react';
+import { useModalDialog } from '../../hooks/useModalDialog';
 import userPhoto from '../../assets/user.svg';
 import { t } from '../../i18n';
 import { primaryMenuIds, type MenuItem } from '../../navigation';
-import { SupportIcon } from '../Sidebar/icons';
+import { ChatsIcon, LogoutIcon, SupportIcon } from '../Sidebar/icons';
 import { menuIcons } from '../Sidebar/menuIcons';
 import './MobileNav.scss';
 
@@ -16,9 +17,12 @@ type MobileNavProps = {
   onSelect: (id: MenuItem['id']) => void;
   onLogout: () => void;
   onSupport: () => void;
+  /** Открывает боковую панель чатов (кнопка в верхней панели). */
+  onOpenChats?: (opener: HTMLElement) => void;
+  unreadChats?: number;
 };
 
-/** Mobile navigation (< 768px): fixed top bar with ☰, fixed bottom bar with the main sections. */
+/** Mobile navigation (≤ 768px): fixed top bar with ☰, fixed bottom bar with the main sections. */
 function MobileNav({
   items,
   activeId,
@@ -29,8 +33,12 @@ function MobileNav({
   onSelect,
   onLogout,
   onSupport,
+  onOpenChats,
+  unreadChats = 0,
 }: MobileNavProps) {
   const [menuOpen, setMenuOpen] = useState(false);
+  // Фокус уходит в шторку и возвращается на ☰ после закрытия.
+  const panelRef = useModalDialog<HTMLDivElement>(menuOpen);
 
   const primary = primaryMenuIds
     .map((id) => items.find((item) => item.id === id))
@@ -62,6 +70,7 @@ function MobileNav({
         <button
           type="button"
           className="mobile-bar__menu"
+          data-modal-return
           aria-label={t.nav.openMenu}
           aria-expanded={menuOpen}
           onClick={() => setMenuOpen(true)}
@@ -70,7 +79,14 @@ function MobileNav({
           {secondaryHasBadge && <span className="mobile-bar__dot" aria-hidden="true" />}
         </button>
         <p className="mobile-bar__title">{title}</p>
-        <img className="mobile-bar__avatar" src={userPhoto} alt="" />
+        {onOpenChats ? (
+          <button type="button" className="mobile-bar__chat" aria-label={t.chats.openPanel} onClick={(event) => onOpenChats(event.currentTarget)}>
+            <ChatsIcon />
+            {unreadChats > 0 && <span className="mobile-bar__chat-count">{unreadChats}</span>}
+          </button>
+        ) : (
+          <span aria-hidden="true" />
+        )}
       </header>
 
       <nav className="mobile-tabs" aria-label={t.nav.bottomNav}>
@@ -104,7 +120,7 @@ function MobileNav({
             aria-label={t.nav.closeMenu}
             onClick={() => setMenuOpen(false)}
           />
-          <div className="mobile-drawer__panel">
+          <div ref={panelRef} tabIndex={-1} className="mobile-drawer__panel">
             <div className="mobile-drawer__head">
               <img className="mobile-drawer__avatar" src={userPhoto} alt="" />
               <div className="mobile-drawer__user">
@@ -159,6 +175,7 @@ function MobileNav({
                   onLogout();
                 }}
               >
+                <LogoutIcon />
                 <span>{t.nav.signOut}</span>
               </button>
             </div>

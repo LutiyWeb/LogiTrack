@@ -13,6 +13,8 @@ type Params = {
   openRunId: string | null;
   allowedSections: MenuItem['id'][];
   runIds: string[];
+  /** Рейс, которым ограничен пользователь (водитель): другие рейсы по ссылке не открываются. */
+  lockedRunId?: string | null;
 };
 
 /**
@@ -20,7 +22,14 @@ type Params = {
  * The address wins when it changes (link, reload, Back/Forward); the store wins when
  * the app itself changes screen, which then pushes a new address.
  */
-export function useRouteSync({ enabled, sectionId, openRunId, allowedSections, runIds }: Params) {
+export function useRouteSync({
+  enabled,
+  sectionId,
+  openRunId,
+  allowedSections,
+  runIds,
+  lockedRunId = null,
+}: Params) {
   const dispatch = useAppDispatch();
   const navigate = useNavigate();
   const { pathname } = useLocation();
@@ -51,16 +60,29 @@ export function useRouteSync({ enabled, sectionId, openRunId, allowedSections, r
       target !== null &&
       allowedSections.includes(target.sectionId) &&
       (target.runId === null || runIds.includes(target.runId));
+    // Водитель открывает только свой рейс: чужой по ссылке ведёт на его собственный.
+    const foreignRun =
+      lockedRunId !== null && target?.sectionId === 'board' && target.runId !== null && target.runId !== lockedRunId;
+    if (foreignRun) {
+      const own = stateToPath({ sectionId: 'board', runId: lockedRunId });
+      if (own !== pathname) navigate(own, { replace: true });
+      return;
+    }
     if (!isValid) {
-      // A known section with an unknown run stays on that section's list.
+      // A known section with an unknown run stays on that section's list; an address that is
+      // not one of the app's pages leads to the list of the current section.
       const fallback =
-        target !== null && allowedSections.includes(target.sectionId)
-          ? stateToPath({ sectionId: target.sectionId, runId: null })
-          : statePath;
+        target === null
+          ? pathname === '/'
+            ? statePath
+            : stateToPath({ sectionId, runId: null })
+          : allowedSections.includes(target.sectionId)
+            ? stateToPath({ sectionId: target.sectionId, runId: null })
+            : statePath;
       if (fallback !== pathname) navigate(fallback, { replace: true });
       return;
     }
     if (target.sectionId !== sectionId) dispatch(setActiveSection(target.sectionId));
     if (target.sectionId === 'board' && target.runId !== openRunId) dispatch(openRun(target.runId));
-  }, [pathname, stateKey, enabled, sectionId, runId, openRunId, allowedSections, runIds, dispatch, navigate]);
+  }, [pathname, stateKey, enabled, sectionId, runId, openRunId, allowedSections, runIds, lockedRunId, dispatch, navigate]);
 }

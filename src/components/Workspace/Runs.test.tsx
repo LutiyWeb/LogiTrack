@@ -131,7 +131,7 @@ describe('LogiTrack CRM UI flows', () => {
 
     await user.click(screen.getByRole('button', { name: 'Огляд' }));
     expect(screen.getByRole('heading', { name: 'Огляд' })).toBeInTheDocument();
-    expect(screen.getByText(/Чистий прибуток \$/)).toBeInTheDocument();
+    expect(screen.getByText(/Прибуток по рейсах \$/)).toBeInTheDocument();
     expect(screen.getByText('$/милю загалом')).toBeInTheDocument();
 
     const alertsSection = screen.getByRole('region', {
@@ -158,7 +158,8 @@ describe('LogiTrack CRM UI flows', () => {
     expect(screen.getByRole('heading', { name: 'Акаунт' })).toBeInTheDocument();
     expect(screen.getByText('LogiTrack Freight LLC')).toBeInTheDocument();
 
-    await user.click(screen.getByRole('button', { name: 'Скинути всі дані' }));
+    // Диспетчеру сброс данных недоступен: кнопка есть только у менеджера.
+    expect(screen.queryByRole('button', { name: 'Скинути всі дані' })).not.toBeInTheDocument();
     await user.click(screen.getByRole('button', { name: 'Рейси' }));
     expect(screen.getByRole('heading', { name: 'Рейси' })).toBeInTheDocument();
   });
@@ -219,7 +220,7 @@ describe('LogiTrack CRM UI flows', () => {
 
     await user.type(
       screen.getByPlaceholderText(
-        'Запишіть дзвінок водія, номер рампи або нотатку брокера…',
+        'Дзвінок водія, рампа або нотатка…',
       ),
       'Signed BOL uploaded from cab',
     );
@@ -249,5 +250,25 @@ describe('LogiTrack CRM UI flows', () => {
 
     await user.click(screen.getByRole('button', { name: 'Акаунт' }));
     expect(screen.getByLabelText('Ім’я диспетчера')).not.toBeDisabled();
+
+    // Сброс данных — только менеджер и только после подтверждения.
+    await user.click(screen.getByRole('button', { name: 'Скинути всі дані' }));
+    expect(screen.getByRole('alertdialog')).toBeInTheDocument();
+    await user.click(within(screen.getByRole('alertdialog')).getAllByRole('button', { name: 'Скасувати' })[1]);
+    expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument();
+  });
+
+  it('hides revenue, costs and $/mile from the driver in the open run', async () => {
+    const user = userEvent.setup();
+    const testStore = createAppStore();
+    testStore.dispatch(loginAsUser('driver'));
+    render(<App customStore={testStore} />);
+
+    const row = screen.queryByRole('button', { name: /Тягач 214/i });
+    if (row) await user.click(row);
+    expect(screen.getByRole('heading', { name: 'Тягач 214' })).toBeInTheDocument();
+    expect(screen.queryByText('Виручка')).not.toBeInTheDocument();
+    expect(screen.queryByText(/Витрати/)).not.toBeInTheDocument();
+    expect(screen.queryByText('$/милю загалом')).not.toBeInTheDocument();
   });
 });

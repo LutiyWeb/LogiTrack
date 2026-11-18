@@ -1,6 +1,8 @@
 import { useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
+import { useModalDialog } from '../../hooks/useModalDialog';
 import { t } from '../../i18n';
+import { formatWhen } from '../../runs/seed';
 import { useAppDispatch, useAppSelector } from '../../store/hooks';
 import { selectCurrentUser } from '../../store/slices/authSlice';
 import { showToast } from '../../store/slices/toastsSlice';
@@ -16,8 +18,9 @@ function SupportDialog({ sectionLabel, onClose }: { sectionLabel: string; onClos
   const [kind, setKind] = useState<Kind>('bug');
   const [urgent, setUrgent] = useState(false);
   const [text, setText] = useState('');
+  const dialogRef = useModalDialog<HTMLFormElement>();
   // Время открытия окна — фиксируем один раз.
-  const [openedAt] = useState(() => new Date().toLocaleString('uk-UA'));
+  const [openedAt] = useState(() => formatWhen(new Date().toISOString()));
 
   useEffect(() => {
     const onKey = (event: KeyboardEvent) => {
@@ -52,7 +55,7 @@ function SupportDialog({ sectionLabel, onClose }: { sectionLabel: string; onClos
         if (event.target === event.currentTarget) onClose();
       }}
     >
-      <form className="ratecon__dialog" onSubmit={submit}>
+      <form ref={dialogRef} tabIndex={-1} className="ratecon__dialog" onSubmit={submit}>
         <header className="ratecon__head">
           <div>
             <h2 className="runs__subtitle">{t.support.title}</h2>
@@ -64,7 +67,7 @@ function SupportDialog({ sectionLabel, onClose }: { sectionLabel: string; onClos
         </header>
 
         <div className="ratecon__pick">
-          <div className="runs__filters runs__filters--inline" role="group" aria-label={t.support.kindAria}>
+          <div className="runs__filters runs__filters--inline runs__filters--scroll" role="group" aria-label={t.support.kindAria}>
             {(['bug', 'question', 'idea'] as const).map((option) => (
               <button
                 key={option}

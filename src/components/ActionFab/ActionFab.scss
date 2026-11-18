@@ -1,3 +1,5 @@
+@use '../../styles/breakpoints' as *;
+
 .action-fab {
   position: fixed;
   right: 16px;
@@ -49,6 +51,10 @@
     border-radius: 16px 16px 0 0;
     box-shadow: 0 -8px 24px rgb(15 23 42 / 18%);
     animation: action-sheet-in var(--transition-base);
+
+    &:focus {
+      outline: none;
+    }
   }
 
   &__title {
@@ -85,7 +91,7 @@
 }
 
 // Room at the end of the page so the button never covers the last card.
-@media (max-width: 767px) {
+@media (max-width: $mobile-max) {
   body.has-fab .workspace {
     padding-bottom: calc(var(--mobile-tabs-height) + env(safe-area-inset-bottom) + 16px + 56px + 16px);
   }

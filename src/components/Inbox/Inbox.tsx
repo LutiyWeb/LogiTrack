@@ -1,8 +1,9 @@
-import { useState } from 'react';
-import { useMediaQuery } from '../../hooks/useMediaQuery';
+import { useEffect, useRef, useState } from 'react';
+import { useIsMobile } from '../../hooks/useMediaQuery';
 import { t } from '../../i18n';
 import {
   emptyManualLoad,
+  findDuplicate,
   intakePdf,
   loadInboxPdf,
   pdfCache,
@@ -62,7 +63,8 @@ function Inbox() {
   const [dialog, setDialog] = useState<RateConDialogState>(null);
   const [emailCount, setEmailCount] = useState(0);
   const [receiving, setReceiving] = useState(false);
-  const isMobile = useMediaQuery('(max-width: 767px)');
+  const isMobile = useIsMobile();
+  const filtersRef = useRef<HTMLDivElement>(null);
   const [draggingFile, setDraggingFile] = useState(false);
 
   const waiting = items.filter(
@@ -73,38 +75,63 @@ function Inbox() {
       ? waiting
       : items.filter((item) => item.status === filterStatus[filter]);
 
-  // Новый PDF сразу становится грузом в очереди и открывается на проверку.
-  async function addPdf(source: RateConSource, meta: Partial<InboxLoad> = {}) {
+  // Загруженный PDF открывается на проверку, но в очередь попадает только после «Зберегти» или назначения.
+  async function readPdf(source: RateConSource, meta: Partial<InboxLoad> = {}) {
     const item = await intakePdf(source.data, {
       fileName: source.name,
       source: 'pdf',
       ...meta,
     });
+    const loadNumber = item.draft.loadNumber ?? '';
+    if (loadNumber && findDuplicate(items, loadNumber)) {
+      item.warnings = [...item.warnings, t.validation.duplicate(loadNumber)];
+    }
     pdfCache.set(item.id, source.data);
-    dispatch(addInboxLoad(item));
-    setFilter('waiting');
     return item;
   }
 
+  // Письмо приходит в очередь сразу. Номер груза, который уже есть в очереди, второй раз не создаётся.
   async function simulateEmail() {
-    const sample = sampleFiles[emailCount % sampleFiles.length];
     setReceiving(true);
     try {
-      const response = await fetch(sampleUrl(sample.file));
-      if (!response.ok) return;
-      await addPdf(
-        { name: sample.file, data: await response.arrayBuffer() },
-        {
-          source: 'email',
-          emailFrom: sample.from,
-          fileUrl: sampleUrl(sample.file),
-        },
-      );
-      setEmailCount((count) => count + 1);
+      for (let step = 0; step < sampleFiles.length; step += 1) {
+        const sample = sampleFiles[(emailCount + step) % sampleFiles.length];
+        const response = await fetch(sampleUrl(sample.file));
+        if (!response.ok) return;
+        const item = await readPdf(
+          { name: sample.file, data: await response.arrayBuffer() },
+          {
+            source: 'email',
+            emailFrom: sample.from,
+            fileUrl: sampleUrl(sample.file),
+          },
+        );
+        if (findDuplicate(items, item.draft.loadNumber ?? '')) {
+          pdfCache.delete(item.id);
+          continue;
+        }
+        item.warnings = [];
+        dispatch(addInboxLoad(item));
+        setFilter('waiting');
+        setEmailCount((count) => count + step + 1);
+        return;
+      }
+      dispatch(showToast('warning', t.validation.noNewEmails));
     } finally {
       setReceiving(false);
     }
   }
+
+  // Активная вкладка всегда в видимой части ленты, как бы ни сменился фильтр.
+  useEffect(() => {
+    const bar = filtersRef.current;
+    const active = bar?.querySelector<HTMLElement>('.is-active');
+    if (!bar || !active) return;
+    const left =
+      active.getBoundingClientRect().left - bar.getBoundingClientRect().left + bar.scrollLeft;
+    const target = Math.max(0, left - (bar.clientWidth - active.offsetWidth) / 2);
+    bar.scrollTo?.({ left: target, behavior: 'smooth' });
+  }, [filter, isMobile]);
 
   async function openReview(item: InboxLoad) {
     setDialog({ stage: 'review', item, pdf: await loadInboxPdf(item) });
@@ -135,7 +162,8 @@ function Inbox() {
           return;
         }
         void readSource(file).then(async (source) => {
-          const item = await addPdf(source);
+          const item = await readPdf(source);
+          setFilter('waiting');
           setDialog({ stage: 'review', item, pdf: source.data });
         });
       }}
@@ -215,6 +243,7 @@ function Inbox() {
       )}
 
       <div
+        ref={filtersRef}
         className="runs__filters runs__filters--inline runs__filters--scroll"
         role="group"
         aria-label={t.inbox.filterAria}
@@ -227,14 +256,7 @@ function Inbox() {
               className={
                 filter === option ? 'runs__filter is-active' : 'runs__filter'
               }
-              onClick={(event) => {
-                setFilter(option);
-                event.currentTarget.scrollIntoView?.({
-                  block: 'nearest',
-                  inline: 'nearest',
-                  behavior: 'smooth',
-                });
-              }}
+              onClick={() => setFilter(option)}
             >
               {option === 'waiting'
                 ? t.inbox.filters.waiting(waiting.length)
@@ -290,9 +312,10 @@ function Inbox() {
         state={dialog}
         onClose={() => setDialog(null)}
         onPick={(source) => {
-          void addPdf(source).then((item) =>
-            setDialog({ stage: 'review', item, pdf: source.data }),
-          );
+          void readPdf(source).then((item) => {
+            setFilter('waiting');
+            setDialog({ stage: 'review', item, pdf: source.data });
+          });
         }}
       />
     </div>
@@ -373,7 +396,7 @@ function InboxCard({
             </button>
             <button
               type="button"
-              className="runs__button runs__button--small"
+              className="runs__button runs__button--secondary runs__button--small"
               onClick={onReview}
             >
               {t.inbox.review}
@@ -391,7 +414,7 @@ function InboxCard({
             </button>
             <button
               type="button"
-              className="runs__button runs__button--small"
+              className="runs__button runs__button--secondary runs__button--small"
               onClick={onConfirm}
             >
               {t.inbox.confirm}
