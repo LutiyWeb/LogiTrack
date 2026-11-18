@@ -2,7 +2,8 @@
   // Палитра по референсу (Monday CRM): тёмно-бирюзовый основной, зелёный «Won», коралловый «Lost».
   --color-bg: #f5f7fb;
   --color-surface: #fff;
-  --color-text: #323338;
+  --color-ink: #151c23; // titles, names, tile labels
+  --color-text: #3a4250; // regular text
   --color-hover: #f0f2f6;
   --color-line: #e1e4ea;
   --color-primary: #2a6177;
@@ -26,6 +27,7 @@
   --radius-full: 50%;
 
   --font-family: Inter, system-ui, sans-serif;
+  --font-display: "Fira Sans Condensed", Inter, system-ui, sans-serif;
   --font-size-s: 14px;
   --font-size-l: 24px;
 

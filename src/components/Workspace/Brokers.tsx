@@ -8,6 +8,7 @@ import {
 } from '../../store/slices/runsSlice';
 import { showToast } from '../../store/slices/toastsSlice';
 import { setActiveSection } from '../../store/slices/uiSlice';
+import StatTile from './StatTile';
 
 function Brokers() {
   const dispatch = useAppDispatch();
@@ -26,27 +27,15 @@ function Brokers() {
         </div>
       </header>
 
-      <dl className="runs__stats" aria-label={t.brokers.kpiAria}>
-        <div className="runs__stat runs__stat--blue">
-          <dt>{t.brokers.activeAccounts}</dt>
-          <dd>{brokers.length}</dd>
-          <span className="runs__meta">{t.brokers.activeAccountsSub}</span>
-        </div>
-        <div className="runs__stat runs__stat--slate">
-          <dt>{t.brokers.totalContracted}</dt>
-          <dd>{formatMoney(totalContracted, 0)}</dd>
-          <span className="runs__meta">{t.brokers.totalContractedSub}</span>
-        </div>
-        <div className="runs__stat runs__stat--good">
-          <dt>{t.brokers.invoiced}</dt>
-          <dd>{formatMoney(totalInvoiced, 0)}</dd>
-          <span className="runs__meta">{t.brokers.invoicedSub}</span>
-        </div>
-        <div className="runs__stat runs__stat--warn">
-          <dt>{t.brokers.pending}</dt>
-          <dd>{formatMoney(totalPending, 0)}</dd>
-          <span className="runs__meta">{t.brokers.pendingSub}</span>
-        </div>
+      <dl className="runs__stats runs__stats--kpi" aria-label={t.brokers.kpiAria}>
+        <StatTile label={t.brokers.activeAccounts} value={brokers.length} meta={t.brokers.activeAccountsSub} />
+        <StatTile
+          label={t.brokers.totalContracted}
+          value={formatMoney(totalContracted, 0)}
+          meta={t.brokers.totalContractedSub}
+        />
+        <StatTile label={t.brokers.invoiced} value={formatMoney(totalInvoiced, 0)} meta={t.brokers.invoicedSub} />
+        <StatTile label={t.brokers.pending} value={formatMoney(totalPending, 0)} meta={t.brokers.pendingSub} />
       </dl>
 
       <section className="runs__block" aria-label={t.brokers.directoryAria}>

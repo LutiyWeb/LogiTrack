@@ -18,8 +18,14 @@ import { markDriverPaid } from '../../store/slices/driversSlice';
 import { showToast } from '../../store/slices/toastsSlice';
 import { openRun } from '../../store/slices/runsSlice';
 import { setActiveSection } from '../../store/slices/uiSlice';
+import { useMediaQuery } from '../../hooks/useMediaQuery';
 import { HosRing } from '../Workspace/RunVisuals';
+import StatTile from '../Workspace/StatTile';
 import '../Workspace/Workspace.scss';
+
+const MOBILE_DRIVERS_LIMIT = 3;
+
+type DriverFilter = 'all' | DriverStatus;
 
 const statusClass: Record<DriverStatus, string> = {
   Free: 'runs__status--completed',
@@ -34,8 +40,20 @@ function Drivers() {
   const payPerMile = useAppSelector((state) => state.ui.driverPayPerMile);
   const paidThisWeek = useAppSelector((state) => state.drivers.paidThisWeek);
   const [openName, setOpenName] = useState<string | null>(null);
+  const [showAll, setShowAll] = useState(false);
+  const [filter, setFilter] = useState<DriverFilter>('all');
+  const isMobile = useMediaQuery('(max-width: 767px)');
 
   const rows = buildDriverRows(seedDrivers, runs, payPerMile, paidThisWeek);
+  const statusFilters = (Object.keys(t.drivers.statusFilter) as DriverFilter[]).filter(
+    (key) => key === 'all' || rows.some((row) => row.status === key),
+  );
+  const activeFilter = statusFilters.includes(filter) ? filter : 'all';
+  const filteredRows =
+    isMobile && activeFilter !== 'all' ? rows.filter((row) => row.status === activeFilter) : rows;
+  const isShortened = isMobile && activeFilter === 'all' && !showAll;
+  const visibleRows = isShortened ? filteredRows.slice(0, MOBILE_DRIVERS_LIMIT) : filteredRows;
+  const hasMore = isMobile && activeFilter === 'all' && rows.length > MOBILE_DRIVERS_LIMIT;
   const docsProblems = rows.filter((row) => row.docsDaysLeft <= 30).length;
   const toPay = rows.filter((row) => !row.isPaid).reduce((sum, row) => sum + row.weekPay, 0);
 
@@ -48,30 +66,42 @@ function Drivers() {
         </div>
       </header>
 
-      <dl className="runs__stats" aria-label={t.drivers.kpiAria}>
-        <div className="runs__stat">
-          <dt>{t.drivers.free}</dt>
-          <dd>{rows.filter((row) => row.status === 'Free').length}</dd>
-        </div>
-        <div className="runs__stat">
-          <dt>{t.drivers.onRun}</dt>
-          <dd>{rows.filter((row) => row.status === 'OnRun').length}</dd>
-        </div>
-        <div className="runs__stat">
-          <dt>{t.drivers.docsProblems}</dt>
-          <dd>{docsProblems}</dd>
-          <span className="runs__meta">{t.drivers.docsProblemsSub}</span>
-        </div>
-        <div className="runs__stat">
-          <dt>{t.drivers.toPay}</dt>
-          <dd>{formatMoney(toPay, 0)}</dd>
-          <span className="runs__meta">{CURRENT_WEEK}</span>
-        </div>
+      <dl className="runs__stats runs__stats--kpi" aria-label={t.drivers.kpiAria}>
+        <StatTile label={t.drivers.free} value={rows.filter((row) => row.status === 'Free').length} />
+        <StatTile label={t.drivers.onRun} value={rows.filter((row) => row.status === 'OnRun').length} />
+        <StatTile label={t.drivers.docsProblems} value={docsProblems} meta={t.drivers.docsProblemsSub} />
+        <StatTile label={t.drivers.toPay} value={formatMoney(toPay, 0)} meta={CURRENT_WEEK} />
       </dl>
 
       <section className="runs__block" aria-label={t.drivers.listAria}>
-        <ul className="runs__list">
-          {rows.map((row) => (
+        {isMobile && (
+          <div
+            className="runs__filters runs__filters--inline runs__filters--scroll"
+            role="group"
+            aria-label={t.drivers.filterAria}
+          >
+            {statusFilters.map((key) => (
+              <button
+                key={key}
+                type="button"
+                className={activeFilter === key ? 'runs__filter is-active' : 'runs__filter'}
+                onClick={(event) => {
+                  setFilter(key);
+                  event.currentTarget.scrollIntoView?.({
+                    block: 'nearest',
+                    inline: 'nearest',
+                    behavior: 'smooth',
+                  });
+                }}
+              >
+                {t.drivers.statusFilter[key]} (
+                {key === 'all' ? rows.length : rows.filter((row) => row.status === key).length})
+              </button>
+            ))}
+          </div>
+        )}
+        <ul className="runs__list runs__list--tiles">
+          {visibleRows.map((row) => (
             <DriverItem
               key={row.driver.name}
               row={row}
@@ -85,6 +115,16 @@ function Drivers() {
             />
           ))}
         </ul>
+        {hasMore && (
+          <button
+            type="button"
+            className="runs__button runs__button--secondary runs__button--small"
+            aria-expanded={showAll}
+            onClick={() => setShowAll((value) => !value)}
+          >
+            {showAll ? t.drivers.showLess : t.drivers.showAll(rows.length)}
+          </button>
+        )}
       </section>
 
       <section className="runs__block" aria-label={t.drivers.payoutsAria}>

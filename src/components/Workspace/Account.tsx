@@ -1,3 +1,5 @@
+import { useState } from 'react';
+import { useMediaQuery } from '../../hooks/useMediaQuery';
 import { t } from '../../i18n';
 import { formatMoney, readNumber } from '../../runs/seed';
 import { useAppDispatch, useAppSelector } from '../../store/hooks';
@@ -11,16 +13,19 @@ import {
   updateCarrierTargets,
 } from '../../store/slices/uiSlice';
 import { resetAllData } from '../../store/store';
+import StatTile from './StatTile';
 
 function Account() {
   const dispatch = useAppDispatch();
   const ui = useAppSelector((state) => state.ui);
   const currentUser = useAppSelector(selectCurrentUser);
   const permissions = useAppSelector(selectPermissions);
+  const isMobile = useMediaQuery('(max-width: 767px)');
+  const [showAllProfile, setShowAllProfile] = useState(false);
 
   return (
     <div className="runs">
-      <header className="runs__heading">
+      <header className="runs__heading runs__heading--with-action">
         <div>
           <h1 className="workspace__title">{t.account.title}</h1>
           <p className="runs__meta">{t.account.subtitle}</p>
@@ -36,33 +41,46 @@ function Account() {
 
       <section className="runs__block" aria-label={t.account.profileAria}>
         <h2 className="runs__subtitle">{t.account.profileTitle}</h2>
-        <div className="runs__stats">
-          <div className="runs__stat runs__stat--blue">
-            <dt>{t.account.carrier}</dt>
-            <dd className="runs__stat-text">{carrierProfile.carrierName}</dd>
-            <span className="runs__meta">{carrierProfile.mcNumber}</span>
-          </div>
-          <div className="runs__stat runs__stat--slate">
-            <dt>{t.account.dot}</dt>
-            <dd className="runs__stat-text">{carrierProfile.dotNumber}</dd>
-            <span className="runs__meta">{t.account.dotSub}</span>
-          </div>
-          <div className="runs__stat runs__stat--blue">
-            <dt>{t.account.homeTerminal}</dt>
-            <dd className="runs__stat-text">{carrierProfile.homeYard}</dd>
-            <span className="runs__meta">{t.account.homeTerminalSub}</span>
-          </div>
-          <div className="runs__stat runs__stat--slate">
-            <dt>{t.account.signedIn}</dt>
-            <dd className="runs__stat-text">
-              {currentUser?.name ?? ui.dispatcherName}
-            </dd>
-            <span className="runs__meta">
-              {currentUser?.roleTitle ?? carrierProfile.dispatcherRole}
-              {currentUser ? ` · ${currentUser.email}` : ''}
-            </span>
-          </div>
-        </div>
+        <dl className="runs__stats runs__stats--kpi">
+          <StatTile
+            label={t.account.carrier}
+            value={carrierProfile.carrierName}
+            valueClassName="runs__stat-text"
+            meta={carrierProfile.mcNumber}
+          />
+          {(!isMobile || showAllProfile) && (
+            <>
+              <StatTile
+                label={t.account.dot}
+                value={carrierProfile.dotNumber}
+                valueClassName="runs__stat-text"
+                meta={t.account.dotSub}
+              />
+              <StatTile
+                label={t.account.homeTerminal}
+                value={carrierProfile.homeYard}
+                valueClassName="runs__stat-text"
+                meta={t.account.homeTerminalSub}
+              />
+            </>
+          )}
+          <StatTile
+            label={t.account.signedIn}
+            value={currentUser?.name ?? ui.dispatcherName}
+            valueClassName="runs__stat-text"
+            meta={`${currentUser?.roleTitle ?? carrierProfile.dispatcherRole}${currentUser ? ` · ${currentUser.email}` : ''}`}
+          />
+        </dl>
+        {isMobile && (
+          <button
+            type="button"
+            className="runs__button runs__button--secondary runs__button--small runs__button--block"
+            aria-expanded={showAllProfile}
+            onClick={() => setShowAllProfile((value) => !value)}
+          >
+            {showAllProfile ? t.account.showLess : t.account.showAll}
+          </button>
+        )}
       </section>
 
       <section className="runs__form" aria-label={t.account.targetsAria}>
@@ -190,14 +208,14 @@ function Account() {
       </section>
 
       <section className="runs__block" aria-label={t.account.dataAria}>
-        <div className="runs__load-head">
+        <div className="runs__form-head">
           <div>
             <h2 className="runs__subtitle">{t.account.dataTitle}</h2>
             <p className="runs__meta">{t.account.dataSub}</p>
           </div>
           <button
             type="button"
-            className="runs__button runs__button--secondary"
+            className="runs__button runs__button--secondary runs__button--block"
             onClick={() => resetAllData(dispatch)}
           >
             {t.account.resetData}

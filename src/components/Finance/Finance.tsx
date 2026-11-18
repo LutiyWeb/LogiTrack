@@ -11,6 +11,7 @@ import { selectMonthResult } from '../../store/selectors/financeSelectors';
 import { setFixedCost, updateFinance } from '../../store/slices/financeSlice';
 import '../Workspace/Workspace.scss';
 import './Finance.scss';
+import StatTile from '../Workspace/StatTile';
 
 const fixedKeys = Object.keys(t.finance.fixed) as (keyof FixedCosts)[];
 
@@ -65,28 +66,24 @@ function Finance() {
           </div>
         </section>
 
-        <dl className="runs__stats finance__stats" aria-label={t.finance.kpiAria}>
-          <div className="runs__stat">
-            <dt>{t.finance.revenue}</dt>
-            <dd>{formatMoney(month.revenue, 0)}</dd>
-            <span className="runs__meta">{formatMiles(month.miles)}</span>
-          </div>
-          <div className="runs__stat" title={t.finance.estimateNote}>
-            <dt>{t.finance.costs}</dt>
-            <dd>{formatMoney(month.costs, 0)}</dd>
-            <span className="runs__meta">{t.finance.estimate}</span>
-          </div>
-          <div className="runs__stat">
-            <dt>{t.finance.profit}</dt>
-            <dd className={month.profit < 0 ? 'finance__negative' : undefined}>
-              {formatMoney(month.profit, 0)}
-            </dd>
-          </div>
-          <div className="runs__stat">
-            <dt>{t.finance.costPerMile}</dt>
-            <dd>{formatMoney(month.costPerMile, 2)}</dd>
-            <span className="runs__meta">{t.finance.costPerMileSub}</span>
-          </div>
+        <dl className="runs__stats runs__stats--kpi finance__stats" aria-label={t.finance.kpiAria}>
+          <StatTile label={t.finance.revenue} value={formatMoney(month.revenue, 0)} meta={formatMiles(month.miles)} />
+          <StatTile
+            label={t.finance.costs}
+            value={formatMoney(month.costs, 0)}
+            tooltip={t.finance.estimateNote}
+            meta={t.finance.estimate}
+          />
+          <StatTile
+            label={t.finance.profit}
+            value={formatMoney(month.profit, 0)}
+            valueClassName={month.profit < 0 ? 'finance__negative' : undefined}
+          />
+          <StatTile
+            label={t.finance.costPerMile}
+            value={formatMoney(month.costPerMile, 2)}
+            meta={t.finance.costPerMileSub}
+          />
         </dl>
       </div>
 

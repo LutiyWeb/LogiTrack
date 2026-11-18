@@ -132,3 +132,26 @@ input[type='search']::-webkit-search-results-decoration {
   outline: 2px solid var(--color-text);
   outline-offset: 2px;
 }
+
+// Second typeface: page and block titles, tile values and names in cards.
+// Everything else (labels, notes, buttons, fields, chat text) stays on Inter.
+.workspace__title,
+.mobile-bar__title,
+.runs__subtitle,
+.runs__stat dd,
+.runs__truck,
+.finance__headline,
+.confirm__title {
+  font-family: var(--font-display);
+}
+
+// Text hierarchy: ink for titles, names and tile labels; regular text and muted below it.
+.workspace__title,
+.mobile-bar__title,
+.runs__subtitle,
+.runs__truck,
+.runs__stat dt,
+.finance__headline,
+.confirm__title {
+  color: var(--color-ink);
+}
