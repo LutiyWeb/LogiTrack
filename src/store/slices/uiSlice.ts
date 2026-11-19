@@ -13,6 +13,8 @@ export const carrierProfile = {
 } as const;
 
 export type UiState = {
+  invoiceFilter: 'open' | 'overdue' | 'all';
+  workspaceSync: 'local' | 'shared' | 'error';
   activeSectionId: MenuItem['id'];
   isSidebarOpen: boolean;
   statusFilter: StatusFilter;
@@ -27,6 +29,8 @@ export type UiState = {
 
 export function createInitialUiState(): UiState {
   return {
+    invoiceFilter: 'open',
+    workspaceSync: 'local',
     activeSectionId: 'board',
     isSidebarOpen: true,
     statusFilter: 'All',
@@ -43,6 +47,12 @@ const uiSlice = createSlice({
   name: 'ui',
   initialState: createInitialUiState(),
   reducers: {
+    setInvoiceFilter(state, action: PayloadAction<UiState['invoiceFilter']>) {
+      state.invoiceFilter = action.payload;
+    },
+    setWorkspaceSync(state, action: PayloadAction<UiState['workspaceSync']>) {
+      state.workspaceSync = action.payload;
+    },
     setActiveSection(state, action: PayloadAction<MenuItem['id']>) {
       state.activeSectionId = action.payload;
     },
@@ -72,6 +82,8 @@ const uiSlice = createSlice({
 });
 
 export const {
+  setInvoiceFilter,
+  setWorkspaceSync,
   setActiveSection,
   toggleSidebar,
   setStatusFilter,

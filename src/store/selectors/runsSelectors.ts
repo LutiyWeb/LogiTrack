@@ -1,3 +1,10 @@
+import {
+  invoiceBalance,
+  invoiceOverdue,
+  invoicePaid,
+  invoiceTotal,
+} from '../../billing/billing';
+import { mileageEntries } from '../../drivers/earnings';
 import { createSelector } from '@reduxjs/toolkit';
 import {
   dollarsPerMile,
@@ -9,6 +16,7 @@ import {
   revenue,
   routeTimeline,
   runLegs,
+  SEED_NOW,
   type Leg,
   type RouteStep,
   type Run,
@@ -59,6 +67,10 @@ export type BrokerSummary = {
   totalRevenue: number;
   invoicedRevenue: number;
   pendingRevenue: number;
+  plannedRevenue: number;
+  outstandingRevenue: number;
+  paidRevenue: number;
+  overdueRevenue: number;
   readyToInvoiceCount: number;
   primaryRunId: string;
   primaryTruck: string;
@@ -99,8 +111,7 @@ export const selectEnrichedRuns = createSelector(
       const earned = revenue(run);
       const operatingCost =
         total === null ? null : Math.round(total * costPerMile);
-      const netProfit =
-        operatingCost === null ? null : earned - operatingCost;
+      const netProfit = operatingCost === null ? null : earned - operatingCost;
       const perMile = dollarsPerMile(run, legs);
       const deadheadPercent =
         empty !== null && total !== null && total > 0
@@ -136,9 +147,7 @@ export const selectFilteredRuns = createSelector(
   [selectEnrichedRuns, selectStatusFilter, selectCurrentUser],
   (enrichedRuns, filter, currentUser) => {
     const scopedRuns = currentUser?.assignedRunId
-      ? enrichedRuns.filter(
-          (item) => item.run.id === currentUser.assignedRunId,
-        )
+      ? enrichedRuns.filter((item) => item.run.driver === currentUser.name)
       : enrichedRuns;
 
     if (filter === 'All') return scopedRuns;
@@ -147,9 +156,13 @@ export const selectFilteredRuns = createSelector(
 );
 
 export const selectOpenRun = createSelector(
-  [selectEnrichedRuns, selectOpenRunId],
-  (enrichedRuns, openRunId) =>
-    enrichedRuns.find((item) => item.run.id === openRunId) ?? null,
+  [selectEnrichedRuns, selectOpenRunId, selectCurrentUser],
+  (enrichedRuns, openRunId, user) =>
+    enrichedRuns.find(
+      (item) =>
+        item.run.id === openRunId &&
+        (user?.role !== 'driver' || item.run.driver === user.name),
+    ) ?? null,
 );
 
 export const OVERVIEW_RUNS_LIMIT = 5;
@@ -162,15 +175,18 @@ function urgencyRank(item: EnrichedRun) {
 }
 
 /** Active runs for the overview, most urgent first; fewer driving hours left goes higher. */
-export const selectOverviewRuns = createSelector([selectEnrichedRuns], (enrichedRuns) =>
-  enrichedRuns
-    .filter((item) => item.run.status !== 'Completed')
-    .sort(
-      (a, b) =>
-        urgencyRank(a) - urgencyRank(b) ||
-        (a.run.drivingHoursLeft ?? Infinity) - (b.run.drivingHoursLeft ?? Infinity),
-    )
-    .slice(0, OVERVIEW_RUNS_LIMIT),
+export const selectOverviewRuns = createSelector(
+  [selectEnrichedRuns],
+  (enrichedRuns) =>
+    enrichedRuns
+      .filter((item) => item.run.status !== 'Completed')
+      .sort(
+        (a, b) =>
+          urgencyRank(a) - urgencyRank(b) ||
+          (a.run.drivingHoursLeft ?? Infinity) -
+            (b.run.drivingHoursLeft ?? Infinity),
+      )
+      .slice(0, OVERVIEW_RUNS_LIMIT),
 );
 
 export const selectFleetKpis = createSelector(
@@ -230,8 +246,8 @@ export const selectFleetKpis = createSelector(
 );
 
 export const selectBrokerSummaries = createSelector(
-  [selectRunsList],
-  (runs): BrokerSummary[] => {
+  [selectRunsList, (state: RootState) => state.runs.invoices],
+  (runs, invoices): BrokerSummary[] => {
     const map = new Map<string, BrokerSummary>();
 
     runs.forEach((run) => {
@@ -250,22 +266,53 @@ export const selectBrokerSummaries = createSelector(
           totalRevenue: 0,
           invoicedRevenue: 0,
           pendingRevenue: 0,
+          plannedRevenue: 0,
+          outstandingRevenue: 0,
+          paidRevenue: 0,
+          overdueRevenue: 0,
           readyToInvoiceCount: 0,
           primaryRunId: run.id,
           primaryTruck: run.truck,
         };
 
-        const isInvoiced = load.billingStatus === 'Invoiced';
+        const ownInvoices = invoices.filter(
+          (invoice) => invoice.runId === run.id && invoice.loadId === load.id,
+        );
+        const billed =
+          ownInvoices.reduce((sum, invoice) => sum + invoiceTotal(invoice), 0) /
+          100;
+        const delivered =
+          load.status === 'Delivered' &&
+          !!load.delivery.at &&
+          Date.parse(load.deliveredAt ?? load.delivery.at) <=
+            Date.parse(SEED_NOW);
         existing.loadsCount += 1;
         existing.totalRevenue += load.rate;
-        if (isInvoiced) {
-          existing.invoicedRevenue += load.invoicedAmount ?? load.rate;
-        }
-        if (load.billingStatus === 'POD received') {
+        existing.invoicedRevenue += billed;
+        existing.outstandingRevenue +=
+          ownInvoices.reduce(
+            (sum, invoice) => sum + invoiceBalance(invoice),
+            0,
+          ) / 100;
+        existing.paidRevenue +=
+          ownInvoices.reduce((sum, invoice) => sum + invoicePaid(invoice), 0) /
+          100;
+        existing.overdueRevenue +=
+          ownInvoices
+            .filter((invoice) => invoiceOverdue(invoice))
+            .reduce((sum, invoice) => sum + invoiceBalance(invoice), 0) / 100;
+        if (delivered)
+          existing.pendingRevenue += Math.max(
+            0,
+            Math.round((load.rate - billed) * 100) / 100,
+          );
+        else existing.plannedRevenue += load.rate;
+        if (
+          delivered &&
+          (load.billingStatus === 'POD received' ||
+            (billed > 0 && load.rate > billed))
+        )
           existing.readyToInvoiceCount += 1;
-        }
-        existing.pendingRevenue =
-          existing.totalRevenue - existing.invoicedRevenue;
 
         map.set(customer, existing);
       });
@@ -275,4 +322,34 @@ export const selectBrokerSummaries = createSelector(
   },
 );
 
-export const selectRunIds = createSelector([selectRunsList], (runs) => runs.map((run) => run.id));
+export const selectRealizedKpis = createSelector(
+  [selectEnrichedRuns, selectFuelCostPerMile, selectDriverPayPerMile],
+  (runs, fuel, driverPay) => {
+    const entries = runs
+      .flatMap((item) => mileageEntries(item))
+      .filter((entry) => entry.confirmed);
+    const miles = entries.reduce((sum, entry) => sum + (entry.miles ?? 0), 0);
+    const revenue = runs
+      .flatMap((item) => item.run.loads)
+      .filter(
+        (load) =>
+          load.status === 'Delivered' &&
+          Date.parse(load.deliveredAt ?? load.delivery.at) <=
+            Date.parse(SEED_NOW),
+      )
+      .reduce((sum, load) => sum + load.rate, 0);
+    const cost = Math.round(miles * (fuel + driverPay) * 100) / 100;
+    return {
+      revenue,
+      miles,
+      cost,
+      margin: revenue - cost,
+      unknownMileageCount: entries.filter((entry) => entry.miles === null)
+        .length,
+    };
+  },
+);
+
+export const selectRunIds = createSelector([selectRunsList], (runs) =>
+  runs.map((run) => run.id),
+);

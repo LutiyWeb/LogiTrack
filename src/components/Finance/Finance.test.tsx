@@ -13,17 +13,19 @@ describe('Фінанси', () => {
   it('counts break-even from fixed and per-mile costs', () => {
     const store = createAppStore();
     const before = selectMonthResult(store.getState());
-    expect(before.revenue).toBe(46650);
-    expect(before.miles).toBe(15240);
-    expect(before.costs).toBe(47100);
-    expect(before.milesToBreakeven).toBe(282);
+    expect(before.revenue).toBe(42850);
+    expect(before.miles).toBe(13795);
+    expect(before.costs).toBe(44991);
+    expect(before.milesToBreakeven).toBe(1301);
 
-    // Зворотний вантаж Тягача 214 виводить місяць у плюс.
+    // A future backhaul changes the plan but cannot improve realized monthly profit.
     store.dispatch(addLoad({ runId: '214', draft: backhaulPreset }));
-    expect(selectMonthResult(store.getState()).profit).toBeGreaterThan(0);
+    expect(selectMonthResult(store.getState()).profit).toBe(before.profit);
 
     store.dispatch(setFixedCost({ key: 'lease', value: 20000 }));
-    expect(selectMonthResult(store.getState()).breakeven).toBeGreaterThan(before.breakeven);
+    expect(selectMonthResult(store.getState()).breakeven).toBeGreaterThan(
+      before.breakeven,
+    );
   });
 
   it('is visible to the manager and hidden from the dispatcher', async () => {
@@ -33,12 +35,16 @@ describe('Фінанси', () => {
     const { unmount } = render(<App customStore={store} />);
 
     await user.click(screen.getByRole('button', { name: 'Фінанси' }));
-    expect(screen.getByText('До беззбитковості: ще $450 ≈ 282 милі')).toBeInTheDocument();
+    expect(
+      screen.getByText('До беззбитковості: ще $2,141 ≈ 1,301 миля'),
+    ).toBeInTheDocument();
     unmount();
 
     const dispatcherStore = createAppStore();
     dispatcherStore.dispatch(loginAsUser('dispatcher'));
     render(<App customStore={dispatcherStore} />);
-    expect(screen.queryByRole('button', { name: 'Фінанси' })).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole('button', { name: 'Фінанси' }),
+    ).not.toBeInTheDocument();
   });
 });

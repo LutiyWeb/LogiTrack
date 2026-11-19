@@ -24,6 +24,9 @@ export type Stop = {
   state: string;
   zip?: string;
   at: string;
+  timeZone?: string;
+  window?: 'fixed' | 'fcfs';
+  windowEnd?: string;
 };
 
 export type Load = {
@@ -37,8 +40,11 @@ export type Load = {
   bol: string;
   commodity: string;
   status: LoadStatus;
+  pickupConfirmedAt?: string;
+  deliveredAt?: string;
   billingStatus?: BillingStatus;
   detentionFee?: number;
+  detentionClaimIds?: string[];
   /** Сумма, на которую выставлен счёт: доплата за простой после счёта в неё не входит. */
   invoicedAmount?: number;
   loadNumber?: string;
@@ -50,11 +56,13 @@ export type Load = {
   brokerPhone?: string;
   brokerEmail?: string;
   rateConFile?: string;
+  sourceInboxId?: string;
   /** Instructions the driver must see, e.g. "Call 2 hours before arrival". */
   specialInstructions?: string;
 };
 
 export type TruckLocation = {
+  source?: string;
   lng: number;
   lat: number;
   label: string;
@@ -69,6 +77,7 @@ export type Run = {
   yardState: string;
   status: RunStatus;
   drivingHoursLeft: number | null;
+  trailerId?: string;
   loads: Load[];
   notes?: DispatchNote[];
   location?: TruckLocation;
@@ -121,6 +130,12 @@ export type LoadDraft = {
   deliveryAddress?: string;
   deliveryZip?: string;
   specialInstructions?: string;
+  pickupTimeZone?: string;
+  deliveryTimeZone?: string;
+  pickupWindow?: 'fixed' | 'fcfs';
+  deliveryWindow?: 'fixed' | 'fcfs';
+  pickupWindowEnd?: string;
+  deliveryWindowEnd?: string;
 };
 
 export type BackhaulOffer = {
@@ -135,7 +150,10 @@ export type BrokerInfo = {
   kind: 'Broker' | 'Shipper';
   mc: string;
   creditScore: string;
+  creditSource?: string;
+  creditCheckedAt?: string;
   terms: string;
+  paymentDays?: number;
 };
 
 export const brokerDirectory: Record<string, BrokerInfo> = {
@@ -144,6 +162,7 @@ export const brokerDirectory: Record<string, BrokerInfo> = {
     mc: 'MC-410294',
     creditScore: '98 · A+',
     terms: 'Швидка оплата за 2 дні',
+    paymentDays: 2,
   },
   'Blue Ridge Logistics': {
     kind: 'Broker',
@@ -156,12 +175,14 @@ export const brokerDirectory: Record<string, BrokerInfo> = {
     mc: 'MC-309182',
     creditScore: '92 · A',
     terms: 'Оплата за 15 днів',
+    paymentDays: 15,
   },
   'Bluegrass Retail': {
     kind: 'Shipper',
     mc: 'MC-774120',
     creditScore: '96 · A+',
     terms: 'Швидка оплата за 1 день',
+    paymentDays: 1,
   },
   'Apex Industrial': {
     kind: 'Broker',
@@ -181,8 +202,9 @@ export function getBrokerInfo(customer: string): BrokerInfo {
   return (
     brokerDirectory[customer] ?? {
       kind: 'Broker',
-      mc: 'MC перевірено',
-      creditScore: '90 · A-',
+      mc: '',
+      creditScore: 'Не перевірено',
+      creditSource: 'Зовнішня перевірка ще не підключена',
       terms: 'Оплата за 30 днів',
     }
   );
@@ -611,6 +633,7 @@ export function dollarsPerMile(run: Run, legs: Leg[]) {
 }
 
 export function shiftNote(run: Run, load: Load) {
+  if (load.pickup.at.slice(0, 10) > SEED_NOW.slice(0, 10)) return '';
   if (load.status === 'Delivered' || run.drivingHoursLeft === null) return '';
   if (load.driveHours <= run.drivingHoursLeft) return '';
 
@@ -640,6 +663,9 @@ export function draftToLoad(draft: LoadDraft, id = 'preview'): Load {
       state: draft.pickupState.trim().toUpperCase(),
       ...optionalStopText('zip', draft.pickupZip),
       at: draft.pickupAt,
+      timeZone: draft.pickupTimeZone,
+      window: draft.pickupWindow,
+      windowEnd: draft.pickupWindowEnd,
     },
     delivery: {
       place: draft.deliveryPlace.trim(),
@@ -648,6 +674,9 @@ export function draftToLoad(draft: LoadDraft, id = 'preview'): Load {
       state: draft.deliveryState.trim().toUpperCase(),
       ...optionalStopText('zip', draft.deliveryZip),
       at: draft.deliveryAt,
+      timeZone: draft.deliveryTimeZone,
+      window: draft.deliveryWindow,
+      windowEnd: draft.deliveryWindowEnd,
     },
     miles: readNumber(draft.miles),
     driveHours: readNumber(draft.driveHours),
@@ -714,7 +743,8 @@ export function routeTimeline(
         from: beforeLeg.from,
         to: beforeLeg.to,
         miles: beforeLeg.miles,
-        label: index === 0 ? t.timeline.deadheadFromYard : t.timeline.repositioning,
+        label:
+          index === 0 ? t.timeline.deadheadFromYard : t.timeline.repositioning,
       });
     }
 
@@ -780,7 +810,10 @@ export function formatWhen(value: string) {
 }
 
 export function deriveRunStatus(run: Run): RunStatus {
-  if (run.loads.length === 0 || run.loads.every((load) => load.status === 'Assigned')) {
+  if (
+    run.loads.length === 0 ||
+    run.loads.every((load) => load.status === 'Assigned')
+  ) {
     return 'Planned';
   }
 
@@ -846,5 +879,7 @@ export const fleetRoster: FleetTruck[] = [
  */
 export function newRunId(truck: string, existing: { id: string }[]) {
   const digits = truck.replace(/\D/g, '');
-  return digits && !existing.some((run) => run.id === digits) ? digits : crypto.randomUUID();
+  return digits && !existing.some((run) => run.id === digits)
+    ? digits
+    : crypto.randomUUID();
 }

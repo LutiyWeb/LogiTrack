@@ -1,4 +1,4 @@
-import { render, screen, within } from '@testing-library/react';
+import { fireEvent, render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it } from 'vitest';
 import App from '../../App';
@@ -35,7 +35,7 @@ describe('LogiTrack CRM UI flows', () => {
     expect(screen.getAllByText('710 миль').length).toBeGreaterThan(0);
     expect(screen.getAllByText('$3,200').length).toBeGreaterThan(0);
     expect(
-      screen.getByText('Чистий $1,409 · Витрати $1,791'),
+      screen.getByText('Планова маржа $1,409 · Оцінка витрат $1,791'),
     ).toBeInTheDocument();
     expect(screen.getByText('$2.27')).toBeInTheDocument();
 
@@ -48,7 +48,7 @@ describe('LogiTrack CRM UI flows', () => {
     expect(assignButtons[1]).toBeDisabled();
     expect(assignButtons[1]).toHaveAttribute(
       'title',
-      'Конфлікт годин водіння: завантаження о 17:00 не чекає обов’язкового 10-годинного відпочинку',
+      expect.stringMatching(/Запізнення/),
     );
 
     await user.click(
@@ -72,14 +72,12 @@ describe('LogiTrack CRM UI flows', () => {
     expect(screen.getAllByText('215 миль').length).toBeGreaterThan(0);
     expect(screen.getByText('$5,300')).toBeInTheDocument();
     expect(
-      screen.getByText('Чистий $3,516 · Витрати $1,784'),
+      screen.getByText('Планова маржа $3,516 · Оцінка витрат $1,784'),
     ).toBeInTheDocument();
     expect(screen.getByText('$3.77')).toBeInTheDocument();
     expect(
-      screen.getByText(
-        /Ця ділянка — 9 год\. До кінця зміни 3\.5 год\. Водій доїжджає залишок годин, потім потрібен 10-годинний відпочинок/,
-      ),
-    ).toBeInTheDocument();
+      screen.queryByText(/Водій доїжджає залишок годин, потім потрібен/),
+    ).not.toBeInTheDocument();
 
     await user.click(screen.getByRole('button', { name: 'Рейси' }));
     expect(screen.getByRole('heading', { name: 'Рейси' })).toBeInTheDocument();
@@ -88,7 +86,7 @@ describe('LogiTrack CRM UI flows', () => {
   it('filters runs by BOL search, adds $150 Detention fee, and navigates to Customers & billing with Create invoice', async () => {
     const user = userEvent.setup();
     const testStore = createAppStore();
-    testStore.dispatch(loginAsUser('dispatcher'));
+    testStore.dispatch(loginAsUser('manager'));
     render(<App customStore={testStore} />);
 
     const searchInput = screen.getByLabelText('Пошук рейсів');
@@ -97,14 +95,38 @@ describe('LogiTrack CRM UI flows', () => {
     expect(screen.queryByText('Тягач 118')).not.toBeInTheDocument();
 
     await user.click(screen.getByRole('button', { name: /Тягач 214/i }));
-    await user.click(screen.getByRole('button', { name: 'Ще' }));
     await user.click(
-      screen.getByRole('menuitem', { name: '+ $150 за простій' }),
+      screen.getByRole('button', { name: 'Документи, POD і події' }),
+    );
+    await user.click(
+      screen.getByRole('button', { name: 'Зафіксувати простій' }),
+    );
+    fireEvent.change(
+      screen
+        .getByLabelText('Прибуття')
+        .closest('label')!
+        .querySelector('input[type="datetime-local"]')!,
+      { target: { value: '2026-10-28T10:00' } },
+    );
+    fireEvent.change(
+      screen
+        .getByLabelText('Завершення очікування')
+        .closest('label')!
+        .querySelector('input[type="datetime-local"]')!,
+      { target: { value: '2026-10-28T14:00' } },
+    );
+    await user.click(
+      screen.getByRole('button', { name: 'Передати на погодження' }),
+    );
+    await user.type(
+      screen.getByLabelText('Підтвердження брокера / клієнта'),
+      'BROKER-APPROVAL',
+    );
+    await user.click(
+      screen.getByRole('button', { name: 'Погодити та додати до вартості' }),
     );
     expect(screen.getByText('+$150 за простій')).toBeInTheDocument();
-    expect(
-      screen.getByText(/Додано \$150 за простій до Hart Freight/),
-    ).toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: 'Підтвердити POD' }));
 
     await user.click(
       screen.getByRole('button', { name: 'Клієнти та рахунки' }),
@@ -117,10 +139,18 @@ describe('LogiTrack CRM UI flows', () => {
     expect(screen.getAllByText('Брокер').length).toBeGreaterThan(0);
     expect(screen.getAllByText('Вантажовідправник').length).toBeGreaterThan(0);
 
-    await user.click(screen.getByRole('button', { name: 'Виставити рахунок' }));
+    const hartCard = screen.getByText('Hart Freight').closest('li')!;
+    await user.click(
+      within(hartCard).getByRole('button', { name: 'Виставити рахунок' }),
+    );
     expect(
-      screen.queryByRole('button', { name: 'Виставити рахунок' }),
+      within(hartCard).queryByRole('button', { name: 'Виставити рахунок' }),
     ).not.toBeInTheDocument();
+    expect(
+      testStore
+        .getState()
+        .runs.invoices.find((invoice) => invoice.loadId === 'hart'),
+    ).toBeDefined();
   });
 
   it('navigates between Overview, Runs, and Account and supports data reset', async () => {
@@ -131,7 +161,7 @@ describe('LogiTrack CRM UI flows', () => {
 
     await user.click(screen.getByRole('button', { name: 'Огляд' }));
     expect(screen.getByRole('heading', { name: 'Огляд' })).toBeInTheDocument();
-    expect(screen.getByText(/Прибуток по рейсах \$/)).toBeInTheDocument();
+    expect(screen.getByText(/Планова маржа \$/)).toBeInTheDocument();
     expect(screen.getByText('$/милю загалом')).toBeInTheDocument();
 
     const alertsSection = screen.getByRole('region', {
@@ -159,7 +189,9 @@ describe('LogiTrack CRM UI flows', () => {
     expect(screen.getByText('LogiTrack Freight LLC')).toBeInTheDocument();
 
     // Диспетчеру сброс данных недоступен: кнопка есть только у менеджера.
-    expect(screen.queryByRole('button', { name: 'Скинути всі дані' })).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole('button', { name: 'Скинути всі дані' }),
+    ).not.toBeInTheDocument();
     await user.click(screen.getByRole('button', { name: 'Рейси' }));
     expect(screen.getByRole('heading', { name: 'Рейси' })).toBeInTheDocument();
   });
@@ -211,17 +243,17 @@ describe('LogiTrack CRM UI flows', () => {
     ).toBeInTheDocument();
 
     await user.click(
-      screen.getByRole('button', { name: 'Підтвердити доставку' }),
+      screen.getByRole('button', { name: 'Документи, POD і події' }),
     );
-    expect(screen.getByText('Доставку підтверджено')).toBeInTheDocument();
+    expect(
+      screen.queryByRole('button', { name: 'Підтвердити POD' }),
+    ).not.toBeInTheDocument();
     expect(
       screen.queryByRole('button', { name: 'Виставити рахунок' }),
     ).not.toBeInTheDocument();
 
     await user.type(
-      screen.getByPlaceholderText(
-        'Дзвінок водія, рампа або нотатка…',
-      ),
+      screen.getByPlaceholderText('Дзвінок водія, рампа або нотатка…'),
       'Signed BOL uploaded from cab',
     );
     await user.click(screen.getByRole('button', { name: 'Додати запис' }));
@@ -245,6 +277,10 @@ describe('LogiTrack CRM UI flows', () => {
       screen.getByRole('button', { name: 'Увійти як Sarah Jenkins' }),
     );
     await user.click(screen.getByRole('button', { name: /Тягач 214/i }));
+    await user.click(
+      screen.getByRole('button', { name: 'Документи, POD і події' }),
+    );
+    await user.click(screen.getByRole('button', { name: 'Підтвердити POD' }));
     await user.click(screen.getByRole('button', { name: 'Виставити рахунок' }));
     expect(screen.getByText('Рахунок виставлено')).toBeInTheDocument();
 
@@ -254,7 +290,11 @@ describe('LogiTrack CRM UI flows', () => {
     // Сброс данных — только менеджер и только после подтверждения.
     await user.click(screen.getByRole('button', { name: 'Скинути всі дані' }));
     expect(screen.getByRole('alertdialog')).toBeInTheDocument();
-    await user.click(within(screen.getByRole('alertdialog')).getAllByRole('button', { name: 'Скасувати' })[1]);
+    await user.click(
+      within(screen.getByRole('alertdialog')).getAllByRole('button', {
+        name: 'Скасувати',
+      })[1],
+    );
     expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument();
   });
 
@@ -266,7 +306,9 @@ describe('LogiTrack CRM UI flows', () => {
 
     const row = screen.queryByRole('button', { name: /Тягач 214/i });
     if (row) await user.click(row);
-    expect(screen.getByRole('heading', { name: 'Тягач 214' })).toBeInTheDocument();
+    expect(
+      screen.getByRole('heading', { name: 'Тягач 214' }),
+    ).toBeInTheDocument();
     expect(screen.queryByText('Виручка')).not.toBeInTheDocument();
     expect(screen.queryByText(/Витрати/)).not.toBeInTheDocument();
     expect(screen.queryByText('$/милю загалом')).not.toBeInTheDocument();

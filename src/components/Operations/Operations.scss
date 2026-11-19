@@ -1,0 +1,74 @@
+.operations {
+  min-width: 0;
+
+  details {
+    min-width: 0;
+    width: 100%;
+  }
+
+  summary {
+    min-height: 40px;
+    padding: 10px 0;
+    cursor: pointer;
+    color: var(--color-text);
+    font-size: var(--font-size-s);
+  }
+
+  p,
+  li,
+  dd,
+  a {
+    min-width: 0;
+    overflow-wrap: anywhere;
+  }
+
+  .runs__form > .runs__load-actions,
+  .runs__form > .runs__meta,
+  .runs__form > .runs__note,
+  .runs__form > .runs__field-error,
+  .runs__field:has(textarea),
+  .runs__field:has(input[type='file']) {
+    grid-column: 1 / -1;
+  }
+
+  .runs__driver-runs {
+    align-items: stretch;
+    gap: 8px;
+  }
+
+  &__file-field {
+    grid-column: 1 / -1;
+    min-width: 0;
+  }
+
+  &__file-picker {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 8px 12px;
+    min-width: 0;
+
+    .runs__button {
+      flex-shrink: 0;
+      min-height: 40px;
+    }
+  }
+
+  &__file-name {
+    flex: 1 1 160px;
+    min-width: 0;
+    overflow-wrap: anywhere;
+  }
+}
+
+@media (max-width: 415px) {
+  .operations .runs__button,
+  .operations .runs__load-actions {
+    width: 100%;
+  }
+
+  .operations .runs__button {
+    min-height: 40px;
+    white-space: normal;
+  }
+}

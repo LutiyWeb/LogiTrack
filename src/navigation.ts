@@ -11,10 +11,14 @@ export type MenuItem = {
     | 'chats'
     | 'brokers'
     | 'finance'
-    | 'account';
+    | 'account'
+    | 'fleet'
+    | 'integrations'
+    | 'driverPortal';
   label: string;
   /** Право роли, без которого пункт скрыт. */
   permission?: keyof RolePermissions;
+  role?: 'driver';
 };
 
 export const menuItems: MenuItem[] = [
@@ -26,8 +30,18 @@ export const menuItems: MenuItem[] = [
   { id: 'chats', label: t.nav.chats, permission: 'canManageLoads' },
   { id: 'brokers', label: t.nav.brokers, permission: 'canViewOverview' },
   { id: 'finance', label: t.nav.finance, permission: 'canViewFinance' },
+  { id: 'fleet', label: 'Техніка та огляди', permission: 'canManageLoads' },
+  { id: 'integrations', label: 'Інтеграції', permission: 'canViewFinance' },
+  { id: 'driverPortal', label: 'Моє завдання та виплати', role: 'driver' },
   { id: 'account', label: t.nav.account },
 ];
 
 /** Sections in the mobile bottom bar, in display order; the rest go to the ☰ menu. */
-export const primaryMenuIds: MenuItem['id'][] = ['overview', 'inbox', 'board', 'chats', 'planning'];
+export const primaryMenuIds: MenuItem['id'][] = [
+  'driverPortal',
+  'overview',
+  'inbox',
+  'board',
+  'chats',
+  'planning',
+];

@@ -2,13 +2,12 @@ import { useEffect, type InputHTMLAttributes } from 'react';
 import { loadStatusLabel, t } from '../../i18n';
 import DateField from '../DateField/DateField';
 import { useModalDialog } from '../../hooks/useModalDialog';
+import { bookingConflict } from '../../store/booking';
 import { validateDraft } from '../../runs/validation';
 import '../RateCon/RateCon.scss';
 import {
   backhaulPreset,
-  draftToLoad,
   loadStatuses,
-  shiftNote,
   type LoadDraft,
   type LoadStatus,
 } from '../../runs/seed';
@@ -26,6 +25,7 @@ function AddLoadModal({ defaultRunId }: { defaultRunId?: string }) {
   const isOpen = useAppSelector((state) => state.runs.isLoadModalOpen);
   const runs = useAppSelector((state) => state.runs.runs);
   const modalRunId = useAppSelector((state) => state.runs.modalRunId);
+  const state = useAppSelector((state) => state);
   const draft = useAppSelector((state) => state.runs.draft);
   const dialogRef = useModalDialog<HTMLFormElement>(isOpen);
 
@@ -57,16 +57,16 @@ function AddLoadModal({ defaultRunId }: { defaultRunId?: string }) {
     !draft.deliveryState.trim() && f.delivery.state,
     !draft.miles.trim() && f.miles,
   ].filter(Boolean) as string[];
-  // Тот же запрет, что у «Призначити вантаж» в предложениях: водитель не успевает по часам.
-  const hosConflict = Boolean(
-    targetRun &&
-      shiftNote(
-        { ...targetRun, loads: [...targetRun.loads, draftToLoad(draft, 'preview')] },
-        draftToLoad(draft, 'preview'),
-      ).includes(t.hos.pickupDropsOff),
-  );
+  const assignmentError = bookingConflict(state, {
+    target: { kind: 'existing', runId: targetRunId },
+    draft,
+    legMiles: {},
+    author: state.auth.currentUser?.name ?? '',
+    roleTitle: state.auth.currentUser?.roleTitle ?? '',
+  });
   const hasErrors = Object.keys(errors).length > 0;
-  const canAdd = missing.length === 0 && !hasErrors && !hosConflict && !!targetRun;
+  const canAdd =
+    missing.length === 0 && !hasErrors && !assignmentError && !!targetRun;
   const update = (partial: Partial<LoadDraft>) => dispatch(patchDraft(partial));
 
   return (
@@ -103,6 +103,11 @@ function AddLoadModal({ defaultRunId }: { defaultRunId?: string }) {
         </header>
 
         <div className="ratecon__pick">
+          {assignmentError && (
+            <p className="ratecon__warning" role="alert">
+              {assignmentError}
+            </p>
+          )}
           <button
             className="runs__button runs__button--secondary runs__button--small"
             type="button"
@@ -146,7 +151,9 @@ function AddLoadModal({ defaultRunId }: { defaultRunId?: string }) {
               <select
                 className="runs__input"
                 value={draft.status}
-                onChange={(e) => update({ status: e.target.value as LoadStatus })}
+                onChange={(e) =>
+                  update({ status: e.target.value as LoadStatus })
+                }
               >
                 {loadStatuses.map((s) => (
                   <option key={s} value={s}>
@@ -203,8 +210,8 @@ function AddLoadModal({ defaultRunId }: { defaultRunId?: string }) {
           <span className="ratecon__footer-hint">
             {missing.length > 0
               ? t.validation.missing(missing.join(', '))
-              : hosConflict
-                ? t.backhaul.hosConflict
+              : assignmentError
+                ? assignmentError
                 : hasErrors
                   ? t.rateCon.fixErrors
                   : ''}
@@ -287,7 +294,9 @@ function FormInput({
     <label className="runs__field">
       <span
         className="runs__label"
-        data-required={props.required && empty ? t.validation.required : undefined}
+        data-required={
+          props.required && empty ? t.validation.required : undefined
+        }
       >
         {label}
       </span>

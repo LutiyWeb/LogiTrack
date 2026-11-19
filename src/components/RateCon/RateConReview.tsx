@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState, type ReactNode } from 'react';
 import { runStatusLabel, t } from '../../i18n';
 import { daysUntil, seedDrivers } from '../../drivers/drivers';
-import type { InboxLoad } from '../../inbox/inbox';
+import { findDuplicate, type InboxLoad } from '../../inbox/inbox';
 import type { RateConField } from '../../ratecon/parseRateCon';
 import { planLoadRoute, type LoadRoutePlan } from '../../ratecon/routing';
 import {
@@ -26,18 +26,27 @@ import { useAppDispatch, useAppSelector } from '../../store/hooks';
 import { selectCurrentUser } from '../../store/slices/authSlice';
 import { addInboxLoad, saveInboxLoad } from '../../store/slices/inboxSlice';
 import { showToast } from '../../store/slices/toastsSlice';
-import { bookRateCon, openRun } from '../../store/slices/runsSlice';
+import { openRun } from '../../store/slices/runsSlice';
 import { carrierProfile, setActiveSection } from '../../store/slices/uiSlice';
+import {
+  assessAssignment,
+  appointmentSummary,
+  stopZone,
+  timeZones,
+} from '../../operations/dispatch';
+import { assignRateCon } from '../../store/booking';
+import { draftChanges, sameLoad } from '../../inbox/identity';
+import { LoadDifferences } from '../Inbox/LoadRevisions';
 import { validateDraft } from '../../runs/validation';
 import { useIsMobile } from '../../hooks/useMediaQuery';
 import DateField from '../DateField/DateField';
 import PdfPreview from './PdfPreview';
 import StatTile from '../Workspace/StatTile';
 
-
 type FieldKey = RateConField | 'driveHours';
 type FieldSource = 'pdf' | 'calc';
-type Target = { kind: 'new'; truck: string } | { kind: 'existing'; runId: string };
+type Target =
+  { kind: 'new'; truck: string } | { kind: 'existing'; runId: string };
 
 const REQUIRED: FieldKey[] = [
   'customer',
@@ -47,11 +56,20 @@ const REQUIRED: FieldKey[] = [
   'deliveryCity',
   'deliveryState',
   'miles',
+  'pickupAt',
+  'deliveryAt',
 ];
 
-const SHOULD_HAVE: FieldKey[] = ['pickupAt', 'deliveryAt', 'commodity', 'loadNumber'];
+const SHOULD_HAVE: FieldKey[] = [
+  'pickupAt',
+  'deliveryAt',
+  'commodity',
+  'loadNumber',
+];
 
-const [yardCity, yardState] = carrierProfile.homeYard.split(',').map((part) => part.trim());
+const [yardCity, yardState] = carrierProfile.homeYard
+  .split(',')
+  .map((part) => part.trim());
 const YARD = placeName(yardCity, yardState);
 
 function isStopComplete(city: string, state: string) {
@@ -71,6 +89,10 @@ function RateConReview({
 }) {
   const dispatch = useAppDispatch();
   const runs = useAppSelector((state) => state.runs.runs);
+  const eld = useAppSelector((state) => state.operations.eld);
+  const assets = useAppSelector((state) => state.operations.assets);
+  const [trailerId, setTrailerId] = useState('');
+  const inboxItems = useAppSelector((state) => state.inbox.items);
   const manualMiles = useAppSelector((state) => state.runs.manualMiles);
   const targetRate = useAppSelector((state) => state.ui.targetRatePerMile);
   const user = useAppSelector(selectCurrentUser);
@@ -99,20 +121,33 @@ function RateConReview({
   // Водителя с просроченными правами или медсправкой назначать нельзя.
   const expiredDrivers = new Set(
     seedDrivers
-      .filter((driver) => Math.min(daysUntil(driver.cdlExpires), daysUntil(driver.medicalExpires)) < 0)
+      .filter(
+        (driver) =>
+          Math.min(
+            daysUntil(driver.cdlExpires),
+            daysUntil(driver.medicalExpires),
+          ) < 0,
+      )
       .map((driver) => driver.name),
   );
   const isBlocked = (item: (typeof fleetRoster)[number]) =>
     busyTrucks.has(item.truck) || expiredDrivers.has(item.driver);
   const freeTrucks = fleetRoster.filter((item) => !isBlocked(item));
   // По умолчанию — свободный тягач, у водителя которого есть часы вождения.
-  const firstFreeTruck = freeTrucks.find((item) => item.drivingHoursLeft > 0) ?? freeTrucks[0];
+  const firstFreeTruck =
+    freeTrucks.find((item) => item.drivingHoursLeft > 0) ?? freeTrucks[0];
   // A busy truck frees up when the last load on its active run is delivered.
   const soonestFree = activeRuns
     .flatMap((run) => {
       const last = run.loads.at(-1);
       if (!last?.delivery.at || expiredDrivers.has(run.driver)) return [];
-      return [{ run, at: last.delivery.at, place: placeName(last.delivery.city, last.delivery.state) }];
+      return [
+        {
+          run,
+          at: last.delivery.at,
+          place: placeName(last.delivery.city, last.delivery.state),
+        },
+      ];
     })
     .sort((a, b) => a.at.localeCompare(b.at))[0];
   const [target, setTarget] = useState<Target>(
@@ -122,9 +157,17 @@ function RateConReview({
   );
 
   const targetRun: Run | null =
-    target.kind === 'existing' ? (runs.find((run) => run.id === target.runId) ?? null) : null;
-  const pickupName = placeName(draft.pickupCity.trim(), draft.pickupState.trim().toUpperCase());
-  const deliveryName = placeName(draft.deliveryCity.trim(), draft.deliveryState.trim().toUpperCase());
+    target.kind === 'existing'
+      ? (runs.find((run) => run.id === target.runId) ?? null)
+      : null;
+  const pickupName = placeName(
+    draft.pickupCity.trim(),
+    draft.pickupState.trim().toUpperCase(),
+  );
+  const deliveryName = placeName(
+    draft.deliveryCity.trim(),
+    draft.deliveryState.trim().toUpperCase(),
+  );
   const stopsReady =
     isStopComplete(draft.pickupCity, draft.pickupState) &&
     isStopComplete(draft.deliveryCity, draft.deliveryState);
@@ -134,7 +177,9 @@ function RateConReview({
         targetRun.loads[targetRun.loads.length - 1].delivery.state,
       )
     : YARD;
-  const routeKey = stopsReady ? `${pickupName}|${deliveryName}|${previousStop}` : '';
+  const routeKey = stopsReady
+    ? `${pickupName}|${deliveryName}|${previousStop}`
+    : '';
 
   // 2. Route the load: loaded miles, drive time and the empty legs around it.
   useEffect(() => {
@@ -151,28 +196,37 @@ function RateConReview({
       ])
         .catch(() => null)
         .then((result) => {
-        if (cancelled) return;
-        setRouting(false);
-        if (!result) {
-          setPlan(null);
-          return;
-        }
-        setPlan(result);
-        const loaded = result.loaded;
-        if (!loaded) return;
-        // Fill miles and drive time unless they came from the PDF or were typed in.
-        setForm((current) => {
-          const next = { draft: { ...current.draft }, sources: { ...current.sources } };
-          if (current.sources.miles === 'calc' || (!current.sources.miles && !current.draft.miles)) {
-            next.draft.miles = String(loaded.miles);
-            next.sources.miles = 'calc';
+          if (cancelled) return;
+          setRouting(false);
+          if (!result) {
+            setPlan(null);
+            return;
           }
-          if (current.sources.driveHours === 'calc' || !current.draft.driveHours) {
-            next.draft.driveHours = String(Math.round(loaded.hours * 2) / 2);
-            next.sources.driveHours = 'calc';
-          }
-          return next;
-        });
+          setPlan(result);
+          const loaded = result.loaded;
+          if (!loaded) return;
+          // Fill miles and drive time unless they came from the PDF or were typed in.
+          setForm((current) => {
+            const next = {
+              draft: { ...current.draft },
+              sources: { ...current.sources },
+            };
+            if (
+              current.sources.miles === 'calc' ||
+              (!current.sources.miles && !current.draft.miles)
+            ) {
+              next.draft.miles = String(loaded.miles);
+              next.sources.miles = 'calc';
+            }
+            if (
+              current.sources.driveHours === 'calc' ||
+              !current.draft.driveHours
+            ) {
+              next.draft.driveHours = String(Math.round(loaded.hours * 2) / 2);
+              next.sources.driveHours = 'calc';
+            }
+            return next;
+          });
         });
     }, 400);
     return () => {
@@ -186,31 +240,36 @@ function RateConReview({
   const legMiles = useMemo(() => {
     const result: Record<string, number> = {};
     plan?.emptyLegs.forEach((leg) => {
-      if (leg.miles !== null && leg.from !== leg.to && !isKnownEmptyLeg(leg.from, leg.to)) {
+      if (
+        leg.miles !== null &&
+        leg.from !== leg.to &&
+        !isKnownEmptyLeg(leg.from, leg.to)
+      ) {
         result[emptyLegKey(leg.from, leg.to)] = leg.miles;
       }
     });
     return result;
   }, [plan]);
 
-  const roster = fleetRoster.find((item) => target.kind === 'new' && item.truck === target.truck);
+  const roster = fleetRoster.find(
+    (item) => target.kind === 'new' && item.truck === target.truck,
+  );
 
   const projection = useMemo(() => {
     if (!stopsReady || !plan) return null;
     const load = draftToLoad(draft, 'preview');
-    const simulated: Run =
-      targetRun
-        ? { ...targetRun, loads: [...targetRun.loads, load] }
-        : {
-            id: 'preview',
-            truck: roster?.truck ?? t.rateCon.newTruckFallback,
-            driver: roster?.driver ?? '',
-            yardCity,
-            yardState,
-            status: 'Planned',
-            drivingHoursLeft: roster?.drivingHoursLeft ?? 11,
-            loads: [load],
-          };
+    const simulated: Run = targetRun
+      ? { ...targetRun, loads: [...targetRun.loads, load] }
+      : {
+          id: 'preview',
+          truck: roster?.truck ?? t.rateCon.newTruckFallback,
+          driver: roster?.driver ?? '',
+          yardCity,
+          yardState,
+          status: 'Planned',
+          drivingHoursLeft: roster?.drivingHoursLeft ?? 11,
+          loads: [load],
+        };
     const legs = runLegs(simulated, { ...manualMiles, ...legMiles });
     return {
       // Те же мили, что попадут в рейс: известные перегоны берутся из таблицы, а не из маршрутизатора.
@@ -227,20 +286,60 @@ function RateConReview({
     setForm((current) => {
       const nextSources = { ...current.sources };
       delete nextSources[key];
-      return { draft: { ...current.draft, [key]: value }, sources: nextSources };
+      return {
+        draft: { ...current.draft, [key]: value },
+        sources: nextSources,
+      };
     });
   };
 
-  const missingRequired = REQUIRED.filter((key) => !String(draft[key] ?? '').trim());
+  const duplicate = findDuplicate(inboxItems, { ...item, draft }, item.id);
+  const alreadyBooked = runs.find((run) =>
+    run.loads.some((load) => sameLoad(load, draft)),
+  );
+  const assessment = assessAssignment(
+    runs,
+    assets,
+    manualMiles,
+    {
+      target:
+        target.kind === 'new' && roster
+          ? {
+              kind: 'new',
+              runId: 'preview',
+              truck: roster.truck,
+              driver: roster.driver,
+              drivingHoursLeft: roster.drivingHoursLeft,
+            }
+          : {
+              kind: 'existing',
+              runId: target.kind === 'existing' ? target.runId : '',
+            },
+      draft,
+      legMiles,
+      author: user?.name ?? '',
+      roleTitle: user?.roleTitle ?? '',
+      trailerId: trailerId || undefined,
+    },
+    eld,
+  );
+  const missingRequired = REQUIRED.filter(
+    (key) => !String(draft[key] ?? '').trim(),
+  );
   const rateValue = readNumber(draft.rate);
   const errors = validateDraft(draft);
   const hasErrors = Object.keys(errors).length > 0;
   const canBook =
+    !duplicate &&
+    !alreadyBooked &&
+    assessment.errors.length === 0 &&
     missingRequired.length === 0 &&
     !hasErrors &&
     rateValue > 0 &&
     (target.kind === 'new' ? !!roster : !!targetRun);
-  const foundCount = Object.values(sources).filter((value) => value === 'pdf').length;
+  const foundCount = Object.values(sources).filter(
+    (value) => value === 'pdf',
+  ).length;
   const f = t.rateCon.fields;
 
   const field = (
@@ -265,28 +364,43 @@ function RateConReview({
   const book = () => {
     if (!canBook) return;
     const runId =
-      target.kind === 'new' ? newRunId(roster?.truck ?? '', runs) : (targetRun as Run).id;
+      target.kind === 'new'
+        ? newRunId(roster?.truck ?? '', runs)
+        : (targetRun as Run).id;
     if (!inQueue) dispatch(addInboxLoad({ ...item, draft }));
-    dispatch(
-      bookRateCon({
+    const result = dispatch(
+      assignRateCon({
         target:
           target.kind === 'new' && roster
-            ? { kind: 'new', runId, truck: roster.truck, driver: roster.driver, drivingHoursLeft: roster.drivingHoursLeft }
+            ? {
+                kind: 'new',
+                runId,
+                truck: roster.truck,
+                driver: roster.driver,
+                drivingHoursLeft: roster.drivingHoursLeft,
+              }
             : { kind: 'existing', runId },
         draft,
         legMiles,
+        trailerId: trailerId || assessment.trailer?.id,
         fileName: item.fileName,
         inboxId: item.id,
         author: user?.name ?? t.common.dispatcherFallback,
         roleTitle: user?.roleTitle ?? t.common.dispatcherFallback,
       }),
     );
+    if (!result.ok) {
+      dispatch(showToast('error', result.error));
+      return;
+    }
     dispatch(
       showToast(
         'success',
         t.notify.assigned(
           draft.customer,
-          target.kind === 'new' ? (roster?.truck ?? '') : (targetRun?.truck ?? ''),
+          target.kind === 'new'
+            ? (roster?.truck ?? '')
+            : (targetRun?.truck ?? ''),
         ),
       ),
     );
@@ -296,16 +410,34 @@ function RateConReview({
   };
 
   const save = () => {
+    if (duplicate && !draftChanges(duplicate.draft, draft).length) {
+      dispatch(
+        showToast('info', 'Цей документ уже є в черзі. Дублікат не створено.'),
+      );
+      onClose();
+      return;
+    }
     if (!inQueue) dispatch(addInboxLoad({ ...item, draft }));
-    dispatch(saveInboxLoad({ id: item.id, draft }));
-    dispatch(showToast('success', t.notify.saved(draft.customer || t.inbox.noCustomer)));
+    if (!duplicate) dispatch(saveInboxLoad({ id: item.id, draft }));
+    dispatch(
+      showToast(
+        'success',
+        duplicate
+          ? 'Оновлення збережено як версію початкового вантажу.'
+          : t.notify.saved(draft.customer || t.inbox.noCustomer),
+      ),
+    );
     onClose();
   };
 
   const fromPdf = item.source !== 'manual';
 
   return (
-    <div className={pdf ? 'ratecon__review' : 'ratecon__review ratecon__review--no-pdf'}>
+    <div
+      className={
+        pdf ? 'ratecon__review' : 'ratecon__review ratecon__review--no-pdf'
+      }
+    >
       {pdf && item.fileName && isMobile && (
         <div className="ratecon__pdf-fold">
           <button
@@ -319,13 +451,38 @@ function RateConReview({
           {pdfOpen && <PdfPreview data={pdf} fileName={item.fileName} />}
         </div>
       )}
-      {pdf && item.fileName && !isMobile && <PdfPreview data={pdf} fileName={item.fileName} />}
+      {pdf && item.fileName && !isMobile && (
+        <PdfPreview data={pdf} fileName={item.fileName} />
+      )}
 
       <div className="ratecon__panel">
         <div className="ratecon__scroll">
           {fromPdf && (
-            <p className={unrecognized ? 'ratecon__summary is-warn' : 'ratecon__summary'}>
-              {unrecognized ? t.rateCon.unrecognized : t.rateCon.filled(foundCount)}
+            <p
+              className={
+                unrecognized ? 'ratecon__summary is-warn' : 'ratecon__summary'
+              }
+            >
+              {unrecognized
+                ? t.rateCon.unrecognized
+                : t.rateCon.filled(foundCount)}
+            </p>
+          )}
+          {duplicate && (
+            <div className="ratecon__warning" role="alert">
+              <strong>Такий вантаж уже є в черзі.</strong>
+              <p>Повторне призначення заблоковано.</p>
+              {draftChanges(duplicate.draft, draft).length > 0 ? (
+                <LoadDifferences before={duplicate.draft} after={draft} />
+              ) : (
+                <p>Поля збігаються з початковим записом.</p>
+              )}
+            </div>
+          )}
+          {alreadyBooked && (
+            <p className="ratecon__warning" role="alert">
+              Цей вантаж уже призначено: {alreadyBooked.truck}. Повторне
+              призначення заблоковано.
             </p>
           )}
           {warnings.map((warning) => (
@@ -350,6 +507,71 @@ function RateConReview({
             {field('pickupState', f.state, { placeholder: 'IN' })}
             {field('pickupZip', f.zip)}
             {field('pickupAt', f.appointment, { type: 'datetime-local' })}
+            <label className="ratecon__field">
+              <span className="ratecon__label">Часовий пояс завантаження</span>
+              <select
+                className="runs__input"
+                value={
+                  draft.pickupTimeZone ||
+                  stopZone(draft.pickupCity, draft.pickupState)
+                }
+                onChange={(event) =>
+                  setForm((current) => ({
+                    ...current,
+                    draft: {
+                      ...current.draft,
+                      pickupTimeZone: event.target.value,
+                    },
+                  }))
+                }
+              >
+                {timeZones.map((zone) => (
+                  <option key={zone} value={zone}>
+                    {zone}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label className="ratecon__field">
+              <span className="ratecon__label">Вікно завантаження</span>
+              <select
+                className="runs__input"
+                value={draft.pickupWindow || 'fixed'}
+                onChange={(event) =>
+                  setForm((current) => ({
+                    ...current,
+                    draft: {
+                      ...current.draft,
+                      pickupWindow: event.target.value as 'fixed' | 'fcfs',
+                    },
+                  }))
+                }
+              >
+                <option value="fixed">Фіксований запис</option>
+                <option value="fcfs">Жива черга (FCFS)</option>
+              </select>
+            </label>
+            {draft.pickupWindow === 'fcfs' && (
+              <label className="ratecon__field">
+                <span className="ratecon__label">
+                  Кінець вікна завантаження
+                </span>
+                <input
+                  className="runs__input"
+                  type="datetime-local"
+                  value={draft.pickupWindowEnd ?? ''}
+                  onChange={(event) =>
+                    setForm((current) => ({
+                      ...current,
+                      draft: {
+                        ...current.draft,
+                        pickupWindowEnd: event.target.value,
+                      },
+                    }))
+                  }
+                />
+              </label>
+            )}
           </RcSection>
 
           <RcSection title={t.rateCon.sections.delivery}>
@@ -359,6 +581,69 @@ function RateConReview({
             {field('deliveryState', f.state, { placeholder: 'GA' })}
             {field('deliveryZip', f.zip)}
             {field('deliveryAt', f.appointment, { type: 'datetime-local' })}
+            <label className="ratecon__field">
+              <span className="ratecon__label">Часовий пояс доставки</span>
+              <select
+                className="runs__input"
+                value={
+                  draft.deliveryTimeZone ||
+                  stopZone(draft.deliveryCity, draft.deliveryState)
+                }
+                onChange={(event) =>
+                  setForm((current) => ({
+                    ...current,
+                    draft: {
+                      ...current.draft,
+                      deliveryTimeZone: event.target.value,
+                    },
+                  }))
+                }
+              >
+                {timeZones.map((zone) => (
+                  <option key={zone} value={zone}>
+                    {zone}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label className="ratecon__field">
+              <span className="ratecon__label">Вікно доставки</span>
+              <select
+                className="runs__input"
+                value={draft.deliveryWindow || 'fixed'}
+                onChange={(event) =>
+                  setForm((current) => ({
+                    ...current,
+                    draft: {
+                      ...current.draft,
+                      deliveryWindow: event.target.value as 'fixed' | 'fcfs',
+                    },
+                  }))
+                }
+              >
+                <option value="fixed">Фіксований запис</option>
+                <option value="fcfs">Жива черга (FCFS)</option>
+              </select>
+            </label>
+            {draft.deliveryWindow === 'fcfs' && (
+              <label className="ratecon__field">
+                <span className="ratecon__label">Кінець вікна доставки</span>
+                <input
+                  className="runs__input"
+                  type="datetime-local"
+                  value={draft.deliveryWindowEnd ?? ''}
+                  onChange={(event) =>
+                    setForm((current) => ({
+                      ...current,
+                      draft: {
+                        ...current.draft,
+                        deliveryWindowEnd: event.target.value,
+                      },
+                    }))
+                  }
+                />
+              </label>
+            )}
           </RcSection>
 
           <RcSection title={t.rateCon.sections.freight}>
@@ -373,30 +658,54 @@ function RateConReview({
           </RcSection>
 
           <RcSection title={t.rateCon.sections.instructions}>
-            {field('specialInstructions', f.specialInstructions, { type: 'textarea', wide: true })}
+            {field('specialInstructions', f.specialInstructions, {
+              type: 'textarea',
+              wide: true,
+            })}
           </RcSection>
 
           <RcSection title={t.rateCon.sections.assign}>
-            <div className="runs__filters ratecon__wide" role="group" aria-label={t.rateCon.assignAria}>
-              <span className="ratecon__segment" title={firstFreeTruck ? undefined : t.rateCon.allBusy}>
+            <div
+              className="runs__filters ratecon__wide"
+              role="group"
+              aria-label={t.rateCon.assignAria}
+            >
+              <span
+                className="ratecon__segment"
+                title={firstFreeTruck ? undefined : t.rateCon.allBusy}
+              >
                 <button
                   type="button"
-                  className={target.kind === 'new' ? 'runs__filter is-active' : 'runs__filter'}
+                  className={
+                    target.kind === 'new'
+                      ? 'runs__filter is-active'
+                      : 'runs__filter'
+                  }
                   disabled={!firstFreeTruck}
-                  onClick={() => firstFreeTruck && setTarget({ kind: 'new', truck: firstFreeTruck.truck })}
+                  onClick={() =>
+                    firstFreeTruck &&
+                    setTarget({ kind: 'new', truck: firstFreeTruck.truck })
+                  }
                 >
                   {t.rateCon.newRun}
                 </button>
               </span>
               <span className="ratecon__segment">
-              <button
-                type="button"
-                className={target.kind === 'existing' ? 'runs__filter is-active' : 'runs__filter'}
-                disabled={activeRuns.length === 0}
-                onClick={() => activeRuns[0] && setTarget({ kind: 'existing', runId: activeRuns[0].id })}
-              >
-                {t.rateCon.existingRun}
-              </button>
+                <button
+                  type="button"
+                  className={
+                    target.kind === 'existing'
+                      ? 'runs__filter is-active'
+                      : 'runs__filter'
+                  }
+                  disabled={activeRuns.length === 0}
+                  onClick={() =>
+                    activeRuns[0] &&
+                    setTarget({ kind: 'existing', runId: activeRuns[0].id })
+                  }
+                >
+                  {t.rateCon.existingRun}
+                </button>
               </span>
             </div>
             {!firstFreeTruck && (
@@ -419,7 +728,12 @@ function RateConReview({
                       <button
                         type="button"
                         className="runs__button runs__button--secondary runs__button--small"
-                        onClick={() => setTarget({ kind: 'existing', runId: soonestFree.run.id })}
+                        onClick={() =>
+                          setTarget({
+                            kind: 'existing',
+                            runId: soonestFree.run.id,
+                          })
+                        }
                       >
                         {t.rateCon.planOn(soonestFree.run.truck)}
                       </button>
@@ -430,27 +744,40 @@ function RateConReview({
             )}
             {target.kind === 'new' ? (
               <>
-              <label className="ratecon__field ratecon__wide">
-                <span className="ratecon__label">{t.rateCon.truckDriver}</span>
-                <select
-                  className="runs__input"
-                  value={target.truck}
-                  onChange={(event) => setTarget({ kind: 'new', truck: event.target.value })}
-                >
-                  {fleetRoster.map((item) => (
-                    <option key={item.truck} value={item.truck} disabled={isBlocked(item)}>
-                      {item.truck} · {item.driver} · {t.rateCon.hoursLeft(item.drivingHoursLeft)}
-                      {busyTrucks.has(item.truck) ? t.rateCon.onActiveRun : ''}
-                      {expiredDrivers.has(item.driver) ? t.drivers.cannotAssign : ''}
-                    </option>
-                  ))}
-                </select>
-              </label>
-              {roster?.drivingHoursLeft === 0 && (
-                <p className="ratecon__note ratecon__wide" role="status">
-                  {t.rateCon.noHoursNote(roster.driver)}
-                </p>
-              )}
+                <label className="ratecon__field ratecon__wide">
+                  <span className="ratecon__label">
+                    {t.rateCon.truckDriver}
+                  </span>
+                  <select
+                    className="runs__input"
+                    value={target.truck}
+                    onChange={(event) =>
+                      setTarget({ kind: 'new', truck: event.target.value })
+                    }
+                  >
+                    {fleetRoster.map((item) => (
+                      <option
+                        key={item.truck}
+                        value={item.truck}
+                        disabled={isBlocked(item)}
+                      >
+                        {item.truck} · {item.driver} ·{' '}
+                        {t.rateCon.hoursLeft(item.drivingHoursLeft)}
+                        {busyTrucks.has(item.truck)
+                          ? t.rateCon.onActiveRun
+                          : ''}
+                        {expiredDrivers.has(item.driver)
+                          ? t.drivers.cannotAssign
+                          : ''}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+                {roster?.drivingHoursLeft === 0 && (
+                  <p className="ratecon__note ratecon__wide" role="status">
+                    {t.rateCon.noHoursNote(roster.driver)}
+                  </p>
+                )}
               </>
             ) : (
               <label className="ratecon__field ratecon__wide">
@@ -458,7 +785,9 @@ function RateConReview({
                 <select
                   className="runs__input"
                   value={target.runId}
-                  onChange={(event) => setTarget({ kind: 'existing', runId: event.target.value })}
+                  onChange={(event) =>
+                    setTarget({ kind: 'existing', runId: event.target.value })
+                  }
                 >
                   {activeRuns.map((run) => (
                     <option key={run.id} value={run.id}>
@@ -470,6 +799,65 @@ function RateConReview({
             )}
           </RcSection>
 
+          <RcSection title="Перевірка призначення">
+            <label className="ratecon__field ratecon__wide">
+              <span className="ratecon__label">Причіп</span>
+              <select
+                className="runs__input"
+                value={trailerId}
+                onChange={(event) => setTrailerId(event.target.value)}
+              >
+                <option value="">Автоматично підібрати сумісний</option>
+                {assets
+                  .filter((asset) => asset.kind === 'trailer')
+                  .map((asset) => (
+                    <option key={asset.id} value={asset.id}>
+                      {asset.number} · {asset.equipment} · {asset.lengthFeet}′ ·{' '}
+                      {asset.capacityLbs} lb ·{' '}
+                      {asset.status === 'Maintenance' ? 'Ремонт' : 'Доступний'}
+                    </option>
+                  ))}
+              </select>
+            </label>
+            <p className="runs__meta ratecon__wide">
+              Готовий з:{' '}
+              {appointmentSummary(
+                assessment.readyAt,
+                draft.pickupTimeZone ||
+                  stopZone(draft.pickupCity, draft.pickupState),
+              )}
+              <br />
+              Прибуття на завантаження:{' '}
+              {appointmentSummary(
+                assessment.arrivalAt,
+                draft.pickupTimeZone ||
+                  stopZone(draft.pickupCity, draft.pickupState),
+              )}
+              <br />
+              Прибуття на доставку:{' '}
+              {appointmentSummary(
+                assessment.deliveryAt,
+                draft.deliveryTimeZone ||
+                  stopZone(draft.deliveryCity, draft.deliveryState),
+              )}
+              <br />
+              Причіп: {assessment.trailer?.number ?? 'Не підібрано'}
+            </p>
+            {assessment.errors.map((error) => (
+              <p
+                key={error}
+                className="ratecon__warning ratecon__wide"
+                role="alert"
+              >
+                {error}
+              </p>
+            ))}
+            {assessment.warnings.map((warning) => (
+              <p key={warning} className="runs__meta ratecon__wide">
+                {warning}
+              </p>
+            ))}
+          </RcSection>
           <RcSection title={t.rateCon.sections.route}>
             <div className="ratecon__route ratecon__wide" aria-live="polite">
               {!stopsReady ? (
@@ -479,13 +867,35 @@ function RateConReview({
               ) : plan && projection ? (
                 <>
                   <dl className="ratecon__route-stats">
-                    <StatTile label={t.rateCon.deadheadIn} value={milesText(projection.deadheadIn)} meta={`${previousStop} → ${pickupName}`} />
-                    <StatTile label={t.rateCon.loaded} value={milesText(readNumber(draft.miles) || null)} meta={t.rateCon.drivingHours(draft.driveHours || '–')} />
-                    <StatTile label={t.rateCon.returnEmpty} value={milesText(projection.returnEmpty)} meta={`${deliveryName} → ${YARD}`} />
+                    <StatTile
+                      label={t.rateCon.deadheadIn}
+                      value={milesText(projection.deadheadIn)}
+                      meta={`${previousStop} → ${pickupName}`}
+                    />
+                    <StatTile
+                      label={t.rateCon.loaded}
+                      value={milesText(readNumber(draft.miles) || null)}
+                      meta={t.rateCon.drivingHours(draft.driveHours || '–')}
+                    />
+                    <StatTile
+                      label={t.rateCon.returnEmpty}
+                      value={milesText(projection.returnEmpty)}
+                      meta={`${deliveryName} → ${YARD}`}
+                    />
                     <StatTile
                       label={t.rateCon.runAllIn}
-                      value={projection.perMile === null ? '–' : formatMoney(projection.perMile, 2)}
-                      valueClassName={projection.perMile === null ? undefined : projection.perMile >= targetRate ? 'is-good' : 'is-warn'}
+                      value={
+                        projection.perMile === null
+                          ? '–'
+                          : formatMoney(projection.perMile, 2)
+                      }
+                      valueClassName={
+                        projection.perMile === null
+                          ? undefined
+                          : projection.perMile >= targetRate
+                            ? 'is-good'
+                            : 'is-warn'
+                      }
                       meta={
                         projection.perMile === null
                           ? t.rateCon.someUnknown
@@ -500,7 +910,11 @@ function RateConReview({
                       {t.rateCon.cityNotFound(plan.unknownCities.join(', '))}
                     </p>
                   )}
-                  {projection.hosNote && <p className="ratecon__note ratecon__wide">{projection.hosNote}</p>}
+                  {projection.hosNote && (
+                    <p className="ratecon__note ratecon__wide">
+                      {projection.hosNote}
+                    </p>
+                  )}
                 </>
               ) : (
                 <span>{t.rateCon.routeUnavailable}</span>
@@ -516,10 +930,14 @@ function RateConReview({
               : hasErrors
                 ? t.rateCon.fixErrors
                 : rateValue <= 0
-                ? t.rateCon.rateNotPositive
-                : `${draft.customer} · ${formatMoney(rateValue, 0)}`}
+                  ? t.rateCon.rateNotPositive
+                  : `${draft.customer} · ${formatMoney(rateValue, 0)}`}
           </span>
-          <button type="button" className="runs__button runs__button--tertiary" onClick={onClose}>
+          <button
+            type="button"
+            className="runs__button runs__button--tertiary"
+            onClick={onClose}
+          >
             {t.common.cancel}
           </button>
           <button
@@ -530,7 +948,12 @@ function RateConReview({
           >
             {t.inbox.saveChecked}
           </button>
-          <button type="button" className="runs__button" disabled={!canBook} onClick={book}>
+          <button
+            type="button"
+            className="runs__button"
+            disabled={!canBook}
+            onClick={book}
+          >
             {target.kind === 'new'
               ? t.rateCon.createRun(roster?.truck ?? '')
               : t.rateCon.addTo(targetRun?.truck ?? t.rateCon.runFallback)}
@@ -549,7 +972,13 @@ function milesText(value: number | null) {
   return value === null ? '–' : formatMiles(value);
 }
 
-function RcSection({ title, children }: { title: string; children: ReactNode }) {
+function RcSection({
+  title,
+  children,
+}: {
+  title: string;
+  children: ReactNode;
+}) {
   return (
     <section className="ratecon__section">
       <h3 className="ratecon__section-title">{title}</h3>
@@ -585,7 +1014,14 @@ function RcField({
 }) {
   const empty = !value.trim();
   const state =
-    source ?? (empty ? (required || expected ? 'missing' : fromPdf ? 'absent' : 'edited') : 'edited');
+    source ??
+    (empty
+      ? required || expected
+        ? 'missing'
+        : fromPdf
+          ? 'absent'
+          : 'edited'
+      : 'edited');
   const chip = {
     pdf: t.rateCon.chips.pdf,
     calc: t.rateCon.chips.calc,
@@ -595,13 +1031,25 @@ function RcField({
   }[state];
 
   return (
-    <label className={`ratecon__field ratecon__field--${state}${wide ? ' ratecon__wide' : ''}`}>
+    <label
+      className={`ratecon__field ratecon__field--${state}${wide ? ' ratecon__wide' : ''}`}
+    >
       <span className="ratecon__label">
         {label}
-        {chip && <span className={`ratecon__chip ratecon__chip--${state}`}>{chip}</span>}
+        {chip && (
+          <span className={`ratecon__chip ratecon__chip--${state}`}>
+            {chip}
+          </span>
+        )}
       </span>
       {type === 'datetime-local' ? (
-        <DateField type="datetime-local" value={value} placeholder={placeholder} onValue={onChange} aria-invalid={!!error} />
+        <DateField
+          type="datetime-local"
+          value={value}
+          placeholder={placeholder}
+          onValue={onChange}
+          aria-invalid={!!error}
+        />
       ) : type === 'textarea' ? (
         <textarea
           className="runs__input ratecon__textarea"

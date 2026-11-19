@@ -14,6 +14,9 @@ import {
 
 export const menuIcons: Record<MenuItem['id'], () => JSX.Element> = {
   overview: OverviewIcon,
+  fleet: BoardIcon,
+  integrations: AccountIcon,
+  driverPortal: DriversIcon,
   inbox: InboxIcon,
   planning: PlanningIcon,
   drivers: DriversIcon,

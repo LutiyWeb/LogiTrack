@@ -1,11 +1,13 @@
 import { extractPdfLines } from '../ratecon/pdfText';
 import { parseRateCon, type RateConField } from '../ratecon/parseRateCon';
 import { SEED_NOW, emptyDraft, type LoadDraft } from '../runs/seed';
+import { draftChanges, sameLoad } from './identity';
 
 export type InboxSource = 'email' | 'pdf' | 'manual';
 
 /** Tentative — брокер предупредил заранее, груз ещё не подтверждён. */
-export type InboxStatus = 'Tentative' | 'New' | 'Ready' | 'Assigned' | 'Rejected';
+export type InboxStatus =
+  'Tentative' | 'New' | 'Ready' | 'Assigned' | 'Rejected';
 
 /** Груз в очереди «Вхідні вантажі». */
 export type InboxLoad = {
@@ -23,6 +25,10 @@ export type InboxLoad = {
   fileUrl?: string;
   emailFrom?: string;
   runId?: string;
+  sourceMessageId?: string;
+  contentHash?: string;
+  documentId?: string;
+  revisions?: Omit<InboxLoad, 'revisions'>[];
 };
 
 /** PDF-образцы в public/samples — их «присылают» стартовые письма. Первым — тот, которого нет в очереди. */
@@ -42,8 +48,10 @@ export function sampleUrl(file: string) {
  */
 export const pdfCache = new Map<string, ArrayBuffer>();
 
-export async function loadInboxPdf(item: InboxLoad): Promise<ArrayBuffer | null> {
-  const cached = pdfCache.get(item.id);
+export async function loadInboxPdf(
+  item: InboxLoad,
+): Promise<ArrayBuffer | null> {
+  const cached = pdfCache.get(item.documentId ?? item.id);
   if (cached) return cached;
   if (!item.fileUrl) return null;
   try {
@@ -57,13 +65,24 @@ export async function loadInboxPdf(item: InboxLoad): Promise<ArrayBuffer | null>
 /** Читает PDF и превращает его в груз очереди. */
 export async function intakePdf(
   data: ArrayBuffer,
-  meta: { fileName: string; source: InboxSource; fileUrl?: string; emailFrom?: string },
+  meta: {
+    fileName: string;
+    source: InboxSource;
+    fileUrl?: string;
+    emailFrom?: string;
+    sourceMessageId?: string;
+  },
 ): Promise<InboxLoad> {
+  const hash = await crypto.subtle.digest('SHA-256', data.slice(0));
+  const contentHash = Array.from(new Uint8Array(hash), (byte) =>
+    byte.toString(16).padStart(2, '0'),
+  ).join('');
   const result = await extractPdfLines(data)
     .then((lines) => parseRateCon(lines))
     .catch(() => parseRateCon([]));
   return {
     id: crypto.randomUUID(),
+    contentHash,
     status: 'New',
     receivedAt: SEED_NOW,
     draft: result.draft,
@@ -74,11 +93,41 @@ export async function intakePdf(
   };
 }
 
-/** Груз с тем же номером уже есть в очереди (в любом статусе). */
-export function findDuplicate(items: InboxLoad[], loadNumber: string | undefined) {
-  const key = (loadNumber ?? '').trim().toLowerCase();
-  if (!key) return undefined;
-  return items.find((item) => (item.draft.loadNumber ?? '').trim().toLowerCase() === key);
+/** Match a source message/document or a broker-scoped load identity. */
+export function findDuplicate(
+  items: InboxLoad[],
+  candidate: InboxLoad,
+  ignoreId?: string,
+) {
+  return items.find(
+    (item) =>
+      item.id !== ignoreId &&
+      ((candidate.sourceMessageId &&
+        item.sourceMessageId === candidate.sourceMessageId) ||
+        (candidate.contentHash && item.contentHash === candidate.contentHash) ||
+        sameLoad(item.draft, candidate.draft)),
+  );
+}
+
+/** Preserve an assigned canonical item and keep changed imports as reviewable revisions. */
+export function dedupeInboxItems(items: InboxLoad[]) {
+  const result: InboxLoad[] = [];
+  for (const source of [...items].sort(
+    (a, b) => Number(b.status === 'Assigned') - Number(a.status === 'Assigned'),
+  )) {
+    const item = structuredClone(source);
+    const existing = findDuplicate(result, item);
+    if (!existing) {
+      result.push(item);
+      continue;
+    }
+    if (draftChanges(existing.draft, item.draft).length) {
+      existing.revisions ??= [];
+      const { revisions: _revisions, ...revision } = item;
+      existing.revisions.push(revision);
+    }
+  }
+  return result;
 }
 
 export function emptyManualLoad(): InboxLoad {
@@ -95,11 +144,31 @@ export function emptyManualLoad(): InboxLoad {
 }
 
 const crestlineFound: RateConField[] = [
-  'customer', 'rate', 'pickupPlace', 'pickupCity', 'pickupState', 'pickupAt',
-  'deliveryPlace', 'deliveryCity', 'deliveryState', 'deliveryAt', 'miles', 'bol',
-  'commodity', 'loadNumber', 'poNumber', 'equipment', 'weight', 'brokerMc',
-  'brokerContact', 'brokerPhone', 'brokerEmail',
-  'pickupAddress', 'pickupZip', 'deliveryAddress', 'deliveryZip',
+  'customer',
+  'rate',
+  'pickupPlace',
+  'pickupCity',
+  'pickupState',
+  'pickupAt',
+  'deliveryPlace',
+  'deliveryCity',
+  'deliveryState',
+  'deliveryAt',
+  'miles',
+  'bol',
+  'commodity',
+  'loadNumber',
+  'poNumber',
+  'equipment',
+  'weight',
+  'brokerMc',
+  'brokerContact',
+  'brokerPhone',
+  'brokerEmail',
+  'pickupAddress',
+  'pickupZip',
+  'deliveryAddress',
+  'deliveryZip',
 ];
 
 /** Стартовое состояние очереди. */

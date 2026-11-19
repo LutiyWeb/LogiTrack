@@ -83,7 +83,9 @@ export const uk = {
     closeMenu: 'Закрити меню',
     moreMenu: 'Інші розділи',
     bottomNav: 'Основні розділи',
-    short: { inbox: 'Вхідні' } as Partial<Record<string, string>>,
+    short: { inbox: 'Вхідні', driverPortal: 'Завдання' } as Partial<
+      Record<string, string>
+    >,
   },
 
   common: {
@@ -98,7 +100,8 @@ export const uk = {
     allIn: (value: string) => `Загалом ${value} / милю`,
     paidMiles: (value: string) => `Під вантажем ${value}`,
     emptyMiles: (value: string) => `Порожніх ${value}`,
-    loadsCount: (n: number) => `${n} ${plural(n, 'вантаж', 'вантажі', 'вантажів')}`,
+    loadsCount: (n: number) =>
+      `${n} ${plural(n, 'вантаж', 'вантажі', 'вантажів')}`,
     justNow: 'Щойно',
   },
 
@@ -122,10 +125,11 @@ export const uk = {
     meta: (carrier: string, yard: string, loads: number) =>
       `${carrier} · База ${yard} · Усього ${loads} ${plural(loads, 'вантаж', 'вантажі', 'вантажів')}`,
     kpiAria: 'Показники автопарку',
-    revenue: 'Виручка автопарку',
+    revenue: 'Планова виручка автопарку',
     profitNote:
-      'Прибуток по поточних рейсах: виручка мінус пальне та виплати водіям. Постійні витрати враховано в розділі «Фінанси».',
-    revenueMeta: (net: string, paid: string) => `Прибуток по рейсах ${net} · Під вантажем ${paid}`,
+      'Планова маржа всього маршруту, включно з майбутніми ділянками: виручка мінус розрахункові пальне та виплати водіям. Постійні витрати враховано в розділі «Фінанси».',
+    revenueMeta: (net: string, paid: string) =>
+      `Планова маржа ${net} · Під вантажем ${paid}`,
     aboveTarget: '↑ Вище цілі',
     belowTarget: '↓ Нижче цілі',
     target: (value: string) => `Ціль ${value} / милю`,
@@ -134,7 +138,8 @@ export const uk = {
     withinTarget: '✓ У межах цілі',
     emptyTotal: (value: string) => `Порожніх ${value}`,
     activeTrucks: 'Тягачі в роботі',
-    completed: (n: number) => `${n} ${plural(n, 'завершений', 'завершені', 'завершених')}`,
+    completed: (n: number) =>
+      `${n} ${plural(n, 'завершений', 'завершені', 'завершених')}`,
     alertsAria: 'Сповіщення диспетчера',
     alertsTitle: 'Сповіщення та пошук зворотних вантажів',
     startHere: 'Почніть тут:',
@@ -145,7 +150,8 @@ export const uk = {
     lane: 'Маршрут:',
     emptyLabel: 'Порожніх',
     allInShort: '$/милю загалом:',
-    paidVsEmpty: (paid: string, empty: string) => `Під вантажем ${paid} проти порожніх ${empty}`,
+    paidVsEmpty: (paid: string, empty: string) =>
+      `Під вантажем ${paid} проти порожніх ${empty}`,
     allClear: (limit: number, rate: string) =>
       `Усі тягачі в межах цілі ${limit}% порожнього пробігу. Зворотні вантажі призначено, $/милю автопарку загалом — ${rate}.`,
     boardAria: 'Стан рейсів автопарку',
@@ -162,12 +168,14 @@ export const uk = {
     resetData: 'Скинути дані',
     searchPlaceholder: 'Пошук: тягач, водій, місто, клієнт або ТТН…',
     searchAria: 'Пошук рейсів',
-    backhaulNeeded: (percent: number) => `Потрібен зворотний вантаж · ${percent}% порожніх`,
+    backhaulNeeded: (percent: number) =>
+      `Потрібен зворотний вантаж · ${percent}% порожніх`,
     backhaulAssigned: 'Зворотний вантаж призначено',
     hosShort: (value: string) => `${value} водіння`,
     emptyNeeded: 'Вкажіть порожній пробіг',
     resetTitle: 'Скинути всі дані?',
-    resetText: 'Усі рейси, вантажі, чати та налаштування повернуться до початкового стану. Цю дію не можна скасувати.',
+    resetText:
+      'Усі рейси, вантажі, чати та налаштування повернуться до початкового стану. Цю дію не можна скасувати.',
     resetConfirm: 'Скинути',
     searchEmpty: 'Нічого не знайдено',
     searchEmptyFor: (query: string) => `За запитом «${query}» рейсів немає.`,
@@ -180,10 +188,12 @@ export const uk = {
     paidMiles: 'Милі під вантажем',
     paidMilesSub: 'Пробіг з оплачуваним вантажем',
     emptyMiles: 'Порожні милі',
-    emptyAbove: (percent: number, limit: number) => `↑ ${percent}% · більше ліміту ${limit}%`,
+    emptyAbove: (percent: number, limit: number) =>
+      `↑ ${percent}% · більше ліміту ${limit}%`,
     emptyWithin: (percent: number) => `✓ ${percent}% · у межах цілі`,
-    revenue: 'Виручка',
-    netCost: (net: string, cost: string) => `Чистий ${net} · Витрати ${cost}`,
+    revenue: 'Планова виручка',
+    netCost: (net: string, cost: string) =>
+      `Планова маржа ${net} · Оцінка витрат ${cost}`,
     rateAbove: (target: string) => `↑ Вище цілі ${target}`,
     rateBelow: (target: string) => `↓ Нижче цілі ${target}`,
     yard: (driver: string, yard: string) => `${driver} · База ${yard}`,
@@ -209,9 +219,11 @@ export const uk = {
     timelineTitle: 'Маршрут по ділянках',
     paidLeg: 'Під вантажем',
     emptyLeg: 'Порожній перегін',
-    emptyMilesFor: (from: string, to: string) => `Порожні милі від ${from} до ${to}`,
+    emptyMilesFor: (from: string, to: string) =>
+      `Порожні милі від ${from} до ${to}`,
     removeTitle: (customer: string) => `Видалити вантаж ${customer}?`,
-    removeText: 'Вантаж буде видалено з рейсу і не повернеться в чергу «Вхідні вантажі». Цю дію не можна скасувати.',
+    removeText:
+      'Вантаж буде видалено з рейсу і не повернеться в чергу «Вхідні вантажі». Цю дію не можна скасувати.',
     removeConfirm: 'Видалити',
     milesPlaceholder: 'милі',
   },
@@ -226,8 +238,7 @@ export const uk = {
   hos: {
     leg: (hours: string) => `Ця ділянка — ${hours}.`,
     left: (hours: string) => `До кінця зміни ${hours}.`,
-    rule:
-      'Водій доїжджає залишок годин, потім потрібен 10-годинний відпочинок, щоб години відновились. 30-хвилинна перерва годин не відновлює.',
+    rule: 'Водій доїжджає залишок годин, потім потрібен 10-годинний відпочинок, щоб години відновились. 30-хвилинна перерва годин не відновлює.',
     pickupWaits: 'Завантаження може зачекати, тож вантаж лишається.',
     pickupDropsOff: 'Завантаження не чекає, тож цей вантаж відпадає.',
   },
@@ -235,7 +246,8 @@ export const uk = {
   backhaul: {
     aria: 'Біржа вантажів',
     title: 'Зворотні вантажі поблизу Atlanta, GA',
-    subtitle: 'Порівняйте, як кожен вантаж змінює порожній пробіг і $/милю загалом',
+    subtitle:
+      'Порівняйте, як кожен вантаж змінює порожній пробіг і $/милю загалом',
     fillForm: 'Заповнити форму',
     assign: 'Призначити вантаж',
     hosConflict:
@@ -278,7 +290,8 @@ export const uk = {
 
   inbox: {
     title: 'Вхідні вантажі',
-    subtitle: 'Усі вантажі в одній черзі: з листів, PDF і внесені вручну. Перевірте і призначте на тягач.',
+    subtitle:
+      'Усі вантажі в одній черзі: з листів, PDF і внесені вручну. Перевірте і призначте на тягач.',
     uploadPdf: 'Завантажити PDF',
     addManual: 'Додати вручну',
     simulateEmail: 'Імітувати новий лист',
@@ -299,7 +312,10 @@ export const uk = {
       Ready: 'Готовий',
       Assigned: 'Призначено',
       Rejected: 'Відхилено',
-    } as Record<'Tentative' | 'New' | 'Ready' | 'Assigned' | 'Rejected', string>,
+    } as Record<
+      'Tentative' | 'New' | 'Ready' | 'Assigned' | 'Rejected',
+      string
+    >,
     source: {
       email: (from: string) => `Лист від ${from}`,
       pdf: 'Завантажений PDF',
@@ -357,7 +373,8 @@ export const uk = {
       `${doc}: закінчується через ${days} ${plural(days, 'день', 'дні', 'днів')}`,
     docsOk: (date: string) => `Документи дійсні до ${date}`,
     hoursLeft: (value: string) => `${value} водіння`,
-    idle: (days: number) => `Без рейсу ${days} ${plural(days, 'день', 'дні', 'днів')}`,
+    idle: (days: number) =>
+      `Без рейсу ${days} ${plural(days, 'день', 'дні', 'днів')}`,
     weekPay: (value: string) => `До виплати ${value}`,
     paid: 'Виплачено',
     details: 'Картка водія',
@@ -367,12 +384,15 @@ export const uk = {
     runsHistory: 'Рейси',
     noRuns: 'Рейсів цього тижня немає.',
     payouts: 'Виплати',
-    payoutLine: (week: string, miles: string, amount: string) => `${week} · ${miles} · ${amount}`,
+    payoutLine: (week: string, miles: string, amount: string) =>
+      `${week} · ${miles} · ${amount}`,
     payoutsTitle: (week: string) => `Виплати водіям · ${week}`,
     payoutsAria: 'Виплати водіям',
-    payoutsSub: (rate: string) => `Оплата за милю: ${rate}. Рахуються лише пройдені милі: доставлені вантажі та порожній пробіг до завантаження.`,
+    payoutsSub: (rate: string) =>
+      `Оплата за милю: ${rate}. Рахуються лише пройдені милі: доставлені вантажі та порожній пробіг до завантаження.`,
     accrued: 'Нараховано',
-    partlyPaid: (paid: string, due: string) => `Виплачено ${paid} · до виплати ${due}`,
+    partlyPaid: (paid: string, due: string) =>
+      `Виплачено ${paid} · до виплати ${due}`,
     markPaid: 'Позначити виплаченим',
     cannotAssign: ' · документи прострочені',
     badgeIdle: 'Простій',
@@ -380,10 +400,12 @@ export const uk = {
     badgeExpired: 'Прострочено',
     overviewIdle: (truck: string, name: string, days: number) =>
       `${truck} · ${name} без рейсу ${days} ${plural(days, 'день', 'дні', 'днів')}`,
-    overviewDoc: (name: string, note: string) => `${name} — ${note.charAt(0).toLowerCase()}${note.slice(1)}`,
+    overviewDoc: (name: string, note: string) =>
+      `${name} — ${note.charAt(0).toLowerCase()}${note.slice(1)}`,
     overviewPay: (value: string) => `До виплати водіям цього тижня: ${value}`,
     overviewOpen: 'Відкрити водіїв',
-    idleSetting: (days: number) => `Показувати простій після (${days} ${plural(days, 'день', 'дні', 'днів')})`,
+    idleSetting: (days: number) =>
+      `Показувати простій після (${days} ${plural(days, 'день', 'дні', 'днів')})`,
   },
 
   finance: {
@@ -395,7 +417,8 @@ export const uk = {
     ringAria: 'Прогрес місяця до беззбитковості та цілі',
     breakeven: 'Беззбитковість',
     goal: 'Ціль',
-    toBreakeven: (amount: string, miles: string) => `До беззбитковості: ще ${amount} ≈ ${miles}`,
+    toBreakeven: (amount: string, miles: string) =>
+      `До беззбитковості: ще ${amount} ≈ ${miles}`,
     profitMonth: (amount: string) => `Прибуток за місяць: ${amount}`,
     toGoal: (amount: string) => `До цілі: ще ${amount}`,
     goalReached: 'Ціль місяця досягнута',
@@ -403,14 +426,15 @@ export const uk = {
     kpiAria: 'Фінансові показники місяця',
     revenue: 'Виручка за місяць',
     costs: 'Витрати за місяць',
-    profit: 'Чистий прибуток за місяць',
+    profit: 'Результат після розрахункових витрат',
     costPerMile: 'Собівартість милі',
     costPerMileSub: 'Усі витрати ÷ усі милі',
     chartTitle: 'Виручка і витрати по тижнях',
     chartAria: 'Графік виручки і витрат по тижнях',
     legendRevenue: 'Виручка',
     legendCosts: 'Витрати',
-    barLabel: (week: string, series: string, value: string) => `${week}: ${series} ${value}`,
+    barLabel: (week: string, series: string, value: string) =>
+      `${week}: ${series} ${value}`,
     settingsTitle: 'Обов’язкові витрати',
     settingsAria: 'Обов’язкові витрати',
     fixedTitle: 'Постійні, $ на місяць',
@@ -429,7 +453,8 @@ export const uk = {
     tolls: 'Платні дороги',
     repairs: 'Ремонт',
     goalField: 'Ціль: прибуток за місяць, $',
-    overviewBreakeven: (amount: string) => `До беззбитковості цього місяця: ще ${amount}`,
+    overviewBreakeven: (amount: string) =>
+      `До беззбитковості цього місяця: ще ${amount}`,
     overviewProfit: (amount: string) => `Прибуток цього місяця: ${amount}`,
     overviewOpen: 'Відкрити фінанси',
   },
@@ -438,8 +463,12 @@ export const uk = {
     title: 'Чати з водіями',
     subtitle: 'Водії пишуть у WhatsApp або SMS, а ви відповідаєте звідси.',
     listAria: 'Список чатів',
-    channel: { whatsapp: 'WhatsApp', sms: 'SMS' } as Record<'whatsapp' | 'sms', string>,
-    unread: (n: number) => `${n} ${plural(n, 'непрочитане', 'непрочитані', 'непрочитаних')}`,
+    channel: { whatsapp: 'WhatsApp', sms: 'SMS' } as Record<
+      'whatsapp' | 'sms',
+      string
+    >,
+    unread: (n: number) =>
+      `${n} ${plural(n, 'непрочитане', 'непрочитані', 'непрочитаних')}`,
     pick: 'Оберіть чат зліва.',
     placeholder: (channel: string) => `Відповідь піде в ${channel}…`,
     send: 'Надіслати',
@@ -464,8 +493,10 @@ export const uk = {
   } as Record<'success' | 'warning' | 'error' | 'info', string>,
 
   notify: {
-    assigned: (customer: string, truck: string) => `Вантаж ${customer} призначено на ${truck}`,
-    saved: (customer: string) => `Вантаж ${customer} перевірено і збережено в черзі`,
+    assigned: (customer: string, truck: string) =>
+      `Вантаж ${customer} призначено на ${truck}`,
+    saved: (customer: string) =>
+      `Вантаж ${customer} перевірено і збережено в черзі`,
     rejected: (customer: string) => `Вантаж ${customer} відхилено`,
     invoiced: (customer: string) => `Рахунок для ${customer} виставлено`,
     paid: (driver: string) => `Виплату ${driver} позначено`,
@@ -485,11 +516,16 @@ export const uk = {
       delivered: 'Доставлено',
     },
     templateText: {
-      delay: (load: string) => `${load}: водій затримується орієнтовно на 2 год. Нове ETA повідомимо додатково.`,
-      detention: (load: string) => `${load}: водій на складі, почався простій. Час прибуття зафіксовано, просимо врахувати оплату простою.`,
-      breakdown: (load: string) => `${load}: поломка тягача в дорозі. Чекаємо на ремонт, оновимо статус протягом години.`,
-      quantity: (load: string) => `${load}: кількість вантажу не збігається з підтвердженням ставки. Фото ТТН додамо.`,
-      delivered: (load: string) => `${load}: вантаж доставлено. Підтвердження доставки надішлемо найближчим часом.`,
+      delay: (load: string) =>
+        `${load}: водій затримується орієнтовно на 2 год. Нове ETA повідомимо додатково.`,
+      detention: (load: string) =>
+        `${load}: водій на складі, почався простій. Час прибуття зафіксовано, просимо врахувати оплату простою.`,
+      breakdown: (load: string) =>
+        `${load}: поломка тягача в дорозі. Чекаємо на ремонт, оновимо статус протягом години.`,
+      quantity: (load: string) =>
+        `${load}: кількість вантажу не збігається з підтвердженням ставки. Фото ТТН додамо.`,
+      delivered: (load: string) =>
+        `${load}: вантаж доставлено. Підтвердження доставки надішлемо найближчим часом.`,
     },
     placeholder: 'Напишіть брокеру або оберіть шаблон…',
     send: 'Надіслати брокеру',
@@ -501,13 +537,15 @@ export const uk = {
     sent: (customer: string) => `Лист надіслано: ${customer}`,
     callSaved: 'Дзвінок записано в переписку вантажу',
     reply: (customer: string) => `Нова відповідь від ${customer}`,
-    noEmailError: 'У брокера немає email. Додайте його в підтвердженні ставки або зателефонуйте.',
+    noEmailError:
+      'У брокера немає email. Додайте його в підтвердженні ставки або зателефонуйте.',
   },
 
   support: {
     nav: 'Підтримка',
     title: 'Повідомити про проблему',
-    subtitle: 'Опишіть, що сталося — команда підтримки отримає звернення разом з даними нижче.',
+    subtitle:
+      'Опишіть, що сталося — команда підтримки отримає звернення разом з даними нижче.',
     kindAria: 'Тип звернення',
     kinds: { bug: 'Щось не працює', question: 'Питання', idea: 'Пропозиція' },
     describe: 'Що сталося',
@@ -552,15 +590,19 @@ export const uk = {
       reminder: 'Нагадування',
       document: 'Документи',
     },
-    tentativeText: (customer: string, route: string) => `${customer}: ${route} — не підтверджено`,
-    pickupText: (truck: string, customer: string, city: string) => `${truck} · ${customer} · завантаження ${city}`,
-    deliveryText: (truck: string, customer: string, city: string) => `${truck} · ${customer} · доставка ${city}`,
+    tentativeText: (customer: string, route: string) =>
+      `${customer}: ${route} — не підтверджено`,
+    pickupText: (truck: string, customer: string, city: string) =>
+      `${truck} · ${customer} · завантаження ${city}`,
+    deliveryText: (truck: string, customer: string, city: string) =>
+      `${truck} · ${customer} · доставка ${city}`,
     documentText: (name: string, doc: string) => `${name}: закінчується ${doc}`,
     done: 'Виконано',
     open: 'Відкрити',
     confirm: 'Брокер підтвердив',
     confirmShort: 'Підтвердити',
-    confirmed: (customer: string) => `Вантаж ${customer} підтверджено — він у черзі «Вхідні вантажі»`,
+    confirmed: (customer: string) =>
+      `Вантаж ${customer} підтверджено — він у черзі «Вхідні вантажі»`,
     reminderDone: 'Нагадування виконано',
     formTentative: 'Новий попередній вантаж',
     formReminder: 'Нове нагадування',
@@ -594,7 +636,8 @@ export const uk = {
 
   brokers: {
     title: 'Клієнти та рахунки',
-    subtitle: 'Перевірені брокери, прямі вантажовідправники, кредитні рейтинги та дебіторка',
+    subtitle:
+      'Перевірені брокери, прямі вантажовідправники, кредитні рейтинги та дебіторка',
     kpiAria: 'Показники клієнтів',
     activeAccounts: 'Активні клієнти',
     activeAccountsSub: 'Перевірені брокери та вантажовідправники',
@@ -607,7 +650,8 @@ export const uk = {
     directoryAria: 'Довідник клієнтів',
     directoryTitle: 'Клієнти та брокери',
     credit: (score: string) => `Кредитний рейтинг ${score}`,
-    terms: (mc: string, terms: string) => (mc ? `${mc} · Умови: ${terms}` : `Умови: ${terms}`),
+    terms: (mc: string, terms: string) =>
+      mc ? `${mc} · Умови: ${terms}` : `Умови: ${terms}`,
     pendingBadge: (value: string) => `До отримання ${value}`,
     allBilled: 'Усе виставлено',
     createInvoice: 'Виставити рахунок',
@@ -631,8 +675,10 @@ export const uk = {
     signedIn: 'Поточний користувач',
     targetsAria: 'Цілі диспетчеризації',
     targetsTitle: 'Цілі прибутковості',
-    targetsSub: 'Використовуються в «Рейсах» і «Огляді», щоб позначати великий порожній пробіг або низьку ставку',
-    readOnly: 'Лише перегляд для вашої ролі · Змінювати цілі компанії може тільки менеджер автопарку',
+    targetsSub:
+      'Використовуються в «Рейсах» і «Огляді», щоб позначати великий порожній пробіг або низьку ставку',
+    readOnly:
+      'Лише перегляд для вашої ролі · Змінювати цілі компанії може тільки менеджер автопарку',
     dispatcherName: 'Ім’я диспетчера',
     targetRate: (value: string) => `Цільова ставка за милю (${value}/милю)`,
     maxEmpty: (value: number) => `Максимальний порожній пробіг (${value}%)`,
@@ -663,9 +709,12 @@ export const uk = {
     lastPing: (when: string) => `Остання позиція ${when}`,
     openRun: 'Відкрити рейс →',
     locale: {
-      'CooperativeGesturesHandler.WindowsHelpText': 'Щоб змінити масштаб, гортайте з Ctrl',
-      'CooperativeGesturesHandler.MacHelpText': 'Щоб змінити масштаб, гортайте з ⌘',
-      'CooperativeGesturesHandler.MobileHelpText': 'Пересувайте карту двома пальцями',
+      'CooperativeGesturesHandler.WindowsHelpText':
+        'Щоб змінити масштаб, гортайте з Ctrl',
+      'CooperativeGesturesHandler.MacHelpText':
+        'Щоб змінити масштаб, гортайте з ⌘',
+      'CooperativeGesturesHandler.MobileHelpText':
+        'Пересувайте карту двома пальцями',
       'NavigationControl.ZoomIn': 'Наблизити',
       'NavigationControl.ZoomOut': 'Віддалити',
       'NavigationControl.ResetBearing': 'Скинути поворот',
@@ -686,7 +735,8 @@ export const uk = {
     zip: 'ZIP — 5 цифр, наприклад 46204',
     deliveryBeforePickup: 'Доставка не може бути раніше завантаження',
     pastDate: 'Дата не може бути в минулому',
-    remindAfterDate: 'Нагадування не може бути пізніше орієнтовної дати вантажу',
+    remindAfterDate:
+      'Нагадування не може бути пізніше орієнтовної дати вантажу',
     required: 'Обов’язково',
     numberRequired: 'Вкажіть число',
     numberRange: (min: number, max: number) =>
@@ -702,11 +752,13 @@ export const uk = {
     importAria: 'Імпорт підтвердження ставки',
     importTitle: 'Імпорт підтвердження ставки',
     reviewTitle: 'Перевірка підтвердження ставки',
-    importSub: 'Перетягніть PDF від брокера. LogiTrack прочитає його і створить вантаж.',
+    importSub:
+      'Перетягніть PDF від брокера. LogiTrack прочитає його і створить вантаж.',
     closeAria: 'Закрити',
     dropTitle: 'Перетягніть PDF сюди',
     dropSub: 'або натисніть, щоб вибрати файл',
-    notPdf: (name: string) => `${name} — не PDF. Підтвердження ставки зазвичай надходять у PDF.`,
+    notPdf: (name: string) =>
+      `${name} — не PDF. Підтвердження ставки зазвичай надходять у PDF.`,
     sampleFailed: 'Не вдалося завантажити зразок.',
     samplesTitle: 'Немає файлу під рукою? Спробуйте зразок',
     opening: 'Відкриваю…',
@@ -768,7 +820,8 @@ export const uk = {
     missesPickup: 'Не встигає до завантаження — узгодьте з брокером інший час.',
     planOn: (truck: string) => `Запланувати на ${truck}`,
     run: 'Рейс',
-    enterStops: 'Вкажіть місто і штат завантаження та доставки, щоб прокласти маршрут.',
+    enterStops:
+      'Вкажіть місто і штат завантаження та доставки, щоб прокласти маршрут.',
     routing: (from: string, to: string) => `Прокладаю маршрут ${from} → ${to}…`,
     deadheadIn: 'Порожній під завантаження',
     loaded: 'Під вантажем',
@@ -778,12 +831,15 @@ export const uk = {
     someUnknown: 'Частина порожніх миль невідома',
     atOrAbove: (target: string) => `На рівні цілі ${target} або вище`,
     below: (target: string) => `Нижче цілі ${target}`,
-    cityNotFound: (cities: string) => `Не вдалося знайти на карті: ${cities}. Перевірте написання.`,
-    routeUnavailable: 'Сервіс маршрутів недоступний. Вкажіть милі під вантажем вручну.',
+    cityNotFound: (cities: string) =>
+      `Не вдалося знайти на карті: ${cities}. Перевірте написання.`,
+    routeUnavailable:
+      'Сервіс маршрутів недоступний. Вкажіть милі під вантажем вручну.',
     missing: (fields: string) => `Не заповнено: ${fields}`,
     rateNotPositive: 'Ставка має бути більше $0',
     fixErrors: 'Виправте виділені поля',
-    noHoursNote: (driver: string) => `${driver} зараз на 10-годинному відпочинку: рейс почнеться не одразу.`,
+    noHoursNote: (driver: string) =>
+      `${driver} зараз на 10-годинному відпочинку: рейс почнеться не одразу.`,
     showPdf: 'Показати PDF',
     hidePdf: 'Сховати PDF',
     createRun: (truck: string) => `Створити рейс · ${truck}`,
@@ -810,7 +866,8 @@ export const uk = {
       manyStops: (n: number) =>
         `У цьому підтвердженні ${n} ${plural(n, 'точка', 'точки', 'точок')}. Імпортовано лише перше завантаження і останню доставку.`,
       oneStop: 'Знайдено лише одну адресу. Другу точку заповніть вручну.',
-      notRateCon: 'Цей файл не схожий на підтвердження ставки, яке ми вміємо читати. Заповніть вантаж вручну.',
+      notRateCon:
+        'Цей файл не схожий на підтвердження ставки, яке ми вміємо читати. Заповніть вантаж вручну.',
     },
   },
 

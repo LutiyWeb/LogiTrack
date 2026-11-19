@@ -18,7 +18,6 @@ import {
   selectPermissions,
 } from '../../store/slices/authSlice';
 import {
-  addLoadDetention,
   advanceLoadBilling,
   clearScrollToOffers,
   openRun,
@@ -29,6 +28,7 @@ import {
 import { markBrokerRead } from '../../store/slices/brokerSlice';
 import { showToast } from '../../store/slices/toastsSlice';
 import { setActiveSection } from '../../store/slices/uiSlice';
+import LoadOperations from '../Operations/LoadOperations';
 import ActionMenu from '../ActionMenu/ActionMenu';
 import { useChatPanel } from '../Chats/ChatPanelContext';
 import ConfirmDialog from '../ConfirmDialog/ConfirmDialog';
@@ -60,6 +60,7 @@ function RunDetail() {
   const targetRate = useAppSelector((state) => state.ui.targetRatePerMile);
   const maxEmptyPercent = useAppSelector((state) => state.ui.maxEmptyPercent);
   const unreadBroker = useAppSelector((state) => state.broker.unread);
+  const [operationsLoadId, setOperationsLoadId] = useState<string | null>(null);
   const [brokerLoadId, setBrokerLoadId] = useState<string | null>(null);
   const [pendingRemove, setPendingRemove] = useState<{
     loadId: string;
@@ -146,48 +147,48 @@ function RunDetail() {
           }
         />
         {showEconomics && (
-        <StatTile
-          label={t.runDetail.revenue}
-          value={formatMoney(earned, 0)}
-          meta={
-            netProfit !== null && operatingCost !== null
-              ? t.runDetail.netCost(
-                  formatMoney(netProfit, 0),
-                  formatMoney(operatingCost, 0),
-                )
-              : undefined
-          }
-        />
+          <StatTile
+            label={t.runDetail.revenue}
+            value={formatMoney(earned, 0)}
+            meta={
+              netProfit !== null && operatingCost !== null
+                ? t.runDetail.netCost(
+                    formatMoney(netProfit, 0),
+                    formatMoney(operatingCost, 0),
+                  )
+                : undefined
+            }
+          />
         )}
         {showEconomics && (
-        <StatTile
-          label={t.common.allInLabel}
-          value={perMile === null ? t.units.dash : formatMoney(perMile, 2)}
-          tooltip={t.common.allInTooltip}
-          badgeTone={
-            perMile !== null ? (rateIsGood ? 'ok' : 'warn') : undefined
-          }
-          badgeText={
-            perMile !== null
-              ? rateIsGood
-                ? t.runDetail.rateAbove(formatMoney(targetRate, 2))
-                : t.runDetail.rateBelow(formatMoney(targetRate, 2))
-              : undefined
-          }
-        />
+          <StatTile
+            label={t.common.allInLabel}
+            value={perMile === null ? t.units.dash : formatMoney(perMile, 2)}
+            tooltip={t.common.allInTooltip}
+            badgeTone={
+              perMile !== null ? (rateIsGood ? 'ok' : 'warn') : undefined
+            }
+            badgeText={
+              perMile !== null
+                ? rateIsGood
+                  ? t.runDetail.rateAbove(formatMoney(targetRate, 2))
+                  : t.runDetail.rateBelow(formatMoney(targetRate, 2))
+                : undefined
+            }
+          />
         )}
       </dl>
       <div className="runs__run-status">
         <div className="runs__run-driver">
-        {run.status !== 'Completed' && (
-          <HosRing hoursLeft={run.drivingHoursLeft} />
-        )}
-        <p className="runs__meta">
-          {t.runDetail.yard(run.driver, yard)}
-          {run.status === 'Completed' || run.drivingHoursLeft === null
-            ? ''
-            : t.runDetail.shiftLeft(formatHours(run.drivingHoursLeft))}
-        </p>
+          {run.status !== 'Completed' && (
+            <HosRing hoursLeft={run.drivingHoursLeft} />
+          )}
+          <p className="runs__meta">
+            {t.runDetail.yard(run.driver, yard)}
+            {run.status === 'Completed' || run.drivingHoursLeft === null
+              ? ''
+              : t.runDetail.shiftLeft(formatHours(run.drivingHoursLeft))}
+          </p>
         </div>
         <MilesSplitBar paidMiles={paidMiles} emptyMiles={empty} />
       </div>
@@ -265,25 +266,20 @@ function RunDetail() {
                         )}
                       </button>
                     )}
+                    <button
+                      type="button"
+                      className={`runs__button runs__button--secondary runs__button--small ${operationsLoadId === load.id ? 'is-active' : ''}`}
+                      aria-expanded={operationsLoadId === load.id}
+                      onClick={() =>
+                        setOperationsLoadId((id) =>
+                          id === load.id ? null : load.id,
+                        )
+                      }
+                    >
+                      Документи, POD і події
+                    </button>
                     {load.status === 'Delivered' && (
                       <>
-                        {billing === 'POD required' &&
-                          permissions.canUpdateLoadStatus && (
-                            <button
-                              type="button"
-                              className="runs__button runs__button--secondary runs__button--small"
-                              onClick={() =>
-                                dispatch(
-                                  advanceLoadBilling({
-                                    runId: run.id,
-                                    loadId: load.id,
-                                  }),
-                                )
-                              }
-                            >
-                              {t.runDetail.confirmPod}
-                            </button>
-                          )}
                         {billing === 'POD received' &&
                           permissions.canManageLoads && (
                             <button
@@ -294,6 +290,7 @@ function RunDetail() {
                                   advanceLoadBilling({
                                     runId: run.id,
                                     loadId: load.id,
+                                    author: currentUser?.name,
                                   }),
                                 );
                                 dispatch(
@@ -312,27 +309,6 @@ function RunDetail() {
                     <ActionMenu
                       label={t.common.more}
                       items={[
-                        ...(permissions.canManageLoads && !load.detentionFee
-                          ? [
-                              {
-                                label: t.runDetail.addDetention,
-                                onSelect: () =>
-                                  dispatch(
-                                    addLoadDetention({
-                                      runId: run.id,
-                                      loadId: load.id,
-                                      amount: 150,
-                                      author:
-                                        currentUser?.name ??
-                                        t.common.dispatcherFallback,
-                                      roleTitle:
-                                        currentUser?.roleTitle ??
-                                        t.common.dispatchFallbackRole,
-                                    }),
-                                  ),
-                              },
-                            ]
-                          : []),
                         ...(permissions.canManageLoads && run.loads.length > 1
                           ? [
                               {
@@ -367,6 +343,9 @@ function RunDetail() {
                       </span>
                     )}
                   </div>
+                )}
+                {operationsLoadId === load.id && (
+                  <LoadOperations runId={run.id} load={load} />
                 )}
                 {load.specialInstructions && (
                   <div className="runs__instructions" role="note">

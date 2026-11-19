@@ -83,12 +83,10 @@ describe('seed domain calculations', () => {
     expect(emptyMilesTotal(legsWithManual)).toBe(180 + 250 + 15);
   });
 
-  it('generates HOS shift note explaining 10-hour reset and whether pickup waits', () => {
+  it('does not treat a future pickup as using today’s driving hours', () => {
     const waitingBackhaul = draftToLoad(backhaulPreset, 'wait-ok');
     const note = shiftNote(truck214, waitingBackhaul);
-    expect(note).toContain('Ця ділянка — 9 год.');
-    expect(note).toContain('До кінця зміни 3.5 год.');
-    expect(note).toContain('Завантаження може зачекати, тож вантаж лишається.');
+    expect(note).toBe('');
 
     const urgentOffer = backhaulOffers.find(
       (offer) => offer.id === 'southern-express',

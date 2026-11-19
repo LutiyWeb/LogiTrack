@@ -1,4 +1,10 @@
 import { t } from '../i18n';
+import type { DriverAdjustment } from '../operations/model';
+import {
+  mileageEntries,
+  weekMileageEntries,
+  type MileageEntry,
+} from './earnings';
 import { SEED_NOW, fleetRoster } from '../runs/seed';
 import type { EnrichedRun } from '../store/selectors/runsSelectors';
 
@@ -28,13 +34,66 @@ export type PayoutRecord = {
 export const CURRENT_WEEK = '26 жовт. – 1 лист.';
 
 export const seedDrivers: Driver[] = [
-  { name: 'Marcus Hill', phone: '(317) 555-0114', truck: 'Тягач 214', cdlNumber: 'IN-4829103', cdlExpires: '2028-03-14', medicalExpires: '2027-01-20' },
-  { name: 'Dana Brooks', phone: '(317) 555-0162', truck: 'Тягач 118', cdlNumber: 'IN-5531872', cdlExpires: '2027-08-02', medicalExpires: '2026-11-10' },
-  { name: 'Luis Ortega', phone: '(317) 555-0139', truck: 'Тягач 107', cdlNumber: 'IN-3376021', cdlExpires: '2029-05-30', medicalExpires: '2027-06-11', lastRunEnded: '2026-10-26T15:40' },
-  { name: 'Elena Rostova', phone: '(317) 555-0185', truck: 'Тягач 305', cdlNumber: 'IN-6114597', cdlExpires: '2028-09-18', medicalExpires: '2027-04-03' },
-  { name: 'Sam Carter', phone: '(317) 555-0108', truck: 'Тягач 412', cdlNumber: 'IN-7720416', cdlExpires: '2027-12-01', medicalExpires: '2027-02-15', lastRunEnded: '2026-10-27T18:00' },
-  { name: 'Priya Nair', phone: '(317) 555-0177', truck: 'Тягач 226', cdlNumber: 'IN-2048865', cdlExpires: '2028-01-22', medicalExpires: '2027-09-09', lastRunEnded: '2026-10-25T12:00' },
-  { name: 'Jamal Wright', phone: '(317) 555-0193', truck: 'Тягач 331', cdlNumber: 'IN-8853310', cdlExpires: '2027-07-07', medicalExpires: '2026-10-20', lastRunEnded: '2026-10-19T16:00' },
+  {
+    name: 'Marcus Hill',
+    phone: '(317) 555-0114',
+    truck: 'Тягач 214',
+    cdlNumber: 'IN-4829103',
+    cdlExpires: '2028-03-14',
+    medicalExpires: '2027-01-20',
+  },
+  {
+    name: 'Dana Brooks',
+    phone: '(317) 555-0162',
+    truck: 'Тягач 118',
+    cdlNumber: 'IN-5531872',
+    cdlExpires: '2027-08-02',
+    medicalExpires: '2026-11-10',
+  },
+  {
+    name: 'Luis Ortega',
+    phone: '(317) 555-0139',
+    truck: 'Тягач 107',
+    cdlNumber: 'IN-3376021',
+    cdlExpires: '2029-05-30',
+    medicalExpires: '2027-06-11',
+    lastRunEnded: '2026-10-26T15:40',
+  },
+  {
+    name: 'Elena Rostova',
+    phone: '(317) 555-0185',
+    truck: 'Тягач 305',
+    cdlNumber: 'IN-6114597',
+    cdlExpires: '2028-09-18',
+    medicalExpires: '2027-04-03',
+  },
+  {
+    name: 'Sam Carter',
+    phone: '(317) 555-0108',
+    truck: 'Тягач 412',
+    cdlNumber: 'IN-7720416',
+    cdlExpires: '2027-12-01',
+    medicalExpires: '2027-02-15',
+    lastRunEnded: '2026-10-27T18:00',
+  },
+  {
+    name: 'Priya Nair',
+    phone: '(317) 555-0177',
+    truck: 'Тягач 226',
+    cdlNumber: 'IN-2048865',
+    cdlExpires: '2028-01-22',
+    medicalExpires: '2027-09-09',
+    lastRunEnded: '2026-10-25T12:00',
+  },
+  {
+    name: 'Jamal Wright',
+    phone: '(317) 555-0193',
+    truck: 'Тягач 331',
+    cdlNumber: 'IN-8853310',
+    cdlExpires: '2027-07-07',
+    medicalExpires: '2026-10-20',
+    lastRunEnded: '2026-10-19T16:00',
+  },
 ];
 
 /** Выплаты прошлой недели — уже выплачены. */
@@ -84,6 +143,11 @@ export type DriverRow = {
   /** Осталось выплатить: начислено минус выплачено. */
   due: number;
   isPaid: boolean;
+  forecastMiles: number;
+  forecastPay: number;
+  earnings: MileageEntry[];
+  unknownMileageCount: number;
+  adjustments: DriverAdjustment[];
 };
 
 /**
@@ -91,14 +155,9 @@ export type DriverRow = {
  * мили под вантажем — когда груз доставлен, возврат на базу — когда рейс завершён.
  */
 export function traveledMiles(item: EnrichedRun) {
-  const { run, legs } = item;
-  let miles = 0;
-  run.loads.forEach((load, index) => {
-    if (load.status !== 'Assigned') miles += legs[index]?.miles ?? 0;
-    if (load.status === 'Delivered') miles += load.miles;
-  });
-  if (run.status === 'Completed') miles += legs.at(-1)?.miles ?? 0;
-  return miles;
+  return mileageEntries(item)
+    .filter((entry) => entry.confirmed)
+    .reduce((sum, entry) => sum + (entry.miles ?? 0), 0);
 }
 
 export function buildDriverRows(
@@ -107,13 +166,19 @@ export function buildDriverRows(
   payPerMile: number,
   paidThisWeek: string[],
   paidAmounts: Record<string, number> = {},
+  adjustments: DriverAdjustment[] = [],
 ): DriverRow[] {
   return drivers.map((driver) => {
     const own = runs.filter((item) => item.run.driver === driver.name);
-    const activeRun = own.find((item) => item.run.status !== 'Completed') ?? null;
+    const activeRun =
+      own.find((item) => item.run.status !== 'Completed') ?? null;
     const roster = fleetRoster.find((item) => item.driver === driver.name);
-    const hoursLeft = activeRun?.run.drivingHoursLeft ?? roster?.drivingHoursLeft ?? null;
-    const docsDaysLeft = Math.min(daysUntil(driver.cdlExpires), daysUntil(driver.medicalExpires));
+    const hoursLeft =
+      activeRun?.run.drivingHoursLeft ?? roster?.drivingHoursLeft ?? null;
+    const docsDaysLeft = Math.min(
+      daysUntil(driver.cdlExpires),
+      daysUntil(driver.medicalExpires),
+    );
 
     const status: DriverStatus =
       docsDaysLeft < 0
@@ -125,21 +190,46 @@ export function buildDriverRows(
             : 'Free';
 
     // Оплачиваются только пройденные мили.
-    const weekMiles = own.reduce((sum, item) => sum + traveledMiles(item), 0);
-    const weekPay = Math.round(weekMiles * payPerMile);
+    const earnings = weekMileageEntries(own);
+    const weekMiles = earnings.reduce(
+      (sum, entry) => sum + (entry.miles ?? 0),
+      0,
+    );
+    const weekStart = new Date(`${SEED_NOW.slice(0, 10)}T00:00:00Z`);
+    weekStart.setUTCDate(
+      weekStart.getUTCDate() - ((weekStart.getUTCDay() + 6) % 7),
+    );
+    const ownAdjustments = adjustments.filter(
+      (item) =>
+        item.driver === driver.name &&
+        item.date >= weekStart.toISOString().slice(0, 10) &&
+        item.date <= SEED_NOW.slice(0, 10),
+    );
+    const weekPay =
+      (Math.round(weekMiles * payPerMile * 100) +
+        ownAdjustments.reduce((sum, item) => sum + item.amountCents, 0)) /
+      100;
+    const forecastMiles = own.reduce(
+      (sum, item) =>
+        sum + (item.totalMiles ?? item.paidMiles + (item.emptyMiles ?? 0)),
+      0,
+    );
+    const forecastPay = Math.round(forecastMiles * payPerMile * 100) / 100;
     const marked = paidThisWeek.includes(driver.name);
     const paidAmount = marked ? (paidAmounts[driver.name] ?? weekPay) : 0;
-    const due = Math.max(0, weekPay - paidAmount);
+    const due = Math.max(0, Math.round((weekPay - paidAmount) * 100) / 100);
     const isPaid = marked && due === 0;
 
-    const idleDays = !activeRun && driver.lastRunEnded ? daysSince(driver.lastRunEnded) : null;
+    const idleDays =
+      !activeRun && driver.lastRunEnded ? daysSince(driver.lastRunEnded) : null;
 
     return {
       driver,
       status,
       activeRun,
       hoursLeft,
-      location: activeRun?.run.location?.label ?? t.map.homeYard('Indianapolis', 'IN'),
+      location:
+        activeRun?.run.location?.label ?? t.map.homeYard('Indianapolis', 'IN'),
       docsDaysLeft,
       idleDays,
       weekMiles,
@@ -147,6 +237,12 @@ export function buildDriverRows(
       paidAmount,
       due,
       isPaid,
+      earnings,
+      adjustments: ownAdjustments,
+      forecastMiles,
+      forecastPay,
+      unknownMileageCount: earnings.filter((entry) => entry.miles === null)
+        .length,
     };
   });
 }
@@ -154,14 +250,21 @@ export function buildDriverRows(
 /** Сообщения о водителях для «Огляду». */
 export function driverAlerts(rows: DriverRow[], idleDaysLimit: number) {
   const idle = rows.filter(
-    (row) => row.status !== 'DocsExpired' && row.idleDays !== null && row.idleDays >= idleDaysLimit,
+    (row) =>
+      row.status !== 'DocsExpired' &&
+      row.idleDays !== null &&
+      row.idleDays >= idleDaysLimit,
   );
   const docs = rows.filter((row) => row.docsDaysLeft <= 30);
   const toPay = rows.reduce((sum, row) => sum + row.due, 0);
   return { idle, docs, toPay };
 }
 
-const dateFormat = new Intl.DateTimeFormat('uk-UA', { day: 'numeric', month: 'short', year: 'numeric' });
+const dateFormat = new Intl.DateTimeFormat('uk-UA', {
+  day: 'numeric',
+  month: 'short',
+  year: 'numeric',
+});
 
 export function docDate(date: string) {
   return dateFormat.format(new Date(date));
@@ -175,7 +278,9 @@ export function docNote(driver: Driver) {
   ].sort((a, b) => a.date.localeCompare(b.date));
   const soonest = docs[0];
   const days = daysUntil(soonest.date);
-  if (days < 0) return { text: t.drivers.docExpired(soonest.name), tone: 'danger' };
-  if (days <= 30) return { text: t.drivers.docExpiresIn(soonest.name, days), tone: 'warn' };
+  if (days < 0)
+    return { text: t.drivers.docExpired(soonest.name), tone: 'danger' };
+  if (days <= 30)
+    return { text: t.drivers.docExpiresIn(soonest.name, days), tone: 'warn' };
   return { text: t.drivers.docsOk(docDate(soonest.date)), tone: '' };
 }

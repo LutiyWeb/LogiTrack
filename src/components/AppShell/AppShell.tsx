@@ -41,11 +41,15 @@ function AppShell() {
   const [chatOpen, setChatOpen] = useState(false);
   const [chatDriver, setChatDriver] = useState<string | null>(null);
   const chatOpener = useRef<HTMLElement | null>(null);
-  const openChat = useCallback((driver?: string, opener?: HTMLElement | null) => {
-    chatOpener.current = opener ?? (document.activeElement as HTMLElement | null);
-    setChatDriver(driver ?? null);
-    setChatOpen(true);
-  }, []);
+  const openChat = useCallback(
+    (driver?: string, opener?: HTMLElement | null) => {
+      chatOpener.current =
+        opener ?? (document.activeElement as HTMLElement | null);
+      setChatDriver(driver ?? null);
+      setChatOpen(true);
+    },
+    [],
+  );
   const closeChat = useCallback(() => setChatOpen(false), []);
   // После закрытия панели фокус возвращается на кнопку, которая её открыла.
   const wasChatOpen = useRef(false);
@@ -60,11 +64,20 @@ function AppShell() {
   const runIds = useAppSelector(selectRunIds);
 
   const visibleItems = useMemo(
-    () => menuItems.filter((item) => !item.permission || permissions[item.permission]),
-    [permissions],
+    () =>
+      menuItems.filter(
+        (item) =>
+          (!item.permission || permissions[item.permission]) &&
+          (!item.role || currentUser?.role === item.role),
+      ),
+    [permissions, currentUser?.role],
   );
-  const allowedSections = useMemo(() => visibleItems.map((item) => item.id), [visibleItems]);
-  const active = visibleItems.find((item) => item.id === activeId) ?? visibleItems[0];
+  const allowedSections = useMemo(
+    () => visibleItems.map((item) => item.id),
+    [visibleItems],
+  );
+  const active =
+    visibleItems.find((item) => item.id === activeId) ?? visibleItems[0];
 
   useRouteSync({
     enabled: Boolean(currentUser),
@@ -97,59 +110,67 @@ function AppShell() {
 
   return (
     <ChatPanelContext.Provider value={{ openChat }}>
-    <div className={isOpen ? 'shell' : 'shell is-collapsed'}>
-      {!isMobile && (
-        <Sidebar
-          items={visibleItems}
-          activeId={active.id}
-          isOpen={isOpen}
-          userName={currentUser.name}
-          userRole={currentUser.roleTitle}
-          badges={badges}
-          onSelect={selectSection}
-          onToggle={() => dispatch(toggleSidebar())}
-          onLogout={() => dispatch(logout())}
-          onSupport={() => setSupportOpen(true)}
-        />
-      )}
-      {isMobile && (
-        <MobileNav
-          items={visibleItems}
-          activeId={active.id}
-          title={active.label}
-          userName={currentUser.name}
-          userRole={currentUser.roleTitle}
-          badges={badges}
-          onSelect={selectSection}
-          onLogout={() => dispatch(logout())}
-          onSupport={() => setSupportOpen(true)}
-          onOpenChats={canChat ? (opener) => openChat(undefined, opener) : undefined}
-          unreadChats={unreadChats}
-        />
-      )}
-      <Workspace sectionId={active.id} title={active.label} />
-      <Toasts />
-      {canChat && !isMobile && active.id !== 'chats' && (
-        <button
-          type="button"
-          className="chat-launcher"
-          aria-label={t.chats.openPanel}
-          onClick={(event) => openChat(undefined, event.currentTarget)}
-        >
-          <ChatsIcon />
-          {unreadChats > 0 && <span className="chat-launcher__count">{unreadChats}</span>}
-        </button>
-      )}
-      {chatOpen && canChat && (
-        <ChatPanel selected={chatDriver} onSelect={setChatDriver} onClose={closeChat} />
-      )}
-      {supportOpen && (
-        <SupportDialog
-          sectionLabel={active.label}
-          onClose={() => setSupportOpen(false)}
-        />
-      )}
-    </div>
+      <div className={isOpen ? 'shell' : 'shell is-collapsed'}>
+        {!isMobile && (
+          <Sidebar
+            items={visibleItems}
+            activeId={active.id}
+            isOpen={isOpen}
+            userName={currentUser.name}
+            userRole={currentUser.roleTitle}
+            badges={badges}
+            onSelect={selectSection}
+            onToggle={() => dispatch(toggleSidebar())}
+            onLogout={() => dispatch(logout())}
+            onSupport={() => setSupportOpen(true)}
+          />
+        )}
+        {isMobile && (
+          <MobileNav
+            items={visibleItems}
+            activeId={active.id}
+            title={active.label}
+            userName={currentUser.name}
+            userRole={currentUser.roleTitle}
+            badges={badges}
+            onSelect={selectSection}
+            onLogout={() => dispatch(logout())}
+            onSupport={() => setSupportOpen(true)}
+            onOpenChats={
+              canChat ? (opener) => openChat(undefined, opener) : undefined
+            }
+            unreadChats={unreadChats}
+          />
+        )}
+        <Workspace sectionId={active.id} title={active.label} />
+        <Toasts />
+        {canChat && !isMobile && active.id !== 'chats' && (
+          <button
+            type="button"
+            className="chat-launcher"
+            aria-label={t.chats.openPanel}
+            onClick={(event) => openChat(undefined, event.currentTarget)}
+          >
+            <ChatsIcon />
+            {unreadChats > 0 && (
+              <span className="chat-launcher__count">{unreadChats}</span>
+            )}
+          </button>
+        )}
+        {chatOpen && canChat && (
+          <ChatPanel
+            selected={chatDriver}
+            onSelect={setChatDriver}
+            onClose={closeChat}
+          />
+        )}
+        {supportOpen && (
+          <SupportDialog
+            sectionLabel={active.label}
+            onClose={() => setSupportOpen(false)}
+          />
+        )}
+      </div>
     </ChatPanelContext.Provider>
   );
 }

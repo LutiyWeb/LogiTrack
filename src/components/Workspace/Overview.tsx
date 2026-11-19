@@ -12,12 +12,18 @@ import {
   selectEnrichedRuns,
   selectOverviewRuns,
   selectFleetKpis,
+  selectRealizedKpis,
 } from '../../store/selectors/runsSelectors';
 import { selectMonthResult } from '../../store/selectors/financeSelectors';
 import { selectPermissions } from '../../store/slices/authSlice';
 import { selectWaitingInboxCount } from '../../store/slices/inboxSlice';
 import { openRun } from '../../store/slices/runsSlice';
-import { carrierProfile, setActiveSection } from '../../store/slices/uiSlice';
+import { invoiceOverdue } from '../../billing/billing';
+import {
+  carrierProfile,
+  setActiveSection,
+  setInvoiceFilter,
+} from '../../store/slices/uiSlice';
 import FleetRouteMap from './FleetRouteMap';
 import StatTile from './StatTile';
 import { HosRing, MilesSplitBar, RunStatusBadge } from './RunVisuals';
@@ -25,6 +31,28 @@ import { HosRing, MilesSplitBar, RunStatusBadge } from './RunVisuals';
 function Overview() {
   const dispatch = useAppDispatch();
   const kpis = useAppSelector(selectFleetKpis);
+  const actual = useAppSelector(selectRealizedKpis);
+  const invoices = useAppSelector((state) => state.runs.invoices);
+  const waitingPod = useAppSelector((state) => state.runs.runs).flatMap((run) =>
+    run.loads
+      .filter(
+        (load) =>
+          load.status === 'Delivered' &&
+          (!load.billingStatus || load.billingStatus === 'POD required'),
+      )
+      .map((load) => ({ run, load })),
+  );
+  const readyBilling = useAppSelector((state) => state.runs.runs).flatMap(
+    (run) =>
+      run.loads
+        .filter(
+          (load) =>
+            load.status === 'Delivered' &&
+            load.billingStatus === 'POD received',
+        )
+        .map((load) => ({ run, load })),
+  );
+  const overdue = invoices.filter((invoice) => invoiceOverdue(invoice));
   const enrichedRuns = useAppSelector(selectEnrichedRuns);
   const overviewRuns = useAppSelector(selectOverviewRuns);
   const targetRate = useAppSelector((state) => state.ui.targetRatePerMile);
@@ -38,9 +66,17 @@ function Overview() {
   const payPerMile = useAppSelector((state) => state.ui.driverPayPerMile);
   const idleDaysAlert = useAppSelector((state) => state.ui.idleDaysAlert);
   const paidThisWeek = useAppSelector((state) => state.drivers.paidThisWeek);
+  const adjustments = useAppSelector((state) => state.operations.adjustments);
   const paidAmounts = useAppSelector((state) => state.drivers.paidAmounts);
   const drivers = driverAlerts(
-    buildDriverRows(seedDrivers, enrichedRuns, payPerMile, paidThisWeek, paidAmounts),
+    buildDriverRows(
+      seedDrivers,
+      enrichedRuns,
+      payPerMile,
+      paidThisWeek,
+      paidAmounts,
+      adjustments,
+    ),
     idleDaysAlert,
   );
   const hasDriverAlerts =
@@ -86,7 +122,9 @@ function Overview() {
         />
         <StatTile
           label={t.common.allInLabel}
-          value={hasData ? formatMoney(kpis.averageDollarsPerMile, 2) : t.units.dash}
+          value={
+            hasData ? formatMoney(kpis.averageDollarsPerMile, 2) : t.units.dash
+          }
           tooltip={t.common.allInTooltip}
           badgeTone={hasData ? (rateIsGood ? 'ok' : 'warn') : undefined}
           badgeText={
@@ -109,7 +147,11 @@ function Overview() {
                 : t.overview.withinTarget
               : undefined
           }
-          meta={hasData ? t.overview.emptyTotal(formatMiles(kpis.totalEmptyMiles)) : undefined}
+          meta={
+            hasData
+              ? t.overview.emptyTotal(formatMiles(kpis.totalEmptyMiles))
+              : undefined
+          }
         />
         <StatTile
           label={t.overview.activeTrucks}
@@ -118,6 +160,86 @@ function Overview() {
         />
       </dl>
 
+      <section className="runs__block" aria-label="Виконані перевезення">
+        <h2 className="runs__subtitle">Виконані перевезення</h2>
+        <dl className="runs__stats runs__stats--kpi">
+          <StatTile
+            label="Виручка доставлених вантажів"
+            value={formatMoney(actual.revenue, 2)}
+          />
+          <StatTile
+            label="Підтверджений пробіг"
+            value={formatMiles(actual.miles)}
+          />
+          <StatTile
+            label="Оцінка змінних витрат"
+            value={formatMoney(actual.cost, 2)}
+            meta="Пальне + водій за підтвердженими милями"
+          />
+          <StatTile
+            label="Маржа виконаних перевезень"
+            value={formatMoney(actual.margin, 2)}
+            meta="Без постійних витрат, податків і непідтверджених витрат"
+          />
+        </dl>
+        {actual.unknownMileageCount > 0 && (
+          <p className="runs__field-error">
+            Є підтверджені ділянки з невідомим пробігом. Результат неповний.
+          </p>
+        )}
+      </section>
+      <section className="runs__block" aria-label="Робочі черги">
+        <h2 className="runs__subtitle">Від доставки до оплати</h2>
+        <ul className="runs__loads">
+          <li className="runs__load">
+            <h3 className="runs__subtitle">
+              Потрібен POD ({waitingPod.length})
+            </h3>
+            {waitingPod.map(({ run, load }) => (
+              <button
+                key={load.id}
+                type="button"
+                className="runs__button runs__button--secondary runs__button--small"
+                onClick={() => jumpToRun(run.id)}
+              >
+                {run.truck} · {load.customer}
+              </button>
+            ))}
+          </li>
+          <li className="runs__load">
+            <h3 className="runs__subtitle">
+              Готово до виставлення ({readyBilling.length})
+            </h3>
+            {readyBilling.map(({ run, load }) => (
+              <button
+                key={load.id}
+                type="button"
+                className="runs__button runs__button--secondary runs__button--small"
+                onClick={() => jumpToRun(run.id)}
+              >
+                {run.truck} · {load.customer}
+              </button>
+            ))}
+          </li>
+          <li className="runs__load">
+            <h3 className="runs__subtitle">
+              Прострочена оплата ({overdue.length})
+            </h3>
+            {overdue.length > 0 && (
+              <button
+                type="button"
+                className="runs__button runs__button--secondary runs__button--small"
+                onClick={() => {
+                  dispatch(setInvoiceFilter('overdue'));
+                  dispatch(setActiveSection('brokers'));
+                }}
+              >
+                Відкрити прострочені рахунки
+              </button>
+            )}
+          </li>
+        </ul>
+      </section>
       <div className="runs__overview-grid">
         <section
           className="runs__block runs__block--flat-mobile runs__alerts"
@@ -298,9 +420,12 @@ function Overview() {
             </p>
           ) : (
             // Без рейсов: пояснение показываем, только если нет и других оповещений.
-            !(canViewFinance || dueCount > 0 || waitingLoads > 0 || hasDriverAlerts) && (
-              <p className="runs__note">{t.overview.noRunsAlerts}</p>
-            )
+            !(
+              canViewFinance ||
+              dueCount > 0 ||
+              waitingLoads > 0 ||
+              hasDriverAlerts
+            ) && <p className="runs__note">{t.overview.noRunsAlerts}</p>
           )}
         </section>
 
@@ -324,7 +449,9 @@ function Overview() {
             {t.overview.viewAll}
           </button>
         </div>
-        {overviewRuns.length === 0 && <p className="runs__note">{t.overview.noRuns}</p>}
+        {overviewRuns.length === 0 && (
+          <p className="runs__note">{t.overview.noRuns}</p>
+        )}
         <ul className="runs__list runs__list--summary">
           {overviewRuns.map((item) => (
             <li key={item.run.id}>

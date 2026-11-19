@@ -1,6 +1,10 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import type { GeoJSONSource, Map as MapLibreMap, Marker } from 'maplibre-gl';
-import type { FeatureCollection as GeoCollection, Geometry, LineString } from 'geojson';
+import type {
+  FeatureCollection as GeoCollection,
+  Geometry,
+  LineString,
+} from 'geojson';
 import 'maplibre-gl/dist/maplibre-gl.css';
 import mapWorkerUrl from 'maplibre-gl/dist/maplibre-gl-worker.mjs?url';
 import {
@@ -11,7 +15,13 @@ import {
   type LngLat,
 } from '../../geo/geo';
 import { runStatusLabel, t } from '../../i18n';
-import { formatWhen, nextStop, placeName, type Run } from '../../runs/seed';
+import {
+  formatWhen,
+  nextStop,
+  placeName,
+  SEED_NOW,
+  type Run,
+} from '../../runs/seed';
 import type { EnrichedRun } from '../../store/selectors/runsSelectors';
 
 type MapLib = typeof import('maplibre-gl');
@@ -37,7 +47,9 @@ type FeatureCollection = GeoCollection<Geometry>;
 
 /** Цвет из токена проекта: линии карты рисует canvas, он не читает CSS-переменные. */
 function token(name: string, fallback: string) {
-  const value = getComputedStyle(document.documentElement).getPropertyValue(name).trim();
+  const value = getComputedStyle(document.documentElement)
+    .getPropertyValue(name)
+    .trim();
   return value || fallback;
 }
 
@@ -108,7 +120,10 @@ function truckMarkerElement(run: Run) {
   const element = document.createElement('button');
   element.type = 'button';
   element.className = `truck-marker truck-marker--${statusTone[run.status]}`;
-  element.setAttribute('aria-label', `${run.truck} · ${runStatusLabel(run.status)}`);
+  element.setAttribute(
+    'aria-label',
+    `${run.truck} · ${runStatusLabel(run.status)}`,
+  );
   element.innerHTML = `
     <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 6h11v9H3zM14 9h4l3 3v3h-7z" fill="currentColor"/><circle cx="7" cy="17" r="2" fill="currentColor"/><circle cx="17" cy="17" r="2" fill="currentColor"/></svg>
     <span>${run.truck.replace(/^\D+/, '')}</span>`;
@@ -126,7 +141,8 @@ const MARKER_HEIGHT = 42;
 function spreadMarkers(map: MapLibreMap, markers: Marker[]) {
   const half = MARKER_WIDTH / 2;
   const width = map.getContainer().clientWidth;
-  const clamp = (x: number) => Math.min(Math.max(x, half), Math.max(half, width - half));
+  const clamp = (x: number) =>
+    Math.min(Math.max(x, half), Math.max(half, width - half));
   const items = markers
     .map((marker) => ({ marker, point: map.project(marker.getLngLat()) }))
     .sort((a, b) => a.point.x - b.point.x || a.point.y - b.point.y);
@@ -136,7 +152,9 @@ function spreadMarkers(map: MapLibreMap, markers: Marker[]) {
     .flatMap((col) => grid.map((row) => ({ col, row })))
     .sort(
       (a, b) =>
-        Math.abs(a.col) + Math.abs(a.row) - (Math.abs(b.col) + Math.abs(b.row)) ||
+        Math.abs(a.col) +
+          Math.abs(a.row) -
+          (Math.abs(b.col) + Math.abs(b.row)) ||
         Math.abs(a.row) - Math.abs(b.row),
     )
     .map(({ col, row }) => [col * MARKER_WIDTH, row * MARKER_HEIGHT]);
@@ -147,7 +165,8 @@ function spreadMarkers(map: MapLibreMap, markers: Marker[]) {
       const candidate = { x: clamp(point.x + dx), y: point.y + dy };
       const clash = placed.some(
         (other) =>
-          Math.abs(other.x - candidate.x) < MARKER_WIDTH && Math.abs(other.y - candidate.y) < MARKER_HEIGHT,
+          Math.abs(other.x - candidate.x) < MARKER_WIDTH &&
+          Math.abs(other.y - candidate.y) < MARKER_HEIGHT,
       );
       if (!clash) {
         best = candidate;
@@ -171,7 +190,8 @@ function popupContent(run: Run, onOpenRun?: (runId: string) => void) {
   status.textContent = runStatusLabel(run.status);
 
   const where = document.createElement('p');
-  where.textContent = run.location?.label ?? t.map.homeYard(run.yardCity, run.yardState);
+  where.textContent =
+    run.location?.label ?? t.map.homeYard(run.yardCity, run.yardState);
 
   const meta = document.createElement('p');
   meta.className = 'truck-popup__meta';
@@ -225,7 +245,10 @@ export function FleetRouteMap({
     [runs, isFleetView, routesVersion],
   );
   const fitKey = runs
-    .map((item) => `${item.run.id}:${item.timeline.map((step) => step.id).join(',')}`)
+    .map(
+      (item) =>
+        `${item.run.id}:${item.timeline.map((step) => step.id).join(',')}`,
+    )
     .join('|');
 
   // Create the map once.
@@ -263,7 +286,11 @@ export function FleetRouteMap({
             source: 'routes',
             filter: ['==', ['get', 'kind'], 'paid'],
             layout: { 'line-join': 'round', 'line-cap': 'round' },
-            paint: { 'line-color': '#ffffff', 'line-width': 7, 'line-offset': LANE_OFFSET },
+            paint: {
+              'line-color': '#ffffff',
+              'line-width': 7,
+              'line-offset': LANE_OFFSET,
+            },
           });
           map.addLayer({
             id: 'route-paid',
@@ -271,7 +298,11 @@ export function FleetRouteMap({
             source: 'routes',
             filter: ['==', ['get', 'kind'], 'paid'],
             layout: { 'line-join': 'round', 'line-cap': 'round' },
-            paint: { 'line-color': token('--color-primary', '#2a6177'), 'line-width': 4, 'line-offset': LANE_OFFSET },
+            paint: {
+              'line-color': token('--color-primary', '#2a6177'),
+              'line-width': 4,
+              'line-offset': LANE_OFFSET,
+            },
           });
           map.addLayer({
             id: 'route-empty',
@@ -293,7 +324,12 @@ export function FleetRouteMap({
             paint: {
               'circle-radius': ['case', ['get', 'isYard'], 7, 5],
               'circle-color': ['case', ['get', 'isYard'], '#1c1c1c', '#ffffff'],
-              'circle-stroke-color': ['case', ['get', 'isYard'], '#ffffff', '#1c1c1c'],
+              'circle-stroke-color': [
+                'case',
+                ['get', 'isYard'],
+                '#ffffff',
+                '#1c1c1c',
+              ],
               'circle-stroke-width': 2,
             },
           });
@@ -340,8 +376,12 @@ export function FleetRouteMap({
     const lib = libRef.current;
     if (!ready || !map || !lib) return;
 
-    (map.getSource('routes') as GeoJSONSource | undefined)?.setData(mapData.routes);
-    (map.getSource('stops') as GeoJSONSource | undefined)?.setData(mapData.stops);
+    (map.getSource('routes') as GeoJSONSource | undefined)?.setData(
+      mapData.routes,
+    );
+    (map.getSource('stops') as GeoJSONSource | undefined)?.setData(
+      mapData.stops,
+    );
 
     markersRef.current.forEach((marker) => marker.remove());
     const placed = runs.flatMap(({ run }) => {
@@ -349,8 +389,11 @@ export function FleetRouteMap({
       return position ? [{ run, position, key: position.join(',') }] : [];
     });
     markersRef.current = placed.map(({ run, position }) => {
-      const popup = new lib.Popup({ offset: 18, closeButton: false, maxWidth: '260px' })
-        .setDOMContent(popupContent(run, onOpenRunRef.current));
+      const popup = new lib.Popup({
+        offset: 18,
+        closeButton: false,
+        maxWidth: '260px',
+      }).setDOMContent(popupContent(run, onOpenRunRef.current));
       return new lib.Marker({
         element: truckMarkerElement(run),
         anchor: 'bottom',
@@ -399,13 +442,13 @@ export function FleetRouteMap({
   useEffect(() => {
     if (mapData.missing.length === 0) return;
     let cancelled = false;
-    Promise.all(mapData.missing.map(([from, to]) => fetchLegRoute(from, to))).then(
-      (results) => {
-        if (!cancelled && results.some(Boolean)) {
-          setRoutesVersion((version) => version + 1);
-        }
-      },
-    );
+    Promise.all(
+      mapData.missing.map(([from, to]) => fetchLegRoute(from, to)),
+    ).then((results) => {
+      if (!cancelled && results.some(Boolean)) {
+        setRoutesVersion((version) => version + 1);
+      }
+    });
     return () => {
       cancelled = true;
     };
@@ -416,16 +459,34 @@ export function FleetRouteMap({
       <div className="runs__form-head">
         <h2 className="runs__subtitle">{title}</h2>
         <div className="runs__map-legend">
-          <span className="runs__map-key runs__map-key--paid">{t.map.paidLoad}</span>
-          <span className="runs__map-key runs__map-key--empty">{t.map.emptyLeg}</span>
+          <span className="runs__map-key runs__map-key--paid">
+            {t.map.paidLoad}
+          </span>
+          <span className="runs__map-key runs__map-key--empty">
+            {t.map.emptyLeg}
+          </span>
         </div>
       </div>
+      <p className="runs__meta">
+        Лінії — плановий маршрут. Маркер — остання відома позиція, а не рух у
+        реальному часі.
+      </p>
+      <ul className="runs__driver-runs">
+        {runs.map((item) => (
+          <li key={item.run.id} className="runs__meta">
+            {item.run.truck} ·{' '}
+            {item.run.location
+              ? `${item.run.location.source ?? 'Демонстраційна позиція'} · ${formatWhen(item.run.location.at)} · ${Date.parse(SEED_NOW) - Date.parse(item.run.location.at) > 30 * 60000 ? 'Координати застаріли' : 'Оновлено не більш ніж 30 хв тому'}`
+              : 'GPS-координат немає; показано базу'}
+          </li>
+        ))}
+      </ul>
       <div className="runs__map" ref={containerRef}>
-        {failed && (
-          <p className="runs__map-fallback">{t.map.unavailable}</p>
-        )}
+        {failed && <p className="runs__map-fallback">{t.map.unavailable}</p>}
         {!failed && runs.length === 0 && (
-          <p className="runs__map-fallback" role="status">{t.map.empty}</p>
+          <p className="runs__map-fallback" role="status">
+            {t.map.empty}
+          </p>
         )}
       </div>
     </section>

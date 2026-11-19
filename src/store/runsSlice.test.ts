@@ -30,6 +30,7 @@ import {
   updateRunStatus,
 } from './slices/runsSlice';
 import { setActiveSection, setStatusFilter } from './slices/uiSlice';
+import { reviewPod } from './slices/operationsSlice';
 import { createAppStore, resetAllData } from './store';
 
 describe('Redux store (runsSlice, uiSlice, authSlice, and selectors)', () => {
@@ -83,6 +84,7 @@ describe('Redux store (runsSlice, uiSlice, authSlice, and selectors)', () => {
 
   it('updates run status, load status, POD/invoice billing workflow, dispatch notes, and removes a load', () => {
     const store = createAppStore();
+    store.dispatch(loginAsUser('manager'));
     store.dispatch(addLoad({ runId: '214', draft: backhaulPreset }));
 
     const run214 = store.getState().runs.runs.find((r) => r.id === '214')!;
@@ -98,9 +100,16 @@ describe('Redux store (runsSlice, uiSlice, authSlice, and selectors)', () => {
     expect(
       store.getState().runs.runs.find((r) => r.id === '214')?.loads[1]
         .billingStatus,
-    ).toBe('POD required');
+    ).toBeUndefined();
 
-    store.dispatch(advanceLoadBilling({ runId: '214', loadId: 'hart' }));
+    store.dispatch(
+      reviewPod({
+        documentId: 'pod-hart',
+        runId: '214',
+        loadId: 'hart',
+        author: 'Sarah',
+      }),
+    );
     expect(
       store.getState().runs.runs.find((r) => r.id === '214')?.loads[0]
         .billingStatus,
@@ -125,9 +134,9 @@ describe('Redux store (runsSlice, uiSlice, authSlice, and selectors)', () => {
     ).toHaveLength(3);
 
     store.dispatch(updateRunStatus({ runId: '214', status: 'Completed' }));
-    expect(
-      store.getState().runs.runs.find((r) => r.id === '214')?.status,
-    ).toBe('Completed');
+    expect(store.getState().runs.runs.find((r) => r.id === '214')?.status).toBe(
+      'In transit',
+    );
 
     store.dispatch(
       setManualMiles({ key: 'Atlanta, GA|Savannah, GA', miles: 245 }),
@@ -144,6 +153,7 @@ describe('Redux store (runsSlice, uiSlice, authSlice, and selectors)', () => {
 
   it('adds $150 detention fee with log note, and aggregates broker summaries', () => {
     const store = createAppStore();
+    store.dispatch(loginAsUser('manager'));
 
     const initialHart = selectBrokerSummaries(store.getState()).find(
       (b) => b.customer === 'Hart Freight',
@@ -167,7 +177,14 @@ describe('Redux store (runsSlice, uiSlice, authSlice, and selectors)', () => {
     expect(run214.loads[0].detentionFee).toBe(150);
     expect(run214.notes?.at(-1)?.text).toContain('Додано $150 за простій');
 
-    store.dispatch(advanceLoadBilling({ runId: '214', loadId: 'hart' }));
+    store.dispatch(
+      reviewPod({
+        documentId: 'pod-hart',
+        runId: '214',
+        loadId: 'hart',
+        author: 'Sarah',
+      }),
+    );
     store.dispatch(invoiceCustomerLoads('Hart Freight'));
 
     const billedHart = selectBrokerSummaries(store.getState()).find(
@@ -240,11 +257,19 @@ describe('Redux store (runsSlice, uiSlice, authSlice, and selectors)', () => {
     const store = createAppStore();
     store.dispatch(
       bookRateCon({
-        target: { kind: 'new', runId: 'run-new', truck: 'Тягач 412', driver: 'Sam Carter', drivingHoursLeft: 11 },
+        target: {
+          kind: 'new',
+          runId: 'run-new',
+          truck: 'Тягач 412',
+          driver: 'Sam Carter',
+          drivingHoursLeft: 11,
+        },
         draft: {
           ...emptyDraft,
           customer: 'Crestline Freight Brokerage',
           rate: '1850',
+          pickupAt: '2026-10-30T08:00',
+          deliveryAt: '2026-10-31T07:00',
           pickupCity: 'Louisville',
           pickupState: 'KY',
           deliveryCity: 'Memphis',
@@ -256,6 +281,7 @@ describe('Redux store (runsSlice, uiSlice, authSlice, and selectors)', () => {
         },
         legMiles: { 'Memphis, TN|Indianapolis, IN': 464 },
         fileName: 'ratecon-crestline.pdf',
+        inboxId: 'inbox-crestline',
         author: 'Alex Mercer',
         roleTitle: 'Senior Fleet Dispatcher',
       }),
@@ -271,7 +297,9 @@ describe('Redux store (runsSlice, uiSlice, authSlice, and selectors)', () => {
     });
     // Indianapolis → Louisville comes from the bundled table (115), the return leg from routing.
     expect(opened.emptyMiles).toBe(115 + 464);
-    expect(opened.run.notes?.at(-1)?.text).toContain('Створено вантаж CFB-240917');
+    expect(opened.run.notes?.at(-1)?.text).toContain(
+      'Створено вантаж CFB-240917',
+    );
     expect(opened.run.notes?.at(-1)?.text).toContain('$1,850');
   });
 
@@ -280,8 +308,22 @@ describe('Redux store (runsSlice, uiSlice, authSlice, and selectors)', () => {
     store.dispatch(
       bookRateCon({
         target: { kind: 'existing', runId: '118' },
-        draft: { ...emptyDraft, customer: 'Northbound', rate: '2450', pickupCity: 'Dayton', pickupState: 'OH', deliveryCity: 'Charlotte', deliveryState: 'NC', miles: '456' },
-        legMiles: { 'Columbus, OH|Dayton, OH': 71, 'Charlotte, NC|Indianapolis, IN': 568 },
+        draft: {
+          ...emptyDraft,
+          pickupAt: '2026-10-30T06:00',
+          deliveryAt: '2026-10-31T12:00',
+          customer: 'Northbound',
+          rate: '2450',
+          pickupCity: 'Dayton',
+          pickupState: 'OH',
+          deliveryCity: 'Charlotte',
+          deliveryState: 'NC',
+          miles: '456',
+        },
+        legMiles: {
+          'Columbus, OH|Dayton, OH': 71,
+          'Charlotte, NC|Indianapolis, IN': 568,
+        },
         fileName: 'ratecon-northbound.pdf',
         author: 'Alex Mercer',
         roleTitle: 'Senior Fleet Dispatcher',
@@ -296,19 +338,18 @@ describe('Redux store (runsSlice, uiSlice, authSlice, and selectors)', () => {
   it('lists overview runs by urgency, without completed ones, at most five', () => {
     const store = createAppStore();
     // 214 empty return (3.5 h), 305 too many empty miles (5.5 h), 118 too many empty miles (8 h); 107 completed.
-    expect(selectOverviewRuns(store.getState()).map((item) => item.run.id)).toEqual(['214', '305', '118']);
+    expect(
+      selectOverviewRuns(store.getState()).map((item) => item.run.id),
+    ).toEqual(['214', '305', '118']);
 
-    for (let index = 0; index < 4; index += 1) {
-      store.dispatch(
-        bookRateCon({
-          target: { kind: 'new', runId: `run-${index}`, truck: `Тягач ${900 + index}`, driver: 'Test Driver', drivingHoursLeft: 11 },
-          draft: { ...emptyDraft, customer: 'Test', rate: '1000', pickupCity: 'Dayton', pickupState: 'OH', deliveryCity: 'Columbus', deliveryState: 'OH', miles: '70' },
-          legMiles: {},
-          author: 'Alex Mercer',
-          roleTitle: 'Dispatcher',
-        }),
-      );
-    }
-    expect(selectOverviewRuns(store.getState())).toHaveLength(5);
+    const runsState = structuredClone(store.getState().runs);
+    for (let index = 0; index < 4; index += 1)
+      runsState.runs.push({
+        ...structuredClone(runsState.runs[1]),
+        id: `selector-fixture-${index}`,
+        truck: `Тягач ${900 + index}`,
+      });
+    const extended = createAppStore({ runs: runsState });
+    expect(selectOverviewRuns(extended.getState())).toHaveLength(5);
   });
 });

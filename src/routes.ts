@@ -11,6 +11,9 @@ export const sectionPaths: Record<MenuItem['id'], string> = {
   brokers: 'customers',
   finance: 'finance',
   account: 'account',
+  fleet: 'fleet',
+  integrations: 'integrations',
+  driverPortal: 'my-work',
 };
 
 export type RouteState = {
@@ -21,17 +24,22 @@ export type RouteState = {
 
 export function stateToPath({ sectionId, runId }: RouteState): string {
   const base = `/${sectionPaths[sectionId]}`;
-  return sectionId === 'board' && runId ? `${base}/${encodeURIComponent(runId)}` : base;
+  return sectionId === 'board' && runId
+    ? `${base}/${encodeURIComponent(runId)}`
+    : base;
 }
 
 /** Null when the address is not one of the app's pages. */
 export function pathToState(pathname: string): RouteState | null {
   const [first, second, ...rest] = pathname.split('/').filter(Boolean);
-  const entry = (Object.entries(sectionPaths) as [MenuItem['id'], string][]).find(
-    ([, segment]) => segment === first,
-  );
+  const entry = (
+    Object.entries(sectionPaths) as [MenuItem['id'], string][]
+  ).find(([, segment]) => segment === first);
   if (!entry || rest.length > 0) return null;
   const sectionId = entry[0];
   if (second !== undefined && sectionId !== 'board') return null;
-  return { sectionId, runId: second !== undefined ? decodeURIComponent(second) : null };
+  return {
+    sectionId,
+    runId: second !== undefined ? decodeURIComponent(second) : null,
+  };
 }

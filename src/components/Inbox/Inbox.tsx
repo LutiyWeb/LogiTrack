@@ -24,6 +24,8 @@ import { addInboxLoad, setInboxStatus } from '../../store/slices/inboxSlice';
 import { showToast } from '../../store/slices/toastsSlice';
 import { openRun } from '../../store/slices/runsSlice';
 import { setActiveSection } from '../../store/slices/uiSlice';
+import { draftChanges } from '../../inbox/identity';
+import LoadRevisions from './LoadRevisions';
 import ActionFab from '../ActionFab/ActionFab';
 import RateConImport, {
   type RateConDialogState,
@@ -83,7 +85,7 @@ function Inbox() {
       ...meta,
     });
     const loadNumber = item.draft.loadNumber ?? '';
-    if (loadNumber && findDuplicate(items, loadNumber)) {
+    if (loadNumber && findDuplicate(items, item)) {
       item.warnings = [...item.warnings, t.validation.duplicate(loadNumber)];
     }
     pdfCache.set(item.id, source.data);
@@ -104,9 +106,22 @@ function Inbox() {
             source: 'email',
             emailFrom: sample.from,
             fileUrl: sampleUrl(sample.file),
+            sourceMessageId: `demo-email:${sample.from}:${sample.file}`,
           },
         );
-        if (findDuplicate(items, item.draft.loadNumber ?? '')) {
+        const duplicate = findDuplicate(items, item);
+        if (duplicate) {
+          if (draftChanges(duplicate.draft, item.draft).length) {
+            dispatch(addInboxLoad(item));
+            dispatch(
+              showToast(
+                'info',
+                'Отримано оновлений RateCon. Перегляньте відмінності в початковому вантажі.',
+              ),
+            );
+            setFilter(duplicate.status === 'Assigned' ? 'assigned' : 'waiting');
+            return;
+          }
           pdfCache.delete(item.id);
           continue;
         }
@@ -128,8 +143,13 @@ function Inbox() {
     const active = bar?.querySelector<HTMLElement>('.is-active');
     if (!bar || !active) return;
     const left =
-      active.getBoundingClientRect().left - bar.getBoundingClientRect().left + bar.scrollLeft;
-    const target = Math.max(0, left - (bar.clientWidth - active.offsetWidth) / 2);
+      active.getBoundingClientRect().left -
+      bar.getBoundingClientRect().left +
+      bar.scrollLeft;
+    const target = Math.max(
+      0,
+      left - (bar.clientWidth - active.offsetWidth) / 2,
+    );
     bar.scrollTo?.({ left: target, behavior: 'smooth' });
   }, [filter, isMobile]);
 
@@ -384,6 +404,7 @@ function InboxCard({
       >
         {t.inbox.status[item.status]}
       </span>
+      <LoadRevisions item={item} />
       <div className="runs__load-actions runs__account-actions">
         {isWaiting && (
           <>

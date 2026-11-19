@@ -14,12 +14,15 @@ import { runStatusLabel, t } from '../../i18n';
 import { formatHours, formatMiles, formatMoney } from '../../runs/seed';
 import { useAppDispatch, useAppSelector } from '../../store/hooks';
 import { selectEnrichedRuns } from '../../store/selectors/runsSelectors';
+import { selectPermissions } from '../../store/slices/authSlice';
 import { markDriverPaid } from '../../store/slices/driversSlice';
 import { showToast } from '../../store/slices/toastsSlice';
 import { openRun } from '../../store/slices/runsSlice';
 import { setActiveSection } from '../../store/slices/uiSlice';
 import { useIsMobile } from '../../hooks/useMediaQuery';
 import { HosRing } from '../Workspace/RunVisuals';
+import { selectCurrentUser } from '../../store/slices/authSlice';
+import DriverAdjustmentForm from '../Operations/DriverAdjustmentForm';
 import StatTile from '../Workspace/StatTile';
 import '../Workspace/Workspace.scss';
 
@@ -36,25 +39,40 @@ const statusClass: Record<DriverStatus, string> = {
 
 function Drivers() {
   const dispatch = useAppDispatch();
+  const user = useAppSelector(selectCurrentUser);
+  const canPay = useAppSelector(selectPermissions).canViewFinance;
   const runs = useAppSelector(selectEnrichedRuns);
   const payPerMile = useAppSelector((state) => state.ui.driverPayPerMile);
   const paidThisWeek = useAppSelector((state) => state.drivers.paidThisWeek);
+  const adjustments = useAppSelector((state) => state.operations.adjustments);
   const paidAmounts = useAppSelector((state) => state.drivers.paidAmounts);
   const [openName, setOpenName] = useState<string | null>(null);
   const [showAll, setShowAll] = useState(false);
   const [filter, setFilter] = useState<DriverFilter>('all');
   const isMobile = useIsMobile();
 
-  const rows = buildDriverRows(seedDrivers, runs, payPerMile, paidThisWeek, paidAmounts);
-  const statusFilters = (Object.keys(t.drivers.statusFilter) as DriverFilter[]).filter(
-    (key) => key === 'all' || rows.some((row) => row.status === key),
+  const rows = buildDriverRows(
+    seedDrivers,
+    runs,
+    payPerMile,
+    paidThisWeek,
+    paidAmounts,
+    adjustments,
   );
+  const statusFilters = (
+    Object.keys(t.drivers.statusFilter) as DriverFilter[]
+  ).filter((key) => key === 'all' || rows.some((row) => row.status === key));
   const activeFilter = statusFilters.includes(filter) ? filter : 'all';
   const filteredRows =
-    isMobile && activeFilter !== 'all' ? rows.filter((row) => row.status === activeFilter) : rows;
+    isMobile && activeFilter !== 'all'
+      ? rows.filter((row) => row.status === activeFilter)
+      : rows;
   const isShortened = isMobile && activeFilter === 'all' && !showAll;
-  const visibleRows = isShortened ? filteredRows.slice(0, MOBILE_DRIVERS_LIMIT) : filteredRows;
-  const hasMore = isMobile && activeFilter === 'all' && rows.length > MOBILE_DRIVERS_LIMIT;
+  const visibleRows = isShortened
+    ? filteredRows.slice(0, MOBILE_DRIVERS_LIMIT)
+    : filteredRows;
+  const hasMore =
+    isMobile && activeFilter === 'all' && rows.length > MOBILE_DRIVERS_LIMIT;
   const docsProblems = rows.filter((row) => row.docsDaysLeft <= 30).length;
   const toPay = rows.reduce((sum, row) => sum + row.due, 0);
 
@@ -67,11 +85,28 @@ function Drivers() {
         </div>
       </header>
 
-      <dl className="runs__stats runs__stats--kpi" aria-label={t.drivers.kpiAria}>
-        <StatTile label={t.drivers.free} value={rows.filter((row) => row.status === 'Free').length} />
-        <StatTile label={t.drivers.onRun} value={rows.filter((row) => row.status === 'OnRun').length} />
-        <StatTile label={t.drivers.docsProblems} value={docsProblems} meta={t.drivers.docsProblemsSub} />
-        <StatTile label={t.drivers.toPay} value={formatMoney(toPay, 0)} meta={CURRENT_WEEK} />
+      <dl
+        className="runs__stats runs__stats--kpi"
+        aria-label={t.drivers.kpiAria}
+      >
+        <StatTile
+          label={t.drivers.free}
+          value={rows.filter((row) => row.status === 'Free').length}
+        />
+        <StatTile
+          label={t.drivers.onRun}
+          value={rows.filter((row) => row.status === 'OnRun').length}
+        />
+        <StatTile
+          label={t.drivers.docsProblems}
+          value={docsProblems}
+          meta={t.drivers.docsProblemsSub}
+        />
+        <StatTile
+          label={t.drivers.toPay}
+          value={formatMoney(toPay, 2)}
+          meta={CURRENT_WEEK}
+        />
       </dl>
 
       <section className="runs__block" aria-label={t.drivers.listAria}>
@@ -85,7 +120,11 @@ function Drivers() {
               <button
                 key={key}
                 type="button"
-                className={activeFilter === key ? 'runs__filter is-active' : 'runs__filter'}
+                className={
+                  activeFilter === key
+                    ? 'runs__filter is-active'
+                    : 'runs__filter'
+                }
                 onClick={(event) => {
                   setFilter(key);
                   event.currentTarget.scrollIntoView?.({
@@ -96,7 +135,10 @@ function Drivers() {
                 }}
               >
                 {t.drivers.statusFilter[key]} (
-                {key === 'all' ? rows.length : rows.filter((row) => row.status === key).length})
+                {key === 'all'
+                  ? rows.length
+                  : rows.filter((row) => row.status === key).length}
+                )
               </button>
             ))}
           </div>
@@ -107,7 +149,11 @@ function Drivers() {
               key={row.driver.name}
               row={row}
               isOpen={openName === row.driver.name}
-              onToggle={() => setOpenName((name) => (name === row.driver.name ? null : row.driver.name))}
+              onToggle={() =>
+                setOpenName((name) =>
+                  name === row.driver.name ? null : row.driver.name,
+                )
+              }
               runs={runs.filter((item) => item.run.driver === row.driver.name)}
               onOpenRun={(runId) => {
                 dispatch(openRun(runId));
@@ -130,45 +176,106 @@ function Drivers() {
 
       <section className="runs__block" aria-label={t.drivers.payoutsAria}>
         <div className="runs__form-head">
-          <h2 className="runs__subtitle">{t.drivers.payoutsTitle(CURRENT_WEEK)}</h2>
-          <span className="runs__meta">{t.drivers.payoutsSub(formatMoney(payPerMile, 2))}</span>
+          <h2 className="runs__subtitle">
+            {t.drivers.payoutsTitle(CURRENT_WEEK)}
+          </h2>
+          <span className="runs__meta">
+            {t.drivers.payoutsSub(formatMoney(payPerMile, 2))}
+          </span>
         </div>
         <ul className="runs__loads">
           {rows
-            .filter((row) => row.weekPay > 0)
+            .filter((row) => row.weekPay > 0 || row.forecastPay > 0)
             .map((row) => (
-              <li key={row.driver.name} className="runs__load runs__account runs__account--compact">
+              <li
+                key={row.driver.name}
+                className="runs__load runs__account runs__account--compact"
+              >
                 <div className="runs__account-info">
                   <p className="runs__truck">{row.driver.name}</p>
                   <p className="runs__meta">
-                    {formatMiles(row.weekMiles)} · {formatMoney(row.weekPay, 0)}
+                    {formatMiles(row.weekMiles)} підтверджено · Нараховано{' '}
+                    {formatMoney(row.weekPay, 2)}
                   </p>
+                  <p className="runs__meta">
+                    Прогноз усього рейсу: {formatMiles(row.forecastMiles)} ·{' '}
+                    {formatMoney(row.forecastPay, 2)}. Майбутні ділянки не
+                    входять у виплату.
+                  </p>
+                  {row.unknownMileageCount > 0 && (
+                    <p className="runs__field-error">
+                      Потрібно уточнити милі для {row.unknownMileageCount}{' '}
+                      підтверджених ділянок.
+                    </p>
+                  )}
+                  <details>
+                    <summary className="runs__label">
+                      Підстава нарахувань
+                    </summary>
+                    <ul className="runs__driver-runs">
+                      {row.earnings.map((entry) => (
+                        <li key={entry.id} className="runs__meta">
+                          {entry.from} → {entry.to} ·{' '}
+                          {entry.miles === null
+                            ? 'Милі не вказано'
+                            : formatMiles(entry.miles)}{' '}
+                          · {entry.basis}
+                        </li>
+                      ))}
+                    </ul>
+                    {row.adjustments.map((item) => (
+                      <p key={item.id} className="runs__meta">
+                        Коригування {formatMoney(item.amountCents / 100, 2)} ·{' '}
+                        {item.reason} · {item.approvedBy}
+                      </p>
+                    ))}
+                  </details>
                 </div>
                 <div className="runs__load-actions runs__account-actions">
-                  <span className={`runs__badge runs__badge--${row.isPaid ? 'ok' : 'warn'}`}>
+                  <span
+                    className={`runs__badge runs__badge--${row.isPaid ? 'ok' : 'warn'}`}
+                  >
                     {row.isPaid
                       ? t.drivers.paid
                       : row.paidAmount > 0
-                        ? t.drivers.partlyPaid(formatMoney(row.paidAmount, 0), formatMoney(row.due, 0))
+                        ? t.drivers.partlyPaid(
+                            formatMoney(row.paidAmount, 2),
+                            formatMoney(row.due, 2),
+                          )
                         : t.drivers.accrued}
                   </span>
-                  {!row.isPaid && (
-                    <button
-                      type="button"
-                      className="runs__button runs__button--secondary runs__button--small"
-                      onClick={() => {
-                        dispatch(markDriverPaid({ driver: row.driver.name, amount: row.weekPay }));
-                        dispatch(showToast('success', t.notify.paid(row.driver.name)));
-                      }}
-                    >
-                      {t.drivers.markPaid}
-                    </button>
-                  )}
+                  {canPay &&
+                    !row.isPaid &&
+                    row.due > 0 &&
+                    row.unknownMileageCount === 0 && (
+                      <button
+                        type="button"
+                        className="runs__button runs__button--secondary runs__button--small"
+                        onClick={() => {
+                          dispatch(
+                            markDriverPaid({
+                              driver: row.driver.name,
+                              amount: row.weekPay,
+                              author: user?.name,
+                            }),
+                          );
+                          dispatch(
+                            showToast(
+                              'success',
+                              t.notify.paid(row.driver.name),
+                            ),
+                          );
+                        }}
+                      >
+                        {t.drivers.markPaid}
+                      </button>
+                    )}
                 </div>
               </li>
             ))}
         </ul>
       </section>
+      <DriverAdjustmentForm />
     </div>
   );
 }
@@ -207,7 +314,11 @@ function DriverItem({
             {row.location}
             {row.activeRun ? ` · ${row.activeRun.lane}` : ''}
           </span>
-          <span className={doc.tone ? `runs__meta runs__meta--${doc.tone}` : 'runs__meta'}>
+          <span
+            className={
+              doc.tone ? `runs__meta runs__meta--${doc.tone}` : 'runs__meta'
+            }
+          >
             {doc.text}
           </span>
         </span>
@@ -219,14 +330,18 @@ function DriverItem({
           {row.hoursLeft !== null && row.status !== 'DocsExpired' && (
             <span className="runs__inline-visual">
               <HosRing hoursLeft={row.hoursLeft} />
-              <span className="runs__meta">{t.drivers.hoursLeft(formatHours(row.hoursLeft))}</span>
+              <span className="runs__meta">
+                {t.drivers.hoursLeft(formatHours(row.hoursLeft))}
+              </span>
             </span>
           )}
           {row.idleDays !== null && row.idleDays > 0 && (
             <span className="runs__meta">{t.drivers.idle(row.idleDays)}</span>
           )}
           <span className="runs__meta">
-            {row.isPaid ? t.drivers.paid : t.drivers.weekPay(formatMoney(row.due, 0))}
+            {row.isPaid
+              ? t.drivers.paid
+              : t.drivers.weekPay(formatMoney(row.due, 2))}
           </span>
         </span>
       </button>
@@ -244,13 +359,25 @@ function DriverItem({
             </div>
             <div>
               <dt>{t.drivers.cdl}</dt>
-              <dd className={daysUntil(driver.cdlExpires) <= 30 ? 'runs__meta--warn' : undefined}>
+              <dd
+                className={
+                  daysUntil(driver.cdlExpires) <= 30
+                    ? 'runs__meta--warn'
+                    : undefined
+                }
+              >
                 {docDate(driver.cdlExpires)}
               </dd>
             </div>
             <div>
               <dt>{t.drivers.medical}</dt>
-              <dd className={daysUntil(driver.medicalExpires) <= 30 ? 'runs__meta--warn' : undefined}>
+              <dd
+                className={
+                  daysUntil(driver.medicalExpires) <= 30
+                    ? 'runs__meta--warn'
+                    : undefined
+                }
+              >
                 {docDate(driver.medicalExpires)}
               </dd>
             </div>
@@ -268,7 +395,8 @@ function DriverItem({
                     className="runs__button runs__button--tertiary runs__button--small"
                     onClick={() => onOpenRun(item.run.id)}
                   >
-                    {item.run.truck} · {item.lane} · {runStatusLabel(item.run.status)}
+                    {item.run.truck} · {item.lane} ·{' '}
+                    {runStatusLabel(item.run.status)}
                   </button>
                 </li>
               ))}
@@ -278,17 +406,29 @@ function DriverItem({
           <h3 className="runs__subtitle">{t.drivers.payouts}</h3>
           <ul className="runs__driver-runs">
             <li className="runs__meta">
-              {t.drivers.payoutLine(CURRENT_WEEK, formatMiles(row.weekMiles), formatMoney(row.weekPay, 0))} ·{' '}
+              {t.drivers.payoutLine(
+                CURRENT_WEEK,
+                formatMiles(row.weekMiles),
+                formatMoney(row.weekPay, 2),
+              )}{' '}
+              ·{' '}
               {row.isPaid
                 ? t.drivers.paid
                 : row.paidAmount > 0
-                  ? t.drivers.partlyPaid(formatMoney(row.paidAmount, 0), formatMoney(row.due, 0))
+                  ? t.drivers.partlyPaid(
+                      formatMoney(row.paidAmount, 2),
+                      formatMoney(row.due, 2),
+                    )
                   : t.drivers.accrued}
             </li>
             {history.map((item) => (
               <li key={item.week} className="runs__meta">
-                {t.drivers.payoutLine(item.week, formatMiles(item.miles), formatMoney(item.amount, 0))} ·{' '}
-                {t.drivers.paid}
+                {t.drivers.payoutLine(
+                  item.week,
+                  formatMiles(item.miles),
+                  formatMoney(item.amount, 0),
+                )}{' '}
+                · {t.drivers.paid}
               </li>
             ))}
           </ul>

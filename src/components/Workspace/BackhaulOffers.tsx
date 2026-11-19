@@ -1,3 +1,5 @@
+import { bookingConflict } from '../../store/booking';
+import type { RootState } from '../../store/store';
 import { t } from '../../i18n';
 import {
   backhaulOffers,
@@ -18,6 +20,7 @@ import {
 
 function BackhaulOffers({ run }: { run: Run }) {
   const dispatch = useAppDispatch();
+  const state = useAppSelector((state) => state);
   const manualMiles = useAppSelector((state) => state.runs.manualMiles);
 
   return (
@@ -28,9 +31,7 @@ function BackhaulOffers({ run }: { run: Run }) {
     >
       <div className="runs__form-head">
         <h2 className="runs__subtitle">{t.backhaul.title}</h2>
-        <span className="runs__meta">
-          {t.backhaul.subtitle}
-        </span>
+        <span className="runs__meta">{t.backhaul.subtitle}</span>
       </div>
       <ul className="runs__offers">
         {backhaulOffers.map((offer) => (
@@ -39,6 +40,7 @@ function BackhaulOffers({ run }: { run: Run }) {
             run={run}
             offer={offer}
             manualMiles={manualMiles}
+            state={state}
             onFillForm={() => {
               dispatch(openLoadModal(run.id));
               dispatch(applyPresetToDraft(offer.draft));
@@ -59,10 +61,12 @@ function OfferCard({
   manualMiles,
   onFillForm,
   onAssign,
+  state,
 }: {
   run: Run;
   offer: BackhaulOffer;
   manualMiles: Record<string, number>;
+  state: RootState;
   onFillForm: () => void;
   onAssign: () => void;
 }) {
@@ -74,8 +78,14 @@ function OfferCard({
       : offer.tone === 'warning'
         ? '--warn'
         : '';
-  const hasHosConflict =
-    offer.tone === 'warning' || preview.hosNote.includes(t.hos.pickupDropsOff);
+  const conflict = bookingConflict(state, {
+    target: { kind: 'existing', runId: run.id },
+    draft,
+    legMiles: {},
+    author: state.auth.currentUser?.name ?? '',
+    roleTitle: state.auth.currentUser?.roleTitle ?? '',
+  });
+  const hasHosConflict = !!conflict;
 
   return (
     <li className={`runs__offer runs__offer--${offer.tone}`}>
@@ -100,11 +110,7 @@ function OfferCard({
             type="button"
             className="runs__button runs__button--secondary runs__button--small"
             disabled={hasHosConflict}
-            title={
-              hasHosConflict
-                ? t.backhaul.hosConflict
-                : undefined
-            }
+            title={hasHosConflict ? (conflict ?? undefined) : undefined}
             onClick={onAssign}
           >
             {t.backhaul.assign}
@@ -114,8 +120,9 @@ function OfferCard({
       <p className="runs__meta">
         {placeName(draft.pickupCity, draft.pickupState)} →{' '}
         {placeName(draft.deliveryCity, draft.deliveryState)} ·{' '}
-        {formatMoney(Number(draft.rate), 0)} · {formatMiles(Number(draft.miles))}{' '}
-        · {t.backhaul.driveTime(formatHours(Number(draft.driveHours)))}
+        {formatMoney(Number(draft.rate), 0)} ·{' '}
+        {formatMiles(Number(draft.miles))} ·{' '}
+        {t.backhaul.driveTime(formatHours(Number(draft.driveHours)))}
       </p>
       <p className="runs__meta">
         {t.backhaul.projected}{' '}
